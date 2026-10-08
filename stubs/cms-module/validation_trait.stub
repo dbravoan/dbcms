@@ -1,0 +1,28 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\__STUDLY__\Http\Controllers\Admin\Concerns;
+
+/**
+ * Shared validation rules for creating and updating __STUDLY__ records.
+ */
+trait Validates__STUDLY__Payload
+{
+    /**
+     * @return array<string, mixed>
+     */
+    protected function rules(): array
+    {
+        return [
+            'translations' => 'required|array',
+            'translations.*.title' => 'nullable|string|max:255',
+            'translations.*.slug' => 'nullable|string|max:255',
+            'translations.*.content' => 'nullable|string',
+            'is_active' => 'nullable|boolean',
+            'order' => 'nullable|integer|min:0',
+            'market_ids' => 'nullable|array',
+            'market_ids.*' => 'integer|exists:markets,id',
+        ];
+    }
+}

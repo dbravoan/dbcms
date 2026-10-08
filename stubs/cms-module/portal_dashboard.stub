@@ -1,0 +1,27 @@
+@extends('__IDENTIFIER__::portal.layout')
+
+@section('title', 'Panel Dedicado - __STUDLY__')
+
+@section('content')
+<div class="space-y-6">
+    <div class="bg-[#141414] border border-gray-800 rounded-xl p-6">
+        <h1 class="text-2xl font-bold text-white mb-2">Bienvenido a tu panel de __STUDLY__</h1>
+        <p class="text-gray-400 text-sm">Este es un portal administrativo aislado e independiente del Backoffice general del CMS.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-[#181818] border border-gray-800 rounded-lg p-5">
+            <h3 class="text-gray-400 text-xs uppercase font-mono mb-1">Estado de la cuenta</h3>
+            <p class="text-[#00FF99] text-xl font-bold font-mono">Activa</p>
+        </div>
+        <div class="bg-[#181818] border border-gray-800 rounded-lg p-5">
+            <h3 class="text-gray-400 text-xs uppercase font-mono mb-1">Guard de Autenticación</h3>
+            <p class="text-white text-xl font-bold font-mono">__IDENTIFIER__</p>
+        </div>
+        <div class="bg-[#181818] border border-gray-800 rounded-lg p-5">
+            <h3 class="text-gray-400 text-xs uppercase font-mono mb-1">Provider Passport</h3>
+            <p class="text-blue-400 text-xl font-bold font-mono">__IDENTIFIER___users</p>
+        </div>
+    </div>
+</div>
+@endsection

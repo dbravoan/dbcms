@@ -1,0 +1,45 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\__STUDLY__\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
+
+/**
+ * @property int $id
+ * @property int $__FK__
+ * @property string $locale
+ * @property int|null $market_id
+ * @property string $title
+ * @property string $slug
+ * @property string|null $content
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ */
+class __TRANSLATION_CLASS__ extends Model
+{
+    use HasFactory;
+
+    protected $table = '__SNAKE___translations';
+
+    protected $fillable = [
+        '__FK__',
+        'locale',
+        'market_id',
+        'title',
+        'slug',
+        'content',
+    ];
+
+    /**
+     * @return BelongsTo<__STUDLY__, $this>
+     */
+    public function __SNAKE__(): BelongsTo
+    {
+        return $this->belongsTo(__STUDLY__::class, '__FK__');
+    }
+}

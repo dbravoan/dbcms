@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ ! -f /.dockerenv ]; then
+    echo 'Run bin/ci-check inside the Docker CI container.' >&2
+    exit 1
+fi
+cd /var/www/html
+composer validate --strict
+composer install --prefer-dist --no-progress --no-interaction
+composer audit
+mkdir -p storage/framework/cache/data storage/framework/views storage/framework/sessions storage/logs bootstrap/cache
+cp .env.example .env
+php artisan key:generate --no-interaction
+php artisan passport:keys --force --no-interaction
+npm ci
+npm audit --audit-level=moderate
+npm run build
+test -f public/build/manifest.json
+node --test tests/Frontend/*.test.mjs
+vendor/bin/pint --test
+vendor/bin/phpstan analyse --memory-limit=2G
+php -d memory_limit=2G vendor/bin/pest --colors=always

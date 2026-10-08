@@ -1,0 +1,43 @@
+/**
+ * termoCMS — Frontoffice admin bar design tokens (Corporate White).
+ *
+ * Loaded on demand by `components/frontoffice-admin-bar.blade.php`, which maps
+ * its whole chrome to these `--admin-bar-*` variables. Scoped to
+ * `html.theme-termocms` so it overrides the dbCMS defaults declared on :root.
+ */
+html.theme-termocms {
+    --admin-bar-bg: rgba(255, 255, 255, 0.96);
+    --admin-bar-panel: #FFFFFF;
+    --admin-bar-panel-alt: #F8FAFC;
+    --admin-bar-border: #E2E8F0;
+    --admin-bar-border-soft: #E2E8F0;
+    --admin-bar-border-strong: #0090A8;
+    --admin-bar-text: #0F172A;
+    --admin-bar-muted: #64748B;
+    --admin-bar-accent: #007B90;
+    --admin-bar-accent-hover: #006678;
+    --admin-bar-accent-contrast: #FFFFFF;
+    --admin-bar-chip-bg: rgba(0, 144, 168, 0.10);
+    --admin-bar-chip-border: rgba(0, 144, 168, 0.30);
+    --admin-bar-hover-bg: #F1F5F9;
+    --admin-bar-glow: rgba(0, 144, 168, 0.35);
+    --admin-bar-pill-bg: #007B90;
+    --admin-bar-pill-text: #FFFFFF;
+    --admin-bar-pill-border: #007B90;
+    --admin-bar-pill-hover-bg: #006678;
+    --admin-bar-pill-hover-text: #FFFFFF;
+    --admin-bar-font: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --admin-bar-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+
+    /* Alert surfaces: light tint + dark text (readable on the white panel). */
+    --admin-bar-alert-warning-bg: #FFFBEB;
+    --admin-bar-alert-warning-border: #FDE68A;
+    --admin-bar-alert-warning-text: #92400E;
+    --admin-bar-alert-warning-icon: #B45309;
+    --admin-bar-alert-success-bg: #ECFDF5;
+    --admin-bar-alert-success-border: #A7F3D0;
+    --admin-bar-alert-success-text: #065F46;
+    --admin-bar-alert-danger-bg: #FEF2F2;
+    --admin-bar-alert-danger-border: #FECACA;
+    --admin-bar-alert-danger-text: #991B1B;
+}

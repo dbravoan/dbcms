@@ -1,0 +1,67 @@
+name: Deploy VPS / Plesk Release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  quality:
+    uses: ./.github/workflows/quality.yml
+  deploy:
+    needs: quality
+    # Explicit repository opt-in replaces unsupported secrets in job conditions.
+    if: vars.VPS_DEPLOY_ENABLED == 'true'
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+      VPS_DIR: ${{ secrets.VPS_DIR }}
+      VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+      VPS_SSH_FINGERPRINT: ${{ secrets.VPS_SSH_FINGERPRINT }}
+      VPS_HEALTH_URL: ${{ secrets.VPS_HEALTH_URL }}
+      VPS_FPM_SERVICE: ${{ vars.VPS_FPM_SERVICE }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate destination and pin SSH host
+        run: |
+          [[ "$VPS_HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
+          [[ "$VPS_USER" =~ ^[a-zA-Z0-9_-]+$ ]]
+          [[ "$VPS_PORT" =~ ^[0-9]+$ ]]
+          [[ "$VPS_DIR" =~ ^/[a-zA-Z0-9_./-]+$ ]]
+          test -n "$VPS_SSH_KEY"
+          test -n "$VPS_SSH_FINGERPRINT"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -T 10 -t ed25519 -p "$VPS_PORT" "$VPS_HOST" > ~/.ssh/known_hosts
+          test "$(ssh-keygen -lf ~/.ssh/known_hosts | awk '{print $2}' | head -1)" = "$VPS_SSH_FINGERPRINT"
+      - name: Build verified package and CLI runtime in Docker
+        run: |
+          RELEASE_NAME="release-$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA}"
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          echo "RELEASE_NAME=$RELEASE_NAME" >> "$GITHUB_ENV"
+          bash bin/build-release-zip.sh --version="$VERSION"
+          cp "dist/dbcms-v$VERSION.tar.gz" "$RELEASE_NAME.tar.gz"
+          docker build --target php-base -f docker/production/Dockerfile -t "dbcms-cli:${GITHUB_SHA}" .
+          docker save "dbcms-cli:${GITHUB_SHA}" | gzip > "$RELEASE_NAME-cli.tar.gz"
+          sha256sum "$RELEASE_NAME.tar.gz" "$RELEASE_NAME-cli.tar.gz" > "$RELEASE_NAME.sha256"
+      - name: Transfer package and preserve existing hosting
+        run: |
+          scp -P "$VPS_PORT" -o StrictHostKeyChecking=yes "$RELEASE_NAME.tar.gz" "$RELEASE_NAME-cli.tar.gz" "$RELEASE_NAME.sha256" "$VPS_USER@$VPS_HOST:/tmp/"
+          scp -P "$VPS_PORT" -o StrictHostKeyChecking=yes bin/deploy-vps-release.sh "$VPS_USER@$VPS_HOST:/tmp/$RELEASE_NAME-deploy.sh"
+          printf -v remote 'env VPS_DIR=%q RELEASE_NAME=%q VPS_CLI_IMAGE=%q VPS_HEALTH_URL=%q VPS_FPM_SERVICE=%q bash -s' "$VPS_DIR" "$RELEASE_NAME" "dbcms-cli:$GITHUB_SHA" "$VPS_HEALTH_URL" "$VPS_FPM_SERVICE"
+          ssh -p "$VPS_PORT" -o StrictHostKeyChecking=yes "$VPS_USER@$VPS_HOST" "$remote" <<'REMOTE'
+          set -euo pipefail
+          cd /tmp
+          sha256sum -c "$RELEASE_NAME.sha256"
+          docker load -i "$RELEASE_NAME-cli.tar.gz"
+          bash "$RELEASE_NAME-deploy.sh" "$RELEASE_NAME.tar.gz"
+          rm -f "$RELEASE_NAME.tar.gz" "$RELEASE_NAME-cli.tar.gz" "$RELEASE_NAME.sha256" "$RELEASE_NAME-deploy.sh"
+          REMOTE

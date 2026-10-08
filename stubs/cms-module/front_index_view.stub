@@ -1,0 +1,10 @@
+@extends('layouts.app')
+
+@section('title', '__HEADLINE__')
+
+@section('content')
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <h1 class="text-3xl font-extrabold text-white mb-6">__HEADLINE__</h1>
+    <p class="text-gray-400">Listado de contenidos del módulo __STUDLY__.</p>
+</main>
+@endsection

@@ -1,0 +1,323 @@
+/*
+ * Backoffice UI kit — shared form controls.
+ *
+ * Why semantic classes instead of utility strings:
+ *
+ * The backoffice theme `termoCMS` repaints the dark `dbCMS` markup by rewriting
+ * Tailwind utilities with `!important` (`[class*="bg-[#00FF99]/"]`,
+ * `button.bg-gray-800`, …). Those selectors match *substrings* anywhere in the
+ * class attribute and are not limited to `:hover`, so a button carrying
+ * `bg-[#00FF99] text-black` plus `hover:bg-[#00FF99]/90` ended up teal-on-teal
+ * and its icon vanished; the same rules repainted dark panels light.
+ *
+ * Exposing the controls as `.admin-btn--*` / `.admin-switch*` lets every theme
+ * style them **once**, in its own palette, without fragile `[class*=…]`
+ * rewrites — and guarantees the icon colour in every state.
+ */
+
+/* Shared tokens stay scoped: public pages can carry the brand class too. */
+html.theme-dbcms {
+    --admin-control-bg: #1a1a1a;
+    --admin-control-border: #45454d;
+    --admin-control-text: #f4f4f5;
+    --admin-control-placeholder: #9ca3af;
+    --admin-control-focus: #00ff99;
+    --admin-control-ring: rgba(0, 255, 153, 0.16);
+    --admin-surface: #141414;
+    --admin-text: #f4f4f5;
+    --admin-muted: #a1a1aa;
+    --admin-border: #3f3f46;
+    --admin-danger: #fda4af;
+    --admin-warning: #fcd34d;
+    --admin-message-bg: rgba(255, 255, 255, 0.04);
+}
+
+html.theme-termocms {
+    --admin-control-bg: #ffffff;
+    --admin-control-border: #cbd5e1;
+    --admin-control-text: #0f172a;
+    --admin-control-placeholder: #64748b;
+    --admin-control-focus: #007b90;
+    --admin-control-ring: rgba(0, 144, 168, 0.16);
+    --admin-surface: #ffffff;
+    --admin-text: #0f172a;
+    --admin-muted: #475569;
+    --admin-border: #e2e8f0;
+    --admin-danger: #b91c1c;
+    --admin-warning: #92400e;
+    --admin-message-bg: #f8fafc;
+}
+
+.admin-field { display: grid; gap: 0.375rem; min-width: 0; }
+.admin-field-label { color: var(--admin-text); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.admin-field-hint, .admin-text-muted { color: var(--admin-muted); font-size: 0.75rem; line-height: 1.6; }
+.admin-field-error { color: var(--admin-danger); font-size: 0.75rem; line-height: 1.5; }
+
+/* Legacy controls receive the same geometry, only inside an admin shell. */
+[data-admin-shell] :where(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="submit"]):not([type="button"]):not(.admin-control--embedded):not(.bg-transparent), select, textarea),
+[data-admin-shell] .admin-control {
+    box-sizing: border-box;
+    min-height: 2.5rem;
+    padding: 0.625rem 0.75rem;
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 0.5rem;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color-scheme: dark;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+[data-admin-shell] .admin-control { width: 100%; background: var(--admin-control-bg); color: var(--admin-control-text); border-color: var(--admin-control-border); }
+[data-admin-shell] :where(select, input, textarea)::placeholder { color: var(--admin-control-placeholder); opacity: 1; }
+html.theme-termocms [data-admin-shell] :where(select, input, textarea) { color-scheme: light; }
+[data-admin-shell] :where(select, input, textarea):focus-visible,
+[data-admin-shell] .admin-combobox:focus-within {
+    outline: 2px solid var(--admin-control-focus);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px var(--admin-control-ring);
+}
+[data-admin-shell] .admin-control--invalid { border-color: var(--admin-danger); }
+[data-admin-shell] .admin-control--invalid:focus-visible { outline-color: var(--admin-danger); }
+[data-admin-shell] :where(select, input, textarea):disabled { opacity: 0.55; cursor: not-allowed; }
+[data-admin-shell] .admin-control--leading-icon { padding-inline-start: 2.25rem; }
+[data-admin-shell] .admin-control--trailing-icon { padding-inline-end: 2.75rem; }
+[data-admin-shell] .admin-combobox { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; min-height: 2.5rem; padding: 0.375rem 0.5rem; background: var(--admin-control-bg); color: var(--admin-control-text); border: 1px solid var(--admin-control-border); border-radius: 0.5rem; }
+[data-admin-shell] .admin-control--embedded { min-height: 1.75rem; padding: 0.25rem; background: transparent; border: 0; color: var(--admin-control-text); font: inherit; outline: none; box-shadow: none; }
+[data-admin-shell] .admin-control--embedded:focus-visible { outline: none; box-shadow: none; }
+.admin-dropdown, .admin-panel { background: var(--admin-surface); color: var(--admin-text); border: 1px solid var(--admin-border); border-radius: 0.5rem; }
+.admin-dropdown { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16); }
+.admin-option:hover, .admin-option--active { background: var(--admin-control-ring); }
+.admin-selection-chip { display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.25rem 0.5rem; border-radius: 0.375rem; border: 1px solid var(--admin-control-border); color: var(--admin-control-focus); background: var(--admin-control-ring); font-size: 0.75rem; }
+.admin-alert { padding: 0.75rem; border: 1px solid var(--admin-border); border-inline-start-width: 3px; border-radius: 0.5rem; background: var(--admin-message-bg); color: var(--admin-text); font-size: 0.8125rem; line-height: 1.6; overflow-wrap: anywhere; }
+.admin-alert--danger { color: var(--admin-danger); border-inline-start-color: var(--admin-danger); }
+.admin-alert--warning { color: var(--admin-warning); border-inline-start-color: var(--admin-warning); }
+.admin-check-label { display: flex; align-items: flex-start; gap: 0.625rem; color: var(--admin-text); font-size: 0.8125rem; line-height: 1.6; }
+.admin-check-label input { flex-shrink: 0; margin-top: 0.25rem; width: 1rem; height: 1rem; }
+.admin-dialog { background: var(--admin-surface); color: var(--admin-text); border: 1px solid var(--admin-border); }
+.admin-dialog-title { color: var(--admin-text); }
+.admin-dialog-divider { border-color: var(--admin-border); }
+.admin-translation-preview { max-height: 45vh; overflow-y: auto; display: grid; gap: 0.75rem; padding: 0.125rem; }
+.admin-translation-preview .admin-panel { padding: 0.875rem; overflow-wrap: anywhere; }
+[data-admin-shell] :where(button, a, [tabindex]):focus-visible { outline: 2px solid var(--admin-control-focus); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+    [data-admin-shell] *, [data-admin-shell] *::before, [data-admin-shell] *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/* ------------------------------------------------------------------ Buttons */
+.admin-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.admin-btn__icon {
+    font-size: 0.75em;
+    /* El icono hereda SIEMPRE el color del botón: así no puede perderse. */
+    color: inherit;
+}
+
+.admin-btn--sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+}
+
+.admin-btn--lg {
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+}
+
+/* Variants (dark dbCMS palette) */
+.admin-btn--primary {
+    background-color: #00ff99;
+    border-color: #00ff99;
+    color: #0a0a0a;
+}
+
+.admin-btn--primary:hover {
+    background-color: #00d97f;
+    border-color: #00d97f;
+    color: #0a0a0a;
+}
+
+.admin-btn--neutral {
+    background-color: #1f1f1f;
+    border-color: #3a3a3a;
+    color: #d4d4d4;
+}
+
+.admin-btn--neutral:hover {
+    background-color: #2b2b2b;
+    border-color: #4a4a4a;
+    color: #ffffff;
+}
+
+.admin-btn--ghost {
+    background-color: transparent;
+    border-color: transparent;
+    color: #9ca3af;
+}
+
+.admin-btn--ghost:hover {
+    background-color: #1f1f1f;
+    color: #ffffff;
+}
+
+.admin-btn--danger {
+    background-color: rgba(127, 29, 29, 0.35);
+    border-color: rgba(190, 18, 60, 0.5);
+    color: #fda4af;
+}
+
+.admin-btn--danger:hover {
+    background-color: #be123c;
+    border-color: #be123c;
+    color: #ffffff;
+}
+
+.admin-btn--warning {
+    background-color: rgba(180, 83, 9, 0.25);
+    border-color: rgba(245, 158, 11, 0.45);
+    color: #fcd34d;
+}
+
+.admin-btn--warning:hover {
+    background-color: #d97706;
+    border-color: #d97706;
+    color: #1a1a1a;
+}
+
+.admin-btn--success {
+    background-color: rgba(0, 255, 153, 0.12);
+    border-color: rgba(0, 255, 153, 0.4);
+    color: #00ff99;
+}
+
+.admin-btn--success:hover {
+    background-color: #00ff99;
+    border-color: #00ff99;
+    color: #0a0a0a;
+}
+
+.admin-btn--icon {
+    padding: 0.4rem;
+    background-color: transparent;
+    border-color: transparent;
+    color: #9ca3af;
+}
+
+.admin-btn--icon:hover {
+    background-color: #262626;
+    color: #ffffff;
+}
+
+/* Estado activo inequívoco (selector de columnas, pestañas, filtros). */
+.admin-btn--active {
+    background-color: rgba(0, 255, 153, 0.18);
+    border-color: rgba(0, 255, 153, 0.55);
+    color: #00ff99;
+}
+
+.admin-btn--disabled,
+.admin-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.admin-btn:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ Switches */
+.admin-switch-field {
+    color: #d4d4d4;
+}
+
+.admin-switch-track {
+    display: block;
+    background-color: #3f3f46;
+    border: 1px solid #52525b;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.admin-switch-knob {
+    background-color: #ffffff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* Estado activo: track + knob. `peer-checked` viene del núcleo de Tailwind, así
+   que ningún tema puede romperlo por accidente. */
+.admin-switch:checked ~ .admin-switch-track {
+    background-color: #00ff99;
+    border-color: #00ff99;
+}
+
+.admin-switch:checked ~ .admin-switch-knob {
+    transform: translateX(1rem);
+}
+
+.admin-switch:focus-visible ~ .admin-switch-track {
+    outline: 2px solid #00ff99;
+    outline-offset: 2px;
+}
+
+.admin-switch:disabled ~ .admin-switch-track {
+    opacity: 0.5;
+}
+
+.admin-switch-label {
+    color: #e5e5e5;
+}
+
+.admin-switch-hint {
+    color: #8b8b8b;
+}
+
+/* ------------------------------------------------------- Native checkboxes
+   Los checkboxes sueltos del panel usaban `text-[#00FF99]`, que NO define el
+   color del check (eso es `accent-color`): se veían vacíos aunque estuvieran
+   marcados. Una regla global los deja legibles en los dos temas y los
+   interruptores conmutable (x-admin.switch) los reemplazan donde importa el
+   estado a simple vista. */
+input[type="checkbox"]:not(.admin-switch):not(.sr-only),
+input[type="radio"] {
+    accent-color: #00ff99;
+    cursor: pointer;
+}
+
+input[type="checkbox"]:not(.admin-switch):not(.sr-only):disabled,
+input[type="radio"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------ Carousel
+   Altura fluida con respeto por el viewport y sin saltos antes de hidratar. */
+.cms-carousel {
+    min-height: min(var(--cms-carousel-height, 520px), 90vh);
+    height: min(var(--cms-carousel-height, 520px), 90vh);
+    background-color: #0A0A0A;
+}
+
+.cms-carousel-slide {
+    will-change: opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cms-carousel-slide {
+        transition: none;
+    }
+}

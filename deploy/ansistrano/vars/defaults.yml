@@ -1,0 +1,26 @@
+---
+# Ansistrano default configuration for dbCMS
+ansistrano_deploy_to: "/var/www/dbcms"
+ansistrano_version_dir: "releases"
+ansistrano_current_dir: "current"
+ansistrano_shared_dir: "shared"
+ansistrano_keep_releases: 5
+
+ansistrano_deploy_via: "rsync"
+
+ansistrano_shared_paths:
+  - "storage/app"
+  - "storage/framework/cache"
+  - "storage/framework/sessions"
+  - "storage/framework/views"
+  - "storage/logs"
+  - "public/uploads"
+
+ansistrano_shared_files:
+  - ".env"
+  - "storage/oauth-private.key"
+  - "storage/oauth-public.key"
+  - "storage/installed"
+
+ansistrano_before_symlink_tasks_file: "{{ playbook_dir }}/hooks/before-symlink.yml"
+ansistrano_after_symlink_tasks_file: "{{ playbook_dir }}/hooks/after-symlink.yml"

@@ -1,0 +1,37 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\__STUDLY__\Http\Controllers\Admin;
+
+use App\Core\Traits\HandlesDatatableQuery;
+use App\Http\Controllers\Controller;
+use App\Models\Market;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
+use Modules\__STUDLY__\Models\__STUDLY__;
+
+final class __STUDLY__GetController extends Controller
+{
+    use HandlesDatatableQuery;
+
+    public function __invoke(Request $request): View
+    {
+        $items = $this->applyDatatable(
+            __STUDLY__::with(['translations', 'markets']),
+            $request,
+            ['translations.title', 'translations.slug'],
+            [
+                'is_active' => 'is_active',
+                'market_id' => 'markets.id',
+            ],
+            'created_at',
+            'desc'
+        );
+
+        return view('__IDENTIFIER__::admin.index', [
+            'items' => $items,
+            'markets' => Market::where('is_active', true)->orderBy('name')->get(),
+        ]);
+    }
+}

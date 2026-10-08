@@ -1,0 +1,26 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\__STUDLY__\Widgets;
+
+use Illuminate\Contracts\View\View;
+
+class Latest__STUDLY__Widget
+{
+    public static function getKey(): string
+    {
+        return '__IDENTIFIER__.latest';
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     */
+    public function render(array $params = []): View
+    {
+        return view('__IDENTIFIER__::widgets.latest', [
+            'limit' => (int) ($params['limit'] ?? 5),
+            'title' => (string) ($params['title'] ?? "__STUDLY__ destacados"),
+        ]);
+    }
+}

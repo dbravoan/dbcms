@@ -1,0 +1,41 @@
+{
+  "name": "Analytics & GDPR Consent",
+  "identifier": "analytics",
+  "version": "1.0.0",
+  "author": "dbCMS Core Team",
+  "description": "Google Analytics 4, Tag Manager, and GDPR compliant cookie consent banner",
+  "provider": "Modules\\Analytics\\AnalyticsModuleServiceProvider",
+  "is_pageable": false,
+  "widgets": [],
+  "requires": {
+    "core": ">=1.0.0"
+  },
+  "settings": {
+    "ga4_measurement_id": {
+      "type": "text",
+      "label": "GA4 Measurement ID",
+      "description": "ID de medición de Google Analytics 4 (ej. G-XXXXXXXXXX)",
+      "placeholder": "G-XXXXXXXXXX",
+      "required": false
+    },
+    "gtm_id": {
+      "type": "text",
+      "label": "Google Tag Manager ID",
+      "description": "Identificador de contenedor Google Tag Manager (ej. GTM-XXXXXXX)",
+      "placeholder": "GTM-XXXXXXX",
+      "required": false
+    },
+    "anonymize_ip": {
+      "type": "boolean",
+      "label": "Anonimizar IPs (RGPD)",
+      "description": "Enmascarar la IP del usuario final en las solicitudes de GA4",
+      "default": true
+    },
+    "enable_cookie_consent": {
+      "type": "boolean",
+      "label": "Bloqueo por Consentimiento de Cookies",
+      "description": "Retener la carga de GA4 hasta que el usuario acepte la categoría de cookies analíticas",
+      "default": true
+    }
+  }
+}

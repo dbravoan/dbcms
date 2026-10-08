@@ -1,0 +1,108 @@
+{
+    "name": "dbravoan/dbcms",
+    "type": "project",
+    "description": "High-Traffic Enterprise Multi-Market CMS with Dynamic Modules, Pageable Extensions, AI Content Studio, and Native MCP Server.",
+    "keywords": ["laravel", "cms", "multimarket", "multilanguage", "mcp", "modules", "geo", "seo", "passport"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "David Bravo",
+            "email": "hola@davidbravo.com.es",
+            "homepage": "https://github.com/dbravoan",
+            "role": "Lead Developer"
+        }
+    ],
+    "homepage": "https://github.com/dbravoan/dbcms",
+    "support": {
+        "issues": "https://github.com/dbravoan/dbcms/issues",
+        "docs": "https://github.com/dbravoan/dbcms#readme"
+    },
+    "require": {
+        "php": "^8.3",
+        "laravel/ai": "^0.11",
+        "laravel/framework": "^13.0",
+        "laravel/passport": "^13.0",
+        "laravel/tinker": "^3.0",
+        "nyholm/psr7": "^1.8"
+    },
+    "require-dev": {
+        "fakerphp/faker": "^1.23",
+        "larastan/larastan": "^3.0",
+        "laravel/boost": "^2.9",
+        "laravel/pint": "^1.14",
+        "laravel/sail": "^1.26",
+        "mockery/mockery": "^1.6",
+        "nunomaduro/collision": "^8.1",
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-arch": "^4.0",
+        "pestphp/pest-plugin-laravel": "^4.0",
+        "phpstan/phpstan": "^2.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Modules\\": "modules/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
+        },
+        "files": [
+            "app/Support/helpers.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "pre-install-cmd": [
+            "bash bin/guard-host-php.sh"
+        ],
+        "pre-update-cmd": [
+            "bash bin/guard-host-php.sh"
+        ],
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
+        ],
+        "post-update-cmd": [
+            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
+        ],
+        "post-root-package-install": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ],
+        "post-create-project-cmd": [
+            "@php artisan key:generate --ansi",
+            "@php artisan passport:keys --ansi",
+            "@php -r \"echo PHP_EOL.'==============================================='.PHP_EOL.'dbCMS installed successfully!'.PHP_EOL.'Next steps:'.PHP_EOL.'  1. cp .env.example .env && configure DB'.PHP_EOL.'  2. php artisan migrate'.PHP_EOL.'  3. Visit http://localhost/install to complete setup!'.PHP_EOL.'==============================================='.PHP_EOL;\""
+        ],
+        "test": [
+            "pest"
+        ],
+        "phpstan": [
+            "phpstan analyse --memory-limit=2G"
+        ],
+        "pint": [
+            "pint"
+        ]
+    },
+    "extra": {
+        "laravel": {
+            "dont-discover": []
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "audit": {
+            "block-insecure": true
+        },
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

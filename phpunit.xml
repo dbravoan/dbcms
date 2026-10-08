@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         executionOrder="depends,defects"
+         beStrictAboutOutputDuringTests="true"
+         failOnRisky="true"
+         failOnWarning="true">
+    <testsuites>
+        <testsuite name="Architecture">
+            <directory suffix="Test.php">./tests/Architecture</directory>
+        </testsuite>
+        <testsuite name="Unit">
+            <directory suffix="Test.php">./tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory suffix="Test.php">./tests/Feature</directory>
+        </testsuite>
+        <testsuite name="Regression">
+            <directory suffix="Test.php">./tests/Regression</directory>
+        </testsuite>
+        <testsuite name="Concurrency">
+            <directory suffix="Test.php">./tests/Concurrency</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory suffix=".php">./app</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="DB_DATABASE" value="testing"/>
+        <env name="DB_HOST" value="mysql"/>
+        <env name="DB_USERNAME" value="sail"/>
+        <env name="DB_PASSWORD" value="secret"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="GEO_SITE_NAME" value="dbCMS Platform"/>
+        <env name="GEO_SITE_DESCRIPTION" value="Enterprise Modular CMS"/>
+        <env name="ADMIN_PATH" value="admin"/>
+        <env name="CMS_THEME" value="db-cyber"/>
+        <env name="CMS_BRAND" value="dbcms"/>
+        <env name="CMS_QUICK_LOGIN" value="true"/>
+        <env name="SESSION_ENCRYPT" value="false"/>
+        <env name="APP_NAME" value="dbCMS"/>
+        <env name="APP_LOCALE" value="es" force="true"/>
+        <env name="APP_FALLBACK_LOCALE" value="es" force="true"/>
+    </php>
+</phpunit>

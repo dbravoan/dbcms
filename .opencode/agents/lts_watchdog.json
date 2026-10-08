@@ -1,0 +1,10 @@
+{
+  "name": "lts_watchdog",
+  "description": "Monitors Laravel LTS releases and security advisories",
+  "system_prompt": "You are the LTS Watchdog. Monitor composer.json dependencies, detect Laravel LTS releases, and generate automated upgrade plans.",
+  "tools": ["read_file", "view_file", "write_to_file", "replace_file_content", "run_command"],
+  "rules": [
+    ".agents/rules/01_architecture_clean_code.md",
+    ".agents/rules/05_sail_zero_host_php.md"
+  ]
+}

@@ -1,0 +1,81 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services\Cms;
+
+use App\Contracts\Services\ModuleSettingsAdministrationInterface;
+use App\Contracts\Services\ModuleSettingsServiceInterface;
+use App\Core\Modules\ModuleManager;
+use App\Core\Modules\ModuleSettingsExtensionRegistry;
+use App\DTOs\Modules\ModuleSettingsUpdateDTO;
+use App\DTOs\Modules\ModuleSettingsViewDTO;
+use App\Models\CmsModule;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
+
+final class ModuleSettingsAdministrationService implements ModuleSettingsAdministrationInterface
+{
+    public function __construct(private readonly ModuleSettingsServiceInterface $settings, private readonly ModuleManager $modules, private readonly ModuleSettingsExtensionRegistry $extensions) {}
+
+    public function view(string $identifier): ModuleSettingsViewDTO
+    {
+        $module = $this->available($identifier);
+        $customView = $identifier.'::admin.settings';
+        $view = view()->exists($customView) ? $customView : 'admin.modules.settings';
+
+        return new ModuleSettingsViewDTO($view, array_merge(['module' => $module, 'schema' => $this->settings->getSchema($identifier), 'settings' => $this->settings->getAll($identifier)], $this->extensions->view($identifier)));
+    }
+
+    public function update(string $identifier, ModuleSettingsUpdateDTO $settings): string
+    {
+        $module = $this->available($identifier);
+        DB::transaction(function () use ($identifier, $settings): void {
+            if ($this->extensions->update($identifier, $settings)) {
+                return;
+            }
+            $schema = $this->settings->getSchema($identifier);
+            $rules = [];
+            $payload = $settings->values;
+            foreach ($schema as $key => $field) {
+                $type = $field['type'] ?? 'text';
+                $required = (bool) ($field['required'] ?? false);
+                $hasSecret = (bool) ($field['secret'] ?? false) && ! empty($this->settings->get($identifier, $key));
+                $fieldRules = [$required && ! $hasSecret ? 'required' : 'nullable'];
+                if ($type === 'boolean') {
+                    $payload[$key] = filter_var($payload[$key] ?? false, FILTER_VALIDATE_BOOLEAN);
+                    $fieldRules[] = 'boolean';
+                } elseif ($type === 'number') {
+                    $fieldRules[] = 'numeric';
+                } elseif ($type === 'multiselect' || str_ends_with($type, '_multiselect')) {
+                    $fieldRules[] = 'array';
+                } else {
+                    $fieldRules[] = 'string';
+                    if (in_array($type, ['email', 'url'], true)) {
+                        $fieldRules[] = $type;
+                    }
+                }
+                $rules[$key] = $fieldRules;
+            }
+            $validated = Validator::make($payload, $rules)->validate();
+            try {
+                $this->settings->setMany($identifier, $validated);
+            } catch (\InvalidArgumentException $error) {
+                throw ValidationException::withMessages(['settings' => $error->getMessage()]);
+            }
+        });
+
+        return $module->name;
+    }
+
+    private function available(string $identifier): CmsModule
+    {
+        $module = CmsModule::where('identifier', $identifier)->where('is_active', true)->where('is_installed', true)->first();
+        if ($module === null || ! $this->modules->isModuleDiscovered($identifier)) {
+            abort(404, "Módulo '{$identifier}' desactivado o no encontrado.");
+        }
+
+        return $module;
+    }
+}

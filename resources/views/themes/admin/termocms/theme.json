@@ -1,0 +1,16 @@
+{
+    "name": "termoCMS (Corporate White)",
+    "identifier": "termocms",
+    "version": "1.0.0",
+    "description": "Backoffice claro corporativo/clínico en tonos slate con acentos azul médico #0090A8 y tipografía Plus Jakarta Sans.",
+    "author": "dbCMS Design Team",
+    "brand": {
+        "name": "Termosalud",
+        "tagline": "Plataforma Corporativa",
+        "logo": "termosalud-logo.png",
+        "icon": "termosalud-favicon.png",
+        "edition": "Corporate",
+        "accent": "#0090A8",
+        "mode": "light"
+    }
+}

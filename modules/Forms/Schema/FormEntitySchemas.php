@@ -1,0 +1,45 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Forms\Schema;
+
+use App\Core\Content\EntitySchema;
+use Modules\Forms\Models\CustomForm;
+use Modules\Forms\Services\FormMutationHandler;
+
+/**
+ * Declares the Forms entities a generic consumer may operate on.
+ */
+final class FormEntitySchemas
+{
+    /**
+     * @return list<EntitySchema>
+     */
+    public static function all(): array
+    {
+        return [self::form()];
+    }
+
+    private static function form(): EntitySchema
+    {
+        return new EntitySchema(
+            type: 'form',
+            label: 'Formulario',
+            model: CustomForm::class,
+            description: 'Formulario localizado. attributes.fields acepta una lista de field_key, type, is_required, validation_rules y translations[locale] con label, placeholder y options. La lectura expone relations.fields. Omitir fields conserva la estructura; [] la vacía.',
+            permission: 'manage:forms',
+            createView: 'admin.forms.create',
+            editView: 'admin.forms.edit',
+            mutationHandler: FormMutationHandler::class,
+            fields: [
+                EntitySchema::ROLE_TITLE => ['input' => 'translations[{locale}][name]', 'label' => 'Nombre', 'required' => true],
+                EntitySchema::ROLE_SLUG => ['input' => 'slug', 'label' => 'Slug'],
+                EntitySchema::ROLE_BODY => ['input' => 'translations[{locale}][description]', 'label' => 'Descripción', 'multiline' => true],
+                'submit_button_text' => ['input' => 'translations[{locale}][submit_button_text]', 'label' => 'Texto del botón de envío'],
+                'success_message' => ['input' => 'translations[{locale}][success_message]', 'label' => 'Mensaje de éxito', 'multiline' => true],
+                'fields' => ['input' => 'fields', 'label' => 'Campos estructurados', 'multiline' => true],
+            ],
+        );
+    }
+}

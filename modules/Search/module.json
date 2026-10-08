@@ -1,0 +1,54 @@
+{
+  "name": "General Search",
+  "identifier": "search",
+  "version": "1.0.0",
+  "author": "dbCMS Core Team",
+  "description": "Buscador general del front-office sobre todas las entidades instaladas, con URL amigable, facetas por entidad y activación desde Filtros y búsquedas.",
+  "provider": "Modules\\Search\\SearchModuleServiceProvider",
+  "is_pageable": true,
+  "settings": {
+    "is_indexable": {
+      "type": "boolean",
+      "label": "Indexar la búsqueda en Google",
+      "description": "La página de búsqueda nace en noindex. Actívalo aquí (o desde Filtros y búsquedas) cuando su contenido aporte valor: entonces el buscador y los resultados con suficiente contenido entran en el sitemap y en llms.txt.",
+      "default": false
+    },
+    "results_per_page": {
+      "type": "text",
+      "label": "Resultados por página",
+      "description": "Número de resultados mostrados por página en el buscador general",
+      "default": "12",
+      "placeholder": "12"
+    },
+    "min_results_to_index": {
+      "type": "text",
+      "label": "Mínimo de resultados para indexar",
+      "description": "Una búsqueda con menos resultados que este número se sirve en noindex (contenido pobre)",
+      "default": "3",
+      "placeholder": "3"
+    },
+    "track_terms": {
+      "type": "boolean",
+      "label": "Registrar los términos buscados",
+      "description": "Guarda qué busca la gente (y qué no encuentra) para decidir qué páginas merecen ser indexadas o creadas. No guarda datos personales.",
+      "default": true
+    },
+    "slug_default": {
+      "type": "text",
+      "label": "Slug base de la búsqueda",
+      "description": "Ruta raíz por defecto del buscador (por ejemplo: buscar o search)",
+      "default": "buscar",
+      "placeholder": "buscar"
+    },
+    "slug_{locale}": {
+      "label": "Slug de la búsqueda en {language} ({locale})",
+      "description": "Ruta del buscador para el idioma {language}. Si se deja vacío, se usa el slug base.",
+      "default": "buscar",
+      "placeholder": "buscar",
+      "defaults": {"es": "buscar", "en": "search", "ca": "cercar", "fr": "recherche", "de": "suche"}
+    }
+  },
+  "requires": {
+    "core": ">=1.0.0"
+  }
+}

@@ -1,0 +1,6 @@
+---
+roles:
+  - name: ansistrano.deploy
+    version: 2.10.0
+  - name: ansistrano.rollback
+    version: 2.10.0

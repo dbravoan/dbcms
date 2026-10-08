@@ -1,0 +1,14 @@
+{
+  "name": "Composite Page Builder",
+  "identifier": "pages",
+  "version": "1.0.0",
+  "author": "dbCMS Core Team",
+  "description": "Composite page builder with stylable sections, scroll-magic animations, and widget embeds",
+  "provider": "Modules\\Pages\\PagesModuleServiceProvider",
+  "is_core": true,
+  "is_pageable": true,
+  "widgets": [],
+  "requires": {
+    "core": ">=1.0.0"
+  }
+}

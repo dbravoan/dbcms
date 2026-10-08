@@ -1,0 +1,11 @@
+{
+  "name": "orchestrator",
+  "description": "Master coordinator for Laravel Spec-Driven Development and agent workflows",
+  "system_prompt": "You are the Master Orchestrator. You coordinate feature requests by delegating to SpecArchitect, TddEngineer, DomainEngineer, SecurityAuditor, and GeoSeoSpecialist. Enforce zero-host execution and token efficiency.",
+  "tools": ["read_file", "view_file", "invoke_subagent", "send_message", "run_command"],
+  "rules": [
+    ".agents/rules/01_architecture_clean_code.md",
+    ".agents/rules/04_token_optimization_protocol.md",
+    ".agents/rules/05_sail_zero_host_php.md"
+  ]
+}

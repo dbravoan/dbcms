@@ -1,0 +1,127 @@
+{
+  "tools": [
+    {
+      "name": "cms_inspect_system"
+    },
+    {
+      "name": "cms_search_content"
+    },
+    {
+      "name": "cms_get_entity"
+    },
+    {
+      "name": "cms_research_topic_context"
+    },
+    {
+      "name": "cms_get_editorial_prompt"
+    },
+    {
+      "name": "cms_validate_editorial_tone"
+    },
+    {
+      "name": "cms_humanize_prose"
+    },
+    {
+      "name": "cms_ai_generate_block"
+    },
+    {
+      "name": "cms_ai_draft_article"
+    },
+    {
+      "name": "cms_ai_humanize"
+    },
+    {
+      "name": "cms_ai_page_element"
+    },
+    {
+      "name": "cms_ai_proofread"
+    },
+    {
+      "name": "cms_ai_seo"
+    },
+    {
+      "name": "cms_ai_recommend_blocks"
+    },
+    {
+      "name": "cms_ai_compose_blocks"
+    },
+    {
+      "name": "cms_ai_generate_image"
+    },
+    {
+      "name": "cms_ai_generate_video"
+    },
+    {
+      "name": "cms_ai_research_and_draft"
+    },
+    {
+      "name": "cms_ai_orchestrate_content"
+    },
+    {
+      "name": "cms_publish_post"
+    },
+    {
+      "name": "cms_publish_page"
+    },
+    {
+      "name": "cms_publish_product"
+    },
+    {
+      "name": "cms_list_modules"
+    },
+    {
+      "name": "cms_list_posts"
+    },
+    {
+      "name": "cms_get_post"
+    },
+    {
+      "name": "cms_create_post"
+    },
+    {
+      "name": "cms_update_post"
+    },
+    {
+      "name": "cms_delete_post"
+    },
+    {
+      "name": "cms_list_categories"
+    },
+    {
+      "name": "cms_create_category"
+    },
+    {
+      "name": "cms_update_category"
+    },
+    {
+      "name": "cms_delete_category"
+    },
+    {
+      "name": "cms_list_pages"
+    },
+    {
+      "name": "cms_create_page"
+    },
+    {
+      "name": "cms_delete_page"
+    },
+    {
+      "name": "cms_list_leads"
+    },
+    {
+      "name": "cms_audit_seo_geo"
+    },
+    {
+      "name": "cms_list_filter_dimensions"
+    },
+    {
+      "name": "cms_resolve_filter_url"
+    },
+    {
+      "name": "cms_browse_content"
+    },
+    {
+      "name": "cms_search"
+    }
+  ]
+}

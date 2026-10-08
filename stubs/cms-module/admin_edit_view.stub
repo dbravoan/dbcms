@@ -1,0 +1,30 @@
+@extends('admin.layout')
+
+@section('title', 'Editar __HEADLINE__')
+
+@section('content')
+<div class="max-w-3xl mx-auto space-y-6 font-mono text-xs">
+    <x-admin.form-header title="Editar __HEADLINE__" description="Actualiza los datos de __IDENTIFIER__." :backRoute="route('admin.__IDENTIFIER__.index')" back-label="Volver al listado" />
+
+    <form method="POST" action="{{ route('admin.__IDENTIFIER__.update', $item) }}" class="space-y-6">
+        @csrf
+        @method('PUT')
+
+        @include('__IDENTIFIER__::admin._form', [
+            'item' => $item,
+            'languages' => $languages,
+            'markets' => $markets,
+            'translationsMap' => $translationsMap,
+            'assignedMarketIds' => $assignedMarketIds,
+        ])
+
+        <x-admin.form-actions
+            submit-label="{{ __('admin.actions.save') }}"
+            :cancelRoute="route('admin.__IDENTIFIER__.index')"
+            :deleteAction="route('admin.__IDENTIFIER__.destroy', $item)"
+            delete-title="Eliminar registro"
+            delete-message="¿Estás seguro de eliminar este registro y todas sus traducciones?"
+        />
+    </form>
+</div>
+@endsection

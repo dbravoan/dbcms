@@ -1,0 +1,107 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\__STUDLY__\Models;
+
+use App\Models\Market;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
+
+/**
+ * @property int $id
+ * @property bool $is_active
+ * @property int $order
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read string $title
+ * @property-read string $slug
+ * @property-read string|null $content
+ * @property-read Collection<int, __TRANSLATION_CLASS__> $translations
+ * @property-read Collection<int, Market> $markets
+ */
+class __STUDLY__ extends Model
+{
+    use HasFactory;
+
+    protected $table = '__TABLE__';
+
+    protected $fillable = [
+        'is_active',
+        'order',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_active' => 'boolean',
+            'order' => 'integer',
+        ];
+    }
+
+    /**
+     * @return HasMany<__TRANSLATION_CLASS__, $this>
+     */
+    public function translations(): HasMany
+    {
+        return $this->hasMany(__TRANSLATION_CLASS__::class, '__FK__');
+    }
+
+    /**
+     * @return BelongsToMany<Market, $this>
+     */
+    public function markets(): BelongsToMany
+    {
+        return $this->belongsToMany(Market::class, '__PIVOT_TABLE__');
+    }
+
+    /**
+     * Resolve the best translation for a locale/market (exact market → generic → any locale).
+     */
+    public function translation(?string $locale = null, ?int $marketId = null): ?__TRANSLATION_CLASS__
+    {
+        $locale = $locale ?? app()->getLocale();
+        $marketId = $marketId ?? self::currentMarketId();
+
+        /** @var Collection<int, __TRANSLATION_CLASS__> $translations */
+        $translations = $this->relationLoaded('translations')
+            ? $this->translations
+            : $this->translations()->get();
+
+        return $translations->first(fn (__TRANSLATION_CLASS__ $t): bool => $t->locale === $locale && $t->market_id === $marketId)
+            ?? $translations->first(fn (__TRANSLATION_CLASS__ $t): bool => $t->locale === $locale && $t->market_id === null)
+            ?? $translations->firstWhere('locale', $locale)
+            ?? $translations->first();
+    }
+
+    protected function title(): Attribute
+    {
+        return Attribute::get(fn (): string => (string) ($this->translation()?->title ?? $this->getKey()));
+    }
+
+    protected function slug(): Attribute
+    {
+        return Attribute::get(fn (): string => (string) ($this->translation()?->slug ?? ''));
+    }
+
+    protected function content(): Attribute
+    {
+        return Attribute::get(fn (): ?string => $this->translation()?->content);
+    }
+
+    private static function currentMarketId(): ?int
+    {
+        if (! app()->bound('current.market')) {
+            return null;
+        }
+
+        $market = app('current.market');
+
+        return $market instanceof Market ? (int) $market->id : null;
+    }
+}

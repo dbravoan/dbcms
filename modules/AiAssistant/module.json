@@ -1,0 +1,446 @@
+{
+    "name": "Copiloto Asistente IA",
+    "identifier": "ai_assistant",
+    "version": "1.0.0",
+    "author": "dbCMS Core Team",
+    "description": "Motor de asistencia editorial inteligente y diseño de maquetación de bloques por IA para redactores del CMS y agentes MCP externos con soporte para Google Gemini, OpenAI, DeepSeek, Anthropic, Ollama y OpenCode (Zen + Go), con catálogo de modelos dinámico.",
+    "provider": "Modules\\AiAssistant\\AiAssistantModuleServiceProvider",
+    "is_pageable": false,
+    "settings": {
+        "is_enabled": {
+            "type": "boolean",
+            "label": "Activar Módulo Asistente IA",
+            "description": "Habilita el estudio de IA, los botones de asistencia en WYSIWYG/Bloques y las herramientas inteligentes en el servidor MCP.",
+            "default": true
+        },
+        "default_provider": {
+            "type": "select",
+            "label": "Proveedor de IA por Defecto",
+            "description": "Modelo principal a utilizar para redacción y maquetación de bloques.",
+            "options": {
+                "gemini": "Google Gemini (Recomendado)",
+                "openai": "OpenAI (GPT & o-Series)",
+                "deepseek": "DeepSeek (V3 / R1)",
+                "anthropic": "Anthropic (Claude)",
+                "opencode": "OpenCode (Zen + Go)",
+                "custom": "Compatible OpenAI (vLLM / LMStudio)",
+                "ollama": "Ollama (Local)"
+            },
+            "default": "gemini"
+        },
+        "gemini_api_key": {
+            "type": "password",
+            "label": "Clave de API de Google Gemini",
+            "description": "Obtenible en Google AI Studio (aistudio.google.com).",
+            "secret": true,
+            "default": ""
+        },
+        "gemini_model": {
+            "type": "text",
+            "label": "Modelo de Gemini",
+            "description": "Identificador del modelo (ej. gemini-2.0-flash, gemini-1.5-pro).",
+            "default": "gemini-2.0-flash"
+        },
+        "openai_api_key": {
+            "type": "password",
+            "label": "Clave de API de OpenAI",
+            "description": "Obtenible en platform.openai.com.",
+            "secret": true,
+            "default": ""
+        },
+        "openai_model": {
+            "type": "text",
+            "label": "Modelo de OpenAI",
+            "description": "Identificador del modelo (ej. gpt-4o, gpt-4o-mini).",
+            "default": "gpt-4o"
+        },
+        "deepseek_api_key": {
+            "type": "password",
+            "label": "Clave de API de DeepSeek",
+            "description": "Obtenible en platform.deepseek.com.",
+            "secret": true,
+            "default": ""
+        },
+        "deepseek_model": {
+            "type": "text",
+            "label": "Modelo de DeepSeek",
+            "description": "Identificador del modelo (ej. deepseek-chat, deepseek-reasoner).",
+            "default": "deepseek-chat"
+        },
+        "anthropic_api_key": {
+            "type": "password",
+            "label": "Clave de API de Anthropic",
+            "description": "Obtenible en console.anthropic.com.",
+            "secret": true,
+            "default": ""
+        },
+        "anthropic_model": {
+            "type": "text",
+            "label": "Modelo de Anthropic",
+            "description": "Identificador del modelo (ej. claude-3-5-sonnet-20241022).",
+            "default": "claude-3-5-sonnet-20241022"
+        },
+        "opencode_api_key": {
+            "type": "password",
+            "label": "Clave de API de OpenCode (Zen + Go)",
+            "description": "Obtenible en opencode.ai/auth. Una sola clave sirve para Zen y Go.",
+            "secret": true,
+            "default": ""
+        },
+        "opencode_model": {
+            "type": "text",
+            "label": "Modelo de OpenCode",
+            "description": "Identificador del modelo (ej. deepseek-v4.1-flash, kimi-k3).",
+            "default": "deepseek-v4.1-flash"
+        },
+        "custom_base_url": {
+            "type": "text",
+            "label": "URL Base para Proveedor Personalizado (Ollama / LocalAI)",
+            "description": "Dirección del endpoint compatible con OpenAI (ej. http://localhost:11434/v1).",
+            "default": ""
+        },
+        "custom_api_key": {
+            "type": "password",
+            "label": "Clave de API para Proveedor Personalizado",
+            "description": "Clave de autorización si tu endpoint local o proxy lo requiere.",
+            "secret": true,
+            "default": ""
+        },
+        "custom_model": {
+            "type": "text",
+            "label": "Modelo para Proveedor Personalizado",
+            "description": "Identificador del modelo (ej. mistral, qwen2.5, un modelo de vLLM...).",
+            "default": ""
+        },
+        "ollama_base_url": {
+            "type": "text",
+            "label": "URL Base de Ollama",
+            "description": "Endpoint compatible con OpenAI de Ollama. Desde Sail usa http://host.docker.internal:11434/v1.",
+            "default": ""
+        },
+        "ollama_api_key": {
+            "type": "password",
+            "label": "Clave de API de Ollama",
+            "description": "Opcional. Déjalo vacío salvo que expongas Ollama tras un proxy con autenticación.",
+            "secret": true,
+            "default": ""
+        },
+        "ollama_model": {
+            "type": "text",
+            "label": "Modelo de Ollama",
+            "description": "Identificador del modelo descargado (ej. llama3.2:3b, qwen2.5:7b).",
+            "default": ""
+        },
+        "default_temperature": {
+            "type": "number",
+            "label": "Temperatura Creativa (0.0 a 1.0)",
+            "description": "Valores bajos (0.2-0.5) para maquetación estricta de JSON; valores medios (0.7) para redacción fluida.",
+            "default": 0.7
+        },
+        "enforce_anti_ai_guardrails": {
+            "type": "boolean",
+            "label": "Activar Filtro Anti-Clichés Automático en Generaciones",
+            "description": "Aplica automáticamente el motor de humanización y control de tono editorial antes de entregar el texto al usuario.",
+            "default": true
+        },
+        "brand_archetype": {
+            "type": "select",
+            "label": "Arquetipo de Voz y Personalidad",
+            "description": "Define la postura editorial y tono comunicativo del modelo para esta instancia vhost.",
+            "options": {
+                "autoridad": "Autoridad Profesional (Experto sectorial, sereno y resolutivo)",
+                "cercano": "Cercano y Empático (De tú a tú, accesible y cálido)",
+                "tecnico": "Técnico y Analítico (Datos rigurosos, arquitectura y ROI)",
+                "disruptivo": "Disruptivo y Audaz (Oraciones cortas, desafiante y directo)",
+                "institucional": "Institucional y Solemne (Protocolario, prudente y formal)",
+                "humoristico": "Ingenioso y Desenfadado (Humor inteligente y chispa)"
+            },
+            "default": "autoridad"
+        },
+        "brand_treatment": {
+            "type": "select",
+            "label": "Tratamiento Gramatical del Interlocutor",
+            "description": "Pronombre y registro obligatorio para redactar todos los contenidos de la web.",
+            "options": {
+                "tu": "Tú (Cercano, dinámico y personal)",
+                "usted": "Usted (Formal, corporativo, médico o jurídico)",
+                "nosotros": "Nosotros (Voz colectiva de equipo)"
+            },
+            "default": "tu"
+        },
+        "brand_target_audience": {
+            "type": "text",
+            "label": "Público Objetivo (Buyer Persona)",
+            "description": "A quién se dirige la marca, sus dolores, inquietudes y expectativas.",
+            "default": "Clientes y usuarios que buscan soluciones confiables y de calidad."
+        },
+        "brand_value_proposition": {
+            "type": "text",
+            "label": "Propuesta de Valor Diferencial",
+            "description": "Qué hace única a la empresa frente a la competencia de su sector.",
+            "default": "Excelencia en el servicio y resultados garantizados con el mejor equipo humano."
+        },
+        "brand_preferred_terms": {
+            "type": "text",
+            "label": "Vocabulario y Términos Preferentes",
+            "description": "Palabras clave y conceptos que la IA debe incorporar con naturalidad (separados por comas).",
+            "default": "calidad, rigor, compromiso, innovación, cercanía"
+        },
+        "brand_taboo_terms": {
+            "type": "text",
+            "label": "Términos y Conceptos Vetados (Tabúes de Marca)",
+            "description": "Palabras prohibidas, promesas vacías o mención de competidores vetados (separados por comas).",
+            "default": "baratísimo, chapuza, milagroso, 100% garantizado sin esfuerzo"
+        },
+        "brand_cta_goals": {
+            "type": "text",
+            "label": "Objetivo de Conversión Prioritario (Llamadas a la Acción)",
+            "description": "Acción clave que la IA debe inducir en los botones y conclusiones del contenido.",
+            "default": "Contactar con nosotros o solicitar más información."
+        },
+        "brand_custom_directives": {
+            "type": "text",
+            "label": "Directivas Libres de Marketing y Comunicación",
+            "description": "Instrucciones editoriales adicionales o peculiaridades de esta instancia específica.",
+            "default": "Sé conciso, empático y honesto. Evita la hipérbole y el relleno innecesario."
+        },
+        "gemini_base_url": {
+            "type": "text",
+            "label": "gemini base_url",
+            "default": ""
+        },
+        "openai_base_url": {
+            "type": "text",
+            "label": "openai base_url",
+            "default": ""
+        },
+        "deepseek_base_url": {
+            "type": "text",
+            "label": "deepseek base_url",
+            "default": ""
+        },
+        "anthropic_base_url": {
+            "type": "text",
+            "label": "anthropic base_url",
+            "default": ""
+        },
+        "opencode_base_url": {
+            "type": "text",
+            "label": "opencode base_url",
+            "default": ""
+        },
+        "vllm_api_key": {
+            "type": "password",
+            "label": "vllm api_key",
+            "default": "",
+            "secret": true
+        },
+        "vllm_base_url": {
+            "type": "text",
+            "label": "vllm base_url",
+            "default": ""
+        },
+        "vllm_model": {
+            "type": "text",
+            "label": "vllm model",
+            "default": ""
+        },
+        "higgsfield_api_key": {
+            "type": "password",
+            "label": "higgsfield api_key",
+            "default": "",
+            "secret": true
+        },
+        "higgsfield_base_url": {
+            "type": "text",
+            "label": "higgsfield base_url",
+            "default": ""
+        },
+        "higgsfield_model": {
+            "type": "text",
+            "label": "higgsfield model",
+            "default": ""
+        },
+        "magnific_api_key": {
+            "type": "password",
+            "label": "magnific api_key",
+            "default": "",
+            "secret": true
+        },
+        "magnific_base_url": {
+            "type": "text",
+            "label": "magnific base_url",
+            "default": ""
+        },
+        "magnific_model": {
+            "type": "text",
+            "label": "magnific model",
+            "default": ""
+        },
+        "default_text_provider": {
+            "type": "text",
+            "label": "Proveedor text",
+            "default": ""
+        },
+        "default_image_provider": {
+            "type": "text",
+            "label": "Proveedor image",
+            "default": "openai"
+        },
+        "default_video_provider": {
+            "type": "text",
+            "label": "Proveedor video",
+            "default": "higgsfield"
+        },
+        "gemini_text_model": {
+            "type": "text",
+            "label": "gemini text model",
+            "default": ""
+        },
+        "gemini_image_model": {
+            "type": "text",
+            "label": "gemini image model",
+            "default": ""
+        },
+        "gemini_video_model": {
+            "type": "text",
+            "label": "gemini video model",
+            "default": ""
+        },
+        "openai_text_model": {
+            "type": "text",
+            "label": "openai text model",
+            "default": ""
+        },
+        "openai_image_model": {
+            "type": "text",
+            "label": "openai image model",
+            "default": ""
+        },
+        "openai_video_model": {
+            "type": "text",
+            "label": "openai video model",
+            "default": ""
+        },
+        "deepseek_text_model": {
+            "type": "text",
+            "label": "deepseek text model",
+            "default": ""
+        },
+        "deepseek_image_model": {
+            "type": "text",
+            "label": "deepseek image model",
+            "default": ""
+        },
+        "deepseek_video_model": {
+            "type": "text",
+            "label": "deepseek video model",
+            "default": ""
+        },
+        "anthropic_text_model": {
+            "type": "text",
+            "label": "anthropic text model",
+            "default": ""
+        },
+        "anthropic_image_model": {
+            "type": "text",
+            "label": "anthropic image model",
+            "default": ""
+        },
+        "anthropic_video_model": {
+            "type": "text",
+            "label": "anthropic video model",
+            "default": ""
+        },
+        "opencode_text_model": {
+            "type": "text",
+            "label": "opencode text model",
+            "default": ""
+        },
+        "opencode_image_model": {
+            "type": "text",
+            "label": "opencode image model",
+            "default": ""
+        },
+        "opencode_video_model": {
+            "type": "text",
+            "label": "opencode video model",
+            "default": ""
+        },
+        "vllm_text_model": {
+            "type": "text",
+            "label": "vllm text model",
+            "default": ""
+        },
+        "vllm_image_model": {
+            "type": "text",
+            "label": "vllm image model",
+            "default": ""
+        },
+        "vllm_video_model": {
+            "type": "text",
+            "label": "vllm video model",
+            "default": ""
+        },
+        "ollama_text_model": {
+            "type": "text",
+            "label": "ollama text model",
+            "default": ""
+        },
+        "ollama_image_model": {
+            "type": "text",
+            "label": "ollama image model",
+            "default": ""
+        },
+        "ollama_video_model": {
+            "type": "text",
+            "label": "ollama video model",
+            "default": ""
+        },
+        "custom_text_model": {
+            "type": "text",
+            "label": "custom text model",
+            "default": ""
+        },
+        "custom_image_model": {
+            "type": "text",
+            "label": "custom image model",
+            "default": ""
+        },
+        "custom_video_model": {
+            "type": "text",
+            "label": "custom video model",
+            "default": ""
+        },
+        "higgsfield_text_model": {
+            "type": "text",
+            "label": "higgsfield text model",
+            "default": ""
+        },
+        "higgsfield_image_model": {
+            "type": "text",
+            "label": "higgsfield image model",
+            "default": ""
+        },
+        "higgsfield_video_model": {
+            "type": "text",
+            "label": "higgsfield video model",
+            "default": ""
+        },
+        "magnific_text_model": {
+            "type": "text",
+            "label": "magnific text model",
+            "default": ""
+        },
+        "magnific_image_model": {
+            "type": "text",
+            "label": "magnific image model",
+            "default": ""
+        },
+        "magnific_video_model": {
+            "type": "text",
+            "label": "magnific video model",
+            "default": ""
+        }
+    }
+}

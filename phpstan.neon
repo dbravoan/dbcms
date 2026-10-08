@@ -1,0 +1,15 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/
+        - modules/
+        - config/
+        - database/
+        - routes/
+
+    # Level 8 provides complete static typing and analysis for Laravel applications
+    level: 8
+
+    treatPhpDocTypesAsCertain: false

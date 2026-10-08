@@ -1,0 +1,103 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Http\Middleware\CachePublicPage;
+use App\Http\Middleware\ResolveMarketAndLocaleMiddleware;
+use App\Models\User;
+use App\Services\Cms\PageCacheService;
+use Database\Seeders\PlatformShowcaseSeeder;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Route;
+use Modules\Pages\Models\Page;
+
+beforeEach(function (): void {
+    $this->seed(PlatformShowcaseSeeder::class);
+    config([
+        'cms.theme' => 'db-cyber',
+        'cms.admin_theme' => 'dbcms',
+        'cms.page_cache.enabled' => true,
+    ]);
+    app(PageCacheService::class)->invalidate();
+});
+
+it('serves the second anonymous hit from cache without a cache header miss', function (): void {
+    $first = $this->get('/es/es/');
+    $first->assertOk();
+    $first->assertHeader(CachePublicPage::HIT_HEADER, 'MISS');
+
+    $second = $this->get('/es/es/');
+    $second->assertOk();
+    $second->assertHeader(CachePublicPage::HIT_HEADER, 'HIT');
+});
+
+it('rehydrates conditional requests rather than reusing a stale nonce', function (): void {
+    $this->get('/es/es/')->assertOk();
+    $etag = $this->get('/es/es/')->headers->get('ETag');
+
+    expect($etag)->not->toBeNull();
+
+    $this->withHeaders(['If-None-Match' => (string) $etag])
+        ->get('/es/es/')
+        ->assertOk()->assertHeader('X-Page-Cache', 'HIT');
+});
+
+it('invalidates cached pages as soon as content changes', function (): void {
+    $this->get('/es/es/')->assertOk();
+    $this->get('/es/es/')->assertHeader(CachePublicPage::HIT_HEADER, 'HIT');
+
+    // Editing content must drop the cache immediately.
+    Page::query()->first()?->touch();
+
+    $this->get('/es/es/')->assertHeader(CachePublicPage::HIT_HEADER, 'MISS');
+    $this->get('/es/es/')->assertHeader(CachePublicPage::HIT_HEADER, 'HIT');
+});
+
+it('never caches for authenticated visitors (personalised admin bar)', function (): void {
+    $admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
+
+    $this->actingAs($admin, 'web')->get('/es/es/')->assertOk();
+    $response = $this->actingAs($admin, 'web')->get('/es/es/');
+
+    expect($response->headers->get(CachePublicPage::HIT_HEADER))->toBeNull();
+});
+
+it('bypasses the cache for preview and editor requests', function (): void {
+    $this->get('/es/es/?preview=1')->assertOk();
+
+    $response = $this->get('/es/es/?preview=1');
+    expect($response->headers->get(CachePublicPage::HIT_HEADER))->toBeNull();
+});
+
+it('can be disabled entirely through configuration', function (): void {
+    config(['cms.page_cache.enabled' => false]);
+
+    $this->get('/es/es/')->assertOk();
+    $response = $this->get('/es/es/');
+
+    expect($response->headers->get(CachePublicPage::HIT_HEADER))->toBeNull();
+});
+
+it('prevents upstream caches storing hydrated visitor state', function (): void {
+    $response = $this->get('/es/es/');
+    $cacheControl = (string) $response->headers->get('Cache-Control');
+
+    expect($cacheControl)->toContain('private')->toContain('no-store');
+});
+
+afterEach(function (): void {
+    Cache::flush();
+});
+
+it('renders expiring captcha tokens live rather than putting them in the shared cache', function (): void {
+    Route::get('/regression/page-cache/captcha/token', static fn () => response('<input name="_captcha_token" value="expiring-token">'))
+        ->middleware(['web', ResolveMarketAndLocaleMiddleware::class, CachePublicPage::class]);
+    $this->get('/regression/page-cache/captcha/token')->assertOk()->assertHeaderMissing(CachePublicPage::HIT_HEADER);
+    $this->get('/regression/page-cache/captcha/token')->assertOk()->assertHeaderMissing(CachePublicPage::HIT_HEADER);
+});
+
+it('hydrates a fresh csrf token even when a public snapshot is shared', function (): void {
+    $this->withSession(['_token' => 'visitor-token-first'])->get('/es/es/')->assertOk()->assertSee('visitor-token-first');
+    $this->withSession(['_token' => 'visitor-token-second'])->get('/es/es/')
+        ->assertOk()->assertHeader(CachePublicPage::HIT_HEADER, 'HIT')->assertSee('visitor-token-second')->assertDontSee('visitor-token-first');
+});

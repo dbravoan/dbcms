@@ -1,0 +1,4 @@
+# Ignore production secrets and vault credentials
+vars/production.yml
+*.vault
+*.retry

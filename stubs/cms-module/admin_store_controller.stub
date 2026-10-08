@@ -1,0 +1,30 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\__STUDLY__\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Modules\__STUDLY__\Contracts\Services\__STUDLY__ServiceInterface;
+use Modules\__STUDLY__\Http\Controllers\Admin\Concerns\Validates__STUDLY__Payload;
+
+final class __STUDLY__PostController extends Controller
+{
+    use Validates__STUDLY__Payload;
+
+    public function __construct(
+        private readonly __STUDLY__ServiceInterface $service
+    ) {}
+
+    public function __invoke(Request $request): RedirectResponse
+    {
+        $validated = $request->validate($this->rules());
+        $validated['market_ids'] = (array) $request->input('market_ids', []);
+
+        $this->service->create($validated);
+
+        return redirect()->route('admin.__IDENTIFIER__.index')->with('success', 'Registro creado correctamente.');
+    }
+}

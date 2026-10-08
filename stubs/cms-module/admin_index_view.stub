@@ -1,0 +1,63 @@
+@extends('admin.layout')
+
+@section('title', '__HEADLINE__')
+
+@section('content')
+<div class="space-y-6 font-mono text-xs">
+    <x-admin.datatable-header
+        title="Gestor de __HEADLINE__"
+        description="Administración de __IDENTIFIER__ y contenidos asociados"
+        searchPlaceholder="Buscar __HEADLINE__..."__HEADER_CREATE__
+    >
+        <select name="is_active" class="bg-[#1A1A1A] border border-gray-700 focus:border-[#00FF99] rounded-lg px-3 py-2 text-white text-xs">
+            <option value="all">Todos los Estados</option>
+            <option value="1" {{ request('is_active') === '1' ? 'selected' : '' }}>Activos</option>
+            <option value="0" {{ request('is_active') === '0' ? 'selected' : '' }}>Inactivos</option>
+        </select>
+
+        <x-admin.market-select name="market_id" value-key="id" :value="request('market_id')" placeholder="Todos los Mercados" />
+    </x-admin.datatable-header>
+
+    <x-admin.table
+        :empty="$items->isEmpty()"
+        emptyTitle="No hay registros en __HEADLINE__"
+        emptyDescription="Aún no se han creado elementos en el módulo __STUDLY__."__EMPTY_ACTION__
+    >
+        <x-slot:header>
+            <th class="py-3 px-4 font-bold uppercase tracking-wider text-gray-400">{{ __('admin.listing.name') }}</th>
+            <th class="py-3 px-4 font-bold uppercase tracking-wider text-gray-400 hidden md:table-cell">{{ __('admin.listing.status') }}</th>
+            <th class="py-3 px-4 font-bold uppercase tracking-wider text-gray-400 hidden lg:table-cell">{{ __('admin.listing.markets') }}</th>
+            <th class="py-3 px-4 font-bold uppercase tracking-wider text-gray-400 hidden xl:table-cell">{{ __('admin.listing.languages') }}</th>
+            <th class="py-3 px-4 font-bold uppercase tracking-wider text-gray-400 hidden sm:table-cell">{{ __('admin.listing.date') }}</th>
+            <th class="py-3 px-4 text-right font-bold uppercase tracking-wider text-gray-400">{{ __('admin.listing.actions') }}</th>
+        </x-slot:header>
+
+        @foreach($items as $item)
+            <tr class="hover:bg-gray-800/30 transition-colors">
+                <td class="py-3.5 px-4 font-bold text-white">{{ $item->title }}</td>
+                <td class="py-3.5 px-4 hidden md:table-cell">
+                    <x-admin.status-badge :active="$item->is_active" activeText="Activo" inactiveText="Inactivo" />
+                </td>
+                <td class="py-3.5 px-4 hidden lg:table-cell">
+                    <x-admin.market-chips :markets="$item->markets" />
+                </td>
+                <td class="py-3.5 px-4 hidden xl:table-cell">
+                    <x-admin.locale-chips :locales="$item->translations->pluck('locale')" />
+                </td>
+                <td class="py-3.5 px-4 hidden sm:table-cell text-gray-400">
+                    {{ optional($item->created_at)->format('d/m/Y') }}
+                </td>
+                <td class="py-3.5 px-4 text-right whitespace-nowrap">
+                    <div class="inline-flex items-center justify-end gap-1.5">
+__ROW_ACTIONS__
+                    </div>
+                </td>
+            </tr>
+        @endforeach
+
+        <x-slot:pagination>
+            <x-admin.datatable-pagination :paginator="$items" />
+        </x-slot:pagination>
+    </x-admin.table>
+</div>
+@endsection

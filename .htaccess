@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Bloquear acceso directo a secretos, vendor, artefactos y directorios internos
+    RewriteRule ^\.env(\.|$)|^\.git|^composer\.(json|lock)$|^artisan$|^package\.json$|^package-lock\.json$|^vite\.config\.js$|^\.editorconfig$|^\.gitignore$|^\.gitattributes$|^phpunit\.xml$|^phpstan\.neon$|^pint\.json$|^Makefile$|^skills-lock\.json$ - [F,L,NC]
+    RewriteRule ^(storage|database|tests|docs|specs|node_modules|vendor|\.agents|\.gemini|\.opencode|\.github|dist)(/|$) - [F,L,NC]
+    RewriteRule \.(sql|log|md|lock|key)$ - [F,L,NC]
+
+    # Fallback a /public cuando el docroot es la raíz (shared hosting)
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

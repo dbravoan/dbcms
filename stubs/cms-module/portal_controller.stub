@@ -1,0 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\__STUDLY__\Http\Controllers\Portal;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
+
+class __STUDLY__PortalController extends Controller
+{
+    public function dashboard(): View
+    {
+        /** @var \Modules\__STUDLY__\Models\__STUDLY__User $user */
+        $user = Auth::guard('__IDENTIFIER__')->user();
+
+        return view('__IDENTIFIER__::portal.dashboard', [
+            'user' => $user,
+            'moduleName' => '__STUDLY__',
+        ]);
+    }
+
+    public function showLogin(): View
+    {
+        return view('__IDENTIFIER__::portal.login');
+    }
+
+    public function login(Request $request): RedirectResponse
+    {
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ]);
+
+        if (Auth::guard('__IDENTIFIER__')->attempt($credentials, $request->boolean('remember'))) {
+            $request->session()->regenerate();
+
+            return redirect()->intended(route('__IDENTIFIER__.portal'));
+        }
+
+        return back()->withErrors([
+            'email' => 'Las credenciales proporcionadas no coinciden con nuestros registros.',
+        ])->onlyInput('email');
+    }
+
+    public function logout(Request $request): RedirectResponse
+    {
+        Auth::guard('__IDENTIFIER__')->logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('__IDENTIFIER__.login');
+    }
+}

@@ -1,0 +1,215 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Core\Modules;
+
+use App\Contracts\Services\AdminThemeServiceInterface;
+use App\Contracts\Services\ModuleSettingsServiceInterface;
+use App\Http\Middleware\EnsureAdminAuthenticated;
+use App\Http\Middleware\SetBackofficeLocale;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\ServiceProvider;
+
+abstract class BaseModuleServiceProvider extends ServiceProvider implements ModuleInterface
+{
+    /**
+     * Unique module identifier.
+     */
+    protected string $identifier;
+
+    /**
+     * Module name.
+     */
+    protected string $name;
+
+    /**
+     * Module version.
+     */
+    protected string $version = '1.0.0';
+
+    /**
+     * Whether module is pageable.
+     */
+    protected bool $isPageable = false;
+
+    public function getIdentifier(): string
+    {
+        return $this->identifier;
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getVersion(): string
+    {
+        return $this->version;
+    }
+
+    public function isPageable(): bool
+    {
+        return $this->isPageable;
+    }
+
+    public function registerPageableRoutes(): void
+    {
+        // Override in concrete module service providers
+    }
+
+    /**
+     * Register paths to be checked for views with module theme cascading.
+     *
+     * @param  string|array<int, string>  $path
+     * @param  string  $namespace
+     */
+    protected function loadViewsFrom($path, $namespace): void
+    {
+        parent::loadViewsFrom($path, $namespace);
+
+        if ($this->app->bound(AdminThemeServiceInterface::class)) {
+            $basePath = is_array($path) ? ($path[0] ?? '') : $path;
+            if ($basePath !== '') {
+                $this->app->make(AdminThemeServiceInterface::class)
+                    ->registerModuleThemePaths($namespace, $basePath);
+            }
+        }
+    }
+
+    public function getWidgets(): array
+    {
+        return [];
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getAdminNavigation(): array
+    {
+        return [];
+    }
+
+    public function hasDedicatedPanel(): bool
+    {
+        return false;
+    }
+
+    public function getDedicatedPanelUrl(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Dynamically registers an isolated authentication provider and guards for this module.
+     *
+     * @param  string  $providerKey  Identifier for the provider (e.g. 'shop_customers')
+     * @param  class-string  $modelClass  Authenticatable model class
+     * @param  string  $webGuard  Web session guard name (e.g. 'customer')
+     * @param  string|null  $apiGuard  Optional API Passport guard name (e.g. 'customer-api')
+     */
+    protected function registerModuleAuth(
+        string $providerKey,
+        string $modelClass,
+        string $webGuard,
+        ?string $apiGuard = null
+    ): void {
+        Config::set("auth.providers.{$providerKey}", [
+            'driver' => 'eloquent',
+            'model' => $modelClass,
+        ]);
+
+        Config::set("auth.guards.{$webGuard}", [
+            'driver' => 'session',
+            'provider' => $providerKey,
+        ]);
+
+        if ($apiGuard !== null) {
+            Config::set("auth.guards.{$apiGuard}", [
+                'driver' => 'passport',
+                'provider' => $providerKey,
+            ]);
+        }
+    }
+
+    public function register(): void
+    {
+        //
+    }
+
+    public function boot(): void
+    {
+        if ($this->isPageable()) {
+            Route::middleware("module.enabled:{$this->identifier}")->group(fn () => $this->registerPageableRoutes());
+        }
+
+        $this->registerAdminRoutes();
+    }
+
+    /**
+     * Automatically registers backoffice admin routes if Routes/admin.php exists in module.
+     */
+    protected function registerAdminRoutes(): void
+    {
+        $reflector = new \ReflectionClass($this);
+        $fileName = $reflector->getFileName();
+        if (! $fileName) {
+            return;
+        }
+
+        $adminRoutesPath = dirname($fileName).'/Routes/admin.php';
+
+        if (file_exists($adminRoutesPath)) {
+            $adminPath = (string) Config::get('cms.admin_path', 'admin');
+
+            Route::prefix($adminPath)
+                ->name('admin.')
+                ->middleware([
+                    'web',
+                    EnsureAdminAuthenticated::class,
+                    SetBackofficeLocale::class,
+                    "module.enabled:{$this->identifier}",
+                ])
+                ->group($adminRoutesPath);
+        }
+    }
+
+    /**
+     * Returns the settings schema definition for this module.
+     * By default, loads the 'settings' definition from module.json manifest.
+     *
+     * @return array<string, array{type: string, label: string, description?: string, placeholder?: string, required?: bool, secret?: bool, default?: mixed, options?: array<string, string>}>
+     */
+    public function getSettingsSchema(): array
+    {
+        $reflector = new \ReflectionClass($this);
+        $fileName = $reflector->getFileName();
+        if ($fileName) {
+            $manifestPath = dirname($fileName).'/module.json';
+            if (file_exists($manifestPath)) {
+                $manifest = json_decode((string) file_get_contents($manifestPath), true);
+                if (is_array($manifest) && isset($manifest['settings']) && is_array($manifest['settings'])) {
+                    /** @var array<string, array{type: string, label: string, description?: string, placeholder?: string, required?: bool, secret?: bool, default?: mixed, options?: array<string, string>}> $settings */
+                    $settings = $manifest['settings'];
+
+                    return $settings;
+                }
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Helper to retrieve a setting value for this module.
+     */
+    public function getSetting(string $key, mixed $default = null): mixed
+    {
+        if ($this->app->bound(ModuleSettingsServiceInterface::class)) {
+            return $this->app->make(ModuleSettingsServiceInterface::class)->get($this->identifier, $key, $default);
+        }
+
+        return config("modules.{$this->identifier}.{$key}", $default);
+    }
+}

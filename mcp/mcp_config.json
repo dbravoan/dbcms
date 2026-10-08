@@ -1,0 +1,855 @@
+{
+  "name": "cms-agentic-blog-mcp",
+  "version": "1.2.0",
+  "description": "Model Context Protocol (MCP) Server for AI Agents interacting with >_dbCMS",
+  "tools": [
+    {
+      "name": "cms_inspect_system",
+      "description": "Inspects high-level CMS topology: active modules, markets, languages, category trees, and entity totals",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "cms_search_content",
+      "description": "Cross-entity unified search across blog posts, pages, products, and categories for research and avoiding duplicate content",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search text or keyword"
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": [
+              "all",
+              "post",
+              "page",
+              "product",
+              "category"
+            ],
+            "description": "Filter by entity type (default: all)"
+          },
+          "market": {
+            "type": "string",
+            "description": "Market code (e.g. 'es', 'us')"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale code (e.g. 'es', 'en')"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Max results to return (default: 10)"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    },
+    {
+      "name": "cms_get_entity",
+      "description": "Fetches detailed entity state with all localized translations, sections, and relations",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "post",
+              "page",
+              "product",
+              "category"
+            ],
+            "description": "Entity type"
+          },
+          "id": {
+            "type": "integer",
+            "description": "Entity ID"
+          }
+        },
+        "required": [
+          "type",
+          "id"
+        ]
+      }
+    },
+    {
+      "name": "cms_research_topic_context",
+      "description": "Researches a topic against CMS knowledge base to suggest relevant internal link targets, candidate categories, and target markets",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "Topic to research"
+          },
+          "market": {
+            "type": "string",
+            "description": "Market code (default: 'es')"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale code (default: 'es')"
+          }
+        },
+        "required": [
+          "topic"
+        ]
+      }
+    },
+    {
+      "name": "cms_get_editorial_prompt",
+      "description": "Retrieves the official Human+AI editorial system prompt, style guide, and anti-AI rules",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "locale": {
+            "type": "string",
+            "description": "Locale code ('es' or 'en', default: 'es')"
+          }
+        }
+      }
+    },
+    {
+      "name": "cms_validate_editorial_tone",
+      "description": "Audits text against anti-AI heuristics: sentence length burstiness, Spanish cliché markers, title casing, and punctuation",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Article or page title"
+          },
+          "content": {
+            "type": "string",
+            "description": "Markdown or HTML body content"
+          }
+        },
+        "required": [
+          "title",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "cms_humanize_prose",
+      "description": "Humanizes robotic prose by replacing detected AI clichés with natural Spanish idioms and rhythmic sentence variations",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "Content to humanize"
+          },
+          "style": {
+            "type": "string",
+            "enum": [
+              "periodistico",
+              "ensayo",
+              "tecnico"
+            ],
+            "description": "Target editorial style (default: periodistico)"
+          }
+        },
+        "required": [
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "cms_ai_generate_image",
+      "description": "Generates a high-quality image using configured image providers (Magnific, OpenAI DALL-E, Gemini Imagen) and saves it to CMS media",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Detailed visual prompt describing the scene, mood, lighting and style"
+          },
+          "provider": {
+            "type": "string",
+            "description": "Optional provider override (magnific, openai, gemini)"
+          },
+          "aspect_ratio": {
+            "type": "string",
+            "enum": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+            "description": "Target aspect ratio (default: 16:9)"
+          },
+          "title": {
+            "type": "string",
+            "description": "Optional title for media catalog"
+          }
+        },
+        "required": [
+          "prompt"
+        ]
+      }
+    },
+    {
+      "name": "cms_ai_generate_video",
+      "description": "Generates a cinematic video using configured video providers (Higgsfield, Magnific) and saves it to CMS media",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "description": "Cinematic visual prompt with camera movement and action"
+          },
+          "provider": {
+            "type": "string",
+            "description": "Optional provider override (higgsfield, magnific)"
+          },
+          "duration": {
+            "type": "integer",
+            "description": "Duration in seconds (default: 5)"
+          },
+          "aspect_ratio": {
+            "type": "string",
+            "enum": ["16:9", "9:16", "1:1"],
+            "description": "Target aspect ratio (default: 16:9)"
+          },
+          "title": {
+            "type": "string",
+            "description": "Optional title for media catalog"
+          }
+        },
+        "required": [
+          "prompt"
+        ]
+      }
+    },
+    {
+      "name": "cms_ai_research_and_draft",
+      "description": "Performs deep web research on a topic and returns factual context, key claims and draft points",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "description": "Topic or query to research"
+          },
+          "market": {
+            "type": "string",
+            "description": "Target market code (default: 'es')"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Target locale code (default: 'es')"
+          }
+        },
+        "required": [
+          "topic"
+        ]
+      }
+    },
+    {
+      "name": "cms_ai_orchestrate_content",
+      "description": "Autonomously orchestrates end-to-end multimodal entity generation (post or page) with research, natural text, image/video and modular blocks",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "entity_type": {
+            "type": "string",
+            "enum": ["post", "page"],
+            "description": "Entity type to orchestrate"
+          },
+          "topic": {
+            "type": "string",
+            "description": "Topic or prompt for the entity"
+          },
+          "market": {
+            "type": "string",
+            "description": "Market code (default: 'es')"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale code (default: 'es')"
+          },
+          "generate_images": {
+            "type": "boolean",
+            "description": "Whether to generate AI images (default: true)"
+          },
+          "generate_video": {
+            "type": "boolean",
+            "description": "Whether to generate AI video (default: false)"
+          },
+          "auto_publish": {
+            "type": "boolean",
+            "description": "Whether to publish or draft (default: false)"
+          }
+        },
+        "required": [
+          "entity_type",
+          "topic"
+        ]
+      }
+    },
+    {
+      "name": "cms_publish_post",
+      "description": "Atomically creates or updates a multi-market, multi-language blog post and dispatches PostPublished domain event",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Post title (in Spanish sentence case)"
+          },
+          "content": {
+            "type": "string",
+            "description": "Markdown body content"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Summary excerpt (120-160 characters)"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale code (e.g. 'es', 'en')"
+          },
+          "category_id": {
+            "type": "integer",
+            "description": "Category ID"
+          },
+          "is_published": {
+            "type": "boolean",
+            "description": "Whether to publish immediately (default: true)"
+          },
+          "market_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Assigned markets e.g. ['es', 'us']"
+          },
+          "sections_json": {
+            "type": "string",
+            "description": "Optional modular sections JSON"
+          }
+        },
+        "required": [
+          "title",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "cms_publish_page",
+      "description": "Atomically creates or updates a modular page and dispatches PagePublished domain event",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Page title"
+          },
+          "slug": {
+            "type": "string",
+            "description": "URL slug"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale code (default: 'es')"
+          },
+          "template": {
+            "type": "string",
+            "description": "Template name (default: 'default')"
+          },
+          "sections_json": {
+            "type": "string",
+            "description": "Optional modular sections JSON"
+          }
+        },
+        "required": [
+          "title",
+          "slug"
+        ]
+      }
+    },
+    {
+      "name": "cms_publish_product",
+      "description": "Atomically creates or updates a shop product and dispatches ProductSaved domain event",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Product title"
+          },
+          "sku": {
+            "type": "string",
+            "description": "Unique SKU code"
+          },
+          "price": {
+            "type": "number",
+            "description": "Price amount"
+          },
+          "stock": {
+            "type": "integer",
+            "description": "Available stock quantity (default: 100)"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale code (default: 'es')"
+          },
+          "category_id": {
+            "type": "integer",
+            "description": "Shop category ID"
+          },
+          "market_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Assigned markets e.g. ['es', 'us']"
+          }
+        },
+        "required": [
+          "title",
+          "sku",
+          "price"
+        ]
+      }
+    },
+    {
+      "name": "cms_list_modules",
+      "description": "Lists all installed and active CMS modules, their versions, and widgets",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "cms_list_posts",
+      "description": "Lists blog posts with filtering by market, locale, search text, or limit",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "search": {
+            "type": "string",
+            "description": "Search keyword in title or summary"
+          },
+          "market": {
+            "type": "string",
+            "description": "Market code (e.g. 'es', 'us', 'mx')"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale code (e.g. 'es', 'en', 'ca')"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Max number of posts to return (default: 10)"
+          }
+        }
+      }
+    },
+    {
+      "name": "cms_get_post",
+      "description": "Gets full details, body content, and translations of a single post by ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Post ID"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
+      "name": "cms_create_post",
+      "description": "Creates a new multi-market, multi-language blog post",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Post title"
+          },
+          "content": {
+            "type": "string",
+            "description": "Markdown body content"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Short excerpt summary"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale code (e.g. 'es', 'en')"
+          },
+          "category_id": {
+            "type": "integer",
+            "description": "Category ID"
+          },
+          "is_published": {
+            "type": "boolean",
+            "description": "Request publication through human approval (default: false)"
+          },
+          "market_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Assigned markets e.g. ['es', 'us']"
+          }
+        },
+        "required": [
+          "title",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "cms_update_post",
+      "description": "Updates an existing blog post and its translations",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Post ID to update"
+          },
+          "title": {
+            "type": "string",
+            "description": "New title"
+          },
+          "content": {
+            "type": "string",
+            "description": "New markdown body content"
+          },
+          "summary": {
+            "type": "string",
+            "description": "New excerpt summary"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale code to update (default: 'es')"
+          },
+          "is_published": {
+            "type": "boolean",
+            "description": "Published status"
+          },
+          "category_id": {
+            "type": "integer",
+            "description": "New category ID"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
+      "name": "cms_delete_post",
+      "description": "Deletes a blog post and all its translations permanently",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Post ID to delete"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
+      "name": "cms_list_categories",
+      "description": "Lists all blog categories with hierarchical parent relationships",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "cms_create_category",
+      "description": "Creates a new category with multilingual translations and optional parent ID",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "translations": {"type": "object", "description": "Locale-keyed category translations; alternatively provide name_es/name_en"},
+          "name_es": {
+            "type": "string",
+            "description": "Spanish category name"
+          },
+          "slug_es": {
+            "type": "string",
+            "description": "Spanish slug"
+          },
+          "name_en": {
+            "type": "string",
+            "description": "English category name"
+          },
+          "slug_en": {
+            "type": "string",
+            "description": "English slug"
+          },
+          "parent_id": {
+            "type": "integer",
+            "description": "Parent category ID for nesting"
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "name": "cms_update_category",
+      "description": "Updates an existing category and its translations",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Category ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "Updated name"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale code to update (default: 'es')"
+          },
+          "parent_id": {
+            "type": "integer",
+            "description": "Updated parent ID"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
+      "name": "cms_delete_category",
+      "description": "Deletes a category and its translations",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Category ID"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
+      "name": "cms_list_pages",
+      "description": "Lists all composite and landing pages in dbCMS",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "cms_create_page",
+      "description": "Creates a new modular page with localized title and slug",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Page title"
+          },
+          "slug": {
+            "type": "string",
+            "description": "URL slug"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale (default: 'es')"
+          },
+          "template": {
+            "type": "string",
+            "description": "Template name (default: 'default')"
+          }
+        },
+        "required": [
+          "title",
+          "slug"
+        ]
+      }
+    },
+    {
+      "name": "cms_delete_page",
+      "description": "Deletes a page and its sections permanently",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Page ID"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
+      "name": "cms_list_leads",
+      "description": "Lists lead submissions captured from dynamic forms",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "Max number of leads (default: 10)"
+          }
+        }
+      }
+    },
+    {
+      "name": "cms_audit_seo_geo",
+      "description": "Audits article content quality, keyword density, and LLM citability score",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "meta_description": {
+            "type": "string"
+          },
+          "primary_keyword": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "content"
+        ]
+      }
+    },
+    {
+      "name": "cms_list_filter_dimensions",
+      "description": "WebMCP: lists the addressable filter dimensions of every filterable module (blog, shop) with their localized URL markers and vocabulary, so an agent knows the exact grammar of the friendly filter URLs",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "description": "Filterable module key (e.g. 'blog', 'shop'). Omit for all"
+          },
+          "market": {
+            "type": "string",
+            "description": "Market code (default: primary market)"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale code (default: market default locale)"
+          }
+        }
+      }
+    },
+    {
+      "name": "cms_resolve_filter_url",
+      "description": "WebMCP: resolves a friendly filter path or full URL into its canonical URL, hreflang cluster, result count, index policy (indexable/noindex) and SEO text. Use it before linking or citing a filtered page",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "description": "Filterable module key (default: 'blog')"
+          },
+          "path": {
+            "type": "string",
+            "description": "Friendly filter path or full URL (e.g. 'etiqueta/laravel/orden/recientes')"
+          },
+          "market": {
+            "type": "string",
+            "description": "Market code (default: primary market)"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale code (default: market default locale)"
+          }
+        },
+        "required": [
+          "path"
+        ]
+      }
+    },
+    {
+      "name": "cms_browse_content",
+      "description": "WebMCP: browses a module through the filter framework (categories, tags, price, sort, search, dates) returning the matching items and the canonical URL. Accepts a friendly 'path' or a 'filters' map",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string",
+            "description": "Filterable module key: 'blog' or 'shop' (default: 'blog')"
+          },
+          "path": {
+            "type": "string",
+            "description": "Friendly filter path (alternative to 'filters')"
+          },
+          "filters": {
+            "type": "object",
+            "description": "Filter map, e.g. {\"tag\":[\"laravel\"],\"sort\":\"recientes\"}"
+          },
+          "market": {
+            "type": "string",
+            "description": "Market code (default: primary market)"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale code (default: market default locale)"
+          },
+          "per_page": {
+            "type": "integer",
+            "description": "Max items to return (default 10, max 50)"
+          }
+        }
+      }
+    },
+    {
+      "name": "cms_search",
+      "description": "WebMCP: general search over every indexed entity (posts, products, pages…). Returns ranked results with their canonical front-office URL, per-entity facets, suggestions when nothing matches and the index policy of the result page. Use it to answer questions or to find the exact page a user should read",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "What to look for, in natural language (e.g. 'arquitectura modular geo')"
+          },
+          "type": {
+            "type": "string",
+            "description": "Restrict to one entity type (e.g. 'post', 'product'). Omit to search everything"
+          },
+          "market": {
+            "type": "string",
+            "description": "Market code (default: primary market)"
+          },
+          "locale": {
+            "type": "string",
+            "description": "Locale code (default: market default locale)"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Max results to return (default 10, max 50)"
+          }
+        },
+        "required": [
+          "query"
+        ]
+      }
+    }
+  ]
+}

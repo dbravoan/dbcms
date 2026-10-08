@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-[#0d0d0d] text-gray-100">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@yield('title', 'Portal __STUDLY__') - dbCMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-full font-sans antialiased flex flex-col">
+    <header class="bg-[#141414] border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <span class="text-[#00FF99] font-mono font-bold text-lg">&gt;_ __STUDLY__ Portal</span>
+            <span class="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded font-mono">Dedicated Panel</span>
+        </div>
+        <div class="flex items-center gap-4">
+            @auth('__IDENTIFIER__')
+                <span class="text-sm text-gray-300">{{ auth('__IDENTIFIER__')->user()?->name }}</span>
+                <form method="POST" action="{{ route('__IDENTIFIER__.logout') }}">
+                    @csrf
+                    <button type="submit" class="text-xs text-red-400 hover:text-red-300 font-mono">Cerrar sesión</button>
+                </form>
+            @endauth
+        </div>
+    </header>
+
+    <main class="flex-1 p-6 max-w-7xl mx-auto w-full">
+        @yield('content')
+    </main>
+</body>
+</html>

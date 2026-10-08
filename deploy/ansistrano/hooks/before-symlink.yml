@@ -1,0 +1,37 @@
+---
+# Hook executed right before the 'current' symlink is updated
+- name: Ensure database backup directory exists
+  ansible.builtin.file:
+    path: "{{ ansistrano_deploy_to }}/shared/backups"
+    state: directory
+    mode: "0700"
+
+- name: Take safety database snapshot before running migrations
+  ansible.builtin.shell: >
+    mysqldump --defaults-extra-file={{ ansistrano_deploy_to }}/shared/.my.cnf
+    --single-transaction --quick
+    {{ database_name }} | gzip > {{ ansistrano_deploy_to }}/shared/backups/db-pre-{{ ansistrano_release_version }}.sql.gz
+  args:
+    creates: "{{ ansistrano_deploy_to }}/shared/backups/db-pre-{{ ansistrano_release_version }}.sql.gz"
+  ignore_errors: true
+
+- name: Symlink public storage
+  ansible.builtin.command: php artisan storage:link --force
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"
+
+- name: Execute database migrations
+  ansible.builtin.command: php artisan migrate --force
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"
+
+- name: Warm up caches and optimize framework
+  ansible.builtin.command: php artisan optimize
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"
+
+- name: Ensure Passport keys exist
+  ansible.builtin.command: php artisan passport:keys --ansi
+  args:
+    chdir: "{{ ansistrano_release_path.stdout }}"
+    creates: "{{ ansistrano_deploy_to }}/shared/storage/oauth-private.key"

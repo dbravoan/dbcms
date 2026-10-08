@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AgentContractSchema",
+  "type": "object",
+  "required": ["agent_name", "input_schema", "output_schema", "token_budget_max"],
+  "properties": {
+    "agent_name": { "type": "string" },
+    "input_schema": { "type": "object" },
+    "output_schema": { "type": "object" },
+    "token_budget_max": { "type": "integer", "maximum": 5000 }
+  }
+}

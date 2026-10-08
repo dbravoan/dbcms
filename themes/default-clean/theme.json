@@ -1,0 +1,7 @@
+{
+    "name": "dbCMS Default Clean",
+    "identifier": "default-clean",
+    "version": "1.0.0",
+    "description": "Tema neutro de referencia: claro, minimalista y sin dependencias visuales, usado como fallback seguro y como base para nuevos temas.",
+    "author": "dbCMS Design Team"
+}

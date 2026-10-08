@@ -1,0 +1,17 @@
+                        <x-admin.action-button
+                            as="a"
+                            href="{{ route('admin.__IDENTIFIER__.edit', $item) }}"
+                            icon="fa-solid fa-pen-to-square"
+                            tooltip="Editar registro"
+                            variant="primary"
+                        />
+                        <x-admin.action-button
+                            icon="fa-solid fa-trash-can"
+                            tooltip="Eliminar registro"
+                            variant="danger"
+                            @click="$dispatch('confirm-delete', {
+                                action: '{{ route('admin.__IDENTIFIER__.destroy', $item) }}',
+                                title: 'Eliminar registro',
+                                message: '¿Estás seguro de eliminar este registro y sus traducciones?'
+                            })"
+                        />

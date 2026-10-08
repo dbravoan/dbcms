@@ -1,0 +1,15 @@
+{
+  "name": "Before & After Comparison",
+  "identifier": "before_after",
+  "version": "1.0.0",
+  "author": "dbCMS Core Team",
+  "description": "Interactive before and after comparison slider for clinical, design, and remodeling showcases",
+  "provider": "Modules\\BeforeAfter\\BeforeAfterModuleServiceProvider",
+  "is_pageable": false,
+  "widgets": [
+    "Modules\\BeforeAfter\\Widgets\\BeforeAfterSliderWidget"
+  ],
+  "requires": {
+    "core": ">=1.0.0"
+  }
+}

@@ -1,0 +1,102 @@
+{{-- Reusable, localized form body for __HEADLINE__ (Admin UI Kit) --}}
+@props([
+    'item' => null,
+    'languages' => [],
+    'markets' => [],
+    'translationsMap' => [],
+    'assignedMarketIds' => [],
+])
+
+@php
+    $langs = $languages instanceof \Illuminate\Support\Collection ? $languages : collect($languages);
+    if ($langs->isEmpty()) {
+        $langs = collect([
+            (object) ['code' => 'es', 'name' => 'Español'],
+            (object) ['code' => 'en', 'name' => 'English'],
+        ]);
+    }
+    $defaultLocale = $langs->first()->code ?? 'es';
+
+    $translationsByLocale = [];
+    foreach ($langs as $lang) {
+        $translationsByLocale[$lang->code] = array_merge(
+            ['title' => '', 'slug' => '', 'content' => ''],
+            $translationsMap[$lang->code] ?? []
+        );
+    }
+
+    $assignedMarketIds = old('market_ids', $assignedMarketIds);
+@endphp
+
+<div class="cyber-card p-6 rounded-xl space-y-4"
+     x-data="{
+        activeLocale: @js($defaultLocale),
+        translations: @js($translationsByLocale),
+        ensure(code) {
+            if (! this.translations[code]) {
+                this.translations[code] = { title: '', slug: '', content: '' };
+            }
+        },
+        switchLocale(code) {
+            this.ensure(code);
+            this.activeLocale = code;
+            window.dispatchEvent(new CustomEvent('cms-locale-switched', { detail: { locale: code } }));
+        },
+        generateSlug(text) {
+            return (text || '').toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/(^-|-$)+/g, '');
+        }
+     }"
+     x-init="Object.keys(translations).forEach((code) => ensure(code)); ensure(activeLocale);"
+     x-on:locale-tab-change="switchLocale($event.detail.locale)">
+    <h3 class="text-sm font-bold text-white border-b border-gray-800 pb-3 flex items-center gap-2">
+        <span class="text-[#00FF99]">1.</span> {{ __('admin.entity_form.content_translations') }}
+    </h3>
+
+    <x-admin.locale-tabs :languages="$langs" :active="$defaultLocale" group="__IDENTIFIER__-editor" />
+
+    @foreach($langs as $lang)
+        <div x-show="activeLocale === '{{ $lang->code }}'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block font-bold text-gray-400 uppercase mb-1">Título ({{ strtoupper($lang->code) }}) *</label>
+                <input type="text"
+                       name="translations[{{ $lang->code }}][title]"
+                       x-model="translations['{{ $lang->code }}'].title"
+                       @input="if (! translations['{{ $lang->code }}'].slug) translations['{{ $lang->code }}'].slug = generateSlug(translations['{{ $lang->code }}'].title)"
+                       placeholder="Título del registro"
+                       class="w-full bg-[#1A1A1A] border border-gray-700 focus:border-[#00FF99] rounded-lg px-3 py-2 text-white">
+            </div>
+
+            <div>
+                <label class="block font-bold text-gray-400 uppercase mb-1">Slug ({{ strtoupper($lang->code) }})</label>
+                <input type="text"
+                       name="translations[{{ $lang->code }}][slug]"
+                       x-model="translations['{{ $lang->code }}'].slug"
+                       placeholder="slug-del-registro"
+                       class="w-full bg-[#1A1A1A] border border-gray-700 focus:border-[#00FF99] rounded-lg px-3 py-2 text-[#00FF99] font-mono">
+            </div>
+
+            <div class="md:col-span-2">
+                <label class="block font-bold text-gray-400 uppercase mb-1">Contenido ({{ strtoupper($lang->code) }})</label>
+                <textarea name="translations[{{ $lang->code }}][content]"
+                          x-model="translations['{{ $lang->code }}'].content"
+                          rows="4"
+                          placeholder="Contenido localizado..."
+                          class="w-full bg-[#1A1A1A] border border-gray-700 focus:border-[#00FF99] rounded-lg px-3 py-2 text-gray-200"></textarea>
+            </div>
+        </div>
+    @endforeach
+</div>
+
+<x-admin.form-card title="Publicación" icon="fa-solid fa-sliders">
+    <x-admin.toggle name="is_active" label="{{ __('admin.entity_form.record_active') }}" :checked="$item->is_active ?? true" />
+
+    <x-admin.input name="order" type="number" label="Orden" :value="$item->order ?? 0" hint="Menor valor aparece primero." />
+
+    <div>
+        <label class="block text-gray-400 text-[10px] font-bold uppercase mb-1">{{ __('admin.entity_form.markets_publish') }}</label>
+        <x-admin.market-picker name="market_ids" :selected="$assignedMarketIds" :markets="$markets" group="__IDENTIFIER__-editor" />
+    </div>
+</x-admin.form-card>

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opencode.ai/schema/v1/config.json",
+  "version": "1.0.0",
+  "name": "laravel-agentic-skeleton",
+  "orchestration": {
+    "default_agent": "orchestrator",
+    "token_optimization": {
+      "strategy": "kv_cache_prefix_anchored",
+      "max_turn_tokens": 3000,
+      "progressive_disclosure": true
+    },
+    "zero_host_policy": {
+      "enforce_sail": true,
+      "host_guard_script": "bin/guard-host-php.sh"
+    }
+  },
+  "agents_directory": ".opencode/agents",
+  "commands_directory": ".opencode/commands"
+}

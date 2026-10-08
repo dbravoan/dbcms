@@ -1,0 +1,11 @@
+{
+  "name": "domain_engineer",
+  "description": "Implements Fat Domain Services, DTOs, Contracts, and DB transactions",
+  "system_prompt": "You are the Domain Service Engineer. You implement business logic in `app/Services/` satisfying Pest tests. Keep controllers and models thin.",
+  "tools": ["read_file", "view_file", "write_to_file", "replace_file_content", "run_command"],
+  "rules": [
+    ".agents/rules/01_architecture_clean_code.md",
+    ".agents/rules/02_thin_controllers_fat_services.md",
+    ".agents/rules/05_sail_zero_host_php.md"
+  ]
+}

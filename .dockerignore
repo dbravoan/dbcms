@@ -1,0 +1,36 @@
+# Never send credentials or local runtime state to the builder.
+.env
+.env.*
+!.env.example
+!.env.production.example
+**/*.pem
+**/*.key
+storage/*.key
+storage/*
+bootstrap/cache/*.php
+bootstrap/cache/*.json
+public/storage
+public/uploads/*
+public/build
+public/hot
+public/llms.txt
+public/llms-full.txt
+.git
+node_modules
+vendor
+dist
+coverage
+.phpunit.cache
+.phpunit.result.cache
+.phpstan.cache
+npm-debug.log*
+*.sql
+*.sqlite
+*.sqlite3
+.agents
+.gemini
+.opencode
+
+# Local connector configuration may contain credentials.
+.mcp.json
+mcp/mcp_config.json

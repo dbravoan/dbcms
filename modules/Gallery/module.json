@@ -1,0 +1,31 @@
+{
+  "name": "Media Gallery",
+  "identifier": "gallery",
+  "version": "1.0.0",
+  "author": "dbCMS Core Team",
+  "description": "Filterable image galleries, WebP optimization, and lightbox support",
+  "provider": "Modules\\Gallery\\GalleryModuleServiceProvider",
+  "is_pageable": true,
+  "widgets": [
+    "Modules\\Gallery\\Widgets\\GalleryGridWidget"
+  ],
+  "settings": {
+    "slug_default": {
+      "type": "text",
+      "label": "Slug base de la Galería",
+      "description": "Ruta raíz por defecto para acceder a las galerías (por ejemplo: galeria o galerias)",
+      "default": "galeria",
+      "placeholder": "galeria"
+    },
+    "slug_{locale}": {
+      "label": "Slug de la Galería en {language} ({locale})",
+      "description": "Ruta personalizada para el idioma {language}. Si se deja vacío, se usa el slug base.",
+      "default": "galeria",
+      "placeholder": "galeria",
+      "defaults": {"es": "galeria", "en": "gallery", "ca": "galeria", "fr": "galerie", "de": "galerie"}
+    }
+  },
+  "requires": {
+    "core": ">=1.0.0"
+  }
+}

@@ -1,0 +1,182 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Blog;
+
+use App\Contracts\Services\LocalizationServiceInterface;
+use App\Core\Blocks\Contracts\BlockRegistryInterface;
+use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
+use App\Core\Content\PublicSemanticRegistry;
+use App\Core\Filters\FilterModuleRegistry;
+use App\Core\Modules\BaseModuleServiceProvider;
+use App\Core\Routing\FrontRoutePatterns;
+use App\Core\Search\Contracts\SearchSourceRegistryInterface;
+use App\Core\Search\SearchIndexer;
+use App\Http\Middleware\CachePublicPage;
+use App\Http\Middleware\CanonicalModulePrefix;
+use App\Http\Middleware\EnsureSeoMeta;
+use App\Http\Middleware\ResolveMarketAndLocaleMiddleware;
+use App\Services\Geo\PublicEntityWidgetContributor;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Route;
+use Modules\Blog\Blocks\BlogPostsBlock;
+use Modules\Blog\Contracts\BlogArticleReaderInterface;
+use Modules\Blog\Contracts\BlogCatalogueReaderInterface;
+use Modules\Blog\Contracts\BlogPublicReaderInterface;
+use Modules\Blog\Contracts\CategoryDomainServiceInterface;
+use Modules\Blog\Contracts\CommentPublicationServiceInterface;
+use Modules\Blog\Contracts\PostDomainServiceInterface;
+use Modules\Blog\Filters\BlogFilters;
+use Modules\Blog\Http\Controllers\BlogFrontController;
+use Modules\Blog\Models\Post;
+use Modules\Blog\Models\PostTranslation;
+use Modules\Blog\Schema\BlogEntitySchemas;
+use Modules\Blog\Search\PostSearchSource;
+use Modules\Blog\Services\BlogArticleReader;
+use Modules\Blog\Services\BlogCatalogueReader;
+use Modules\Blog\Services\BlogPublicReader;
+use Modules\Blog\Services\CategoryDomainService;
+use Modules\Blog\Services\CommentPublicationService;
+use Modules\Blog\Services\PostDomainService;
+use Modules\Blog\Widgets\FeaturedPostsWidget;
+use Modules\Blog\Widgets\LatestPostsGridWidget;
+
+class BlogModuleServiceProvider extends BaseModuleServiceProvider
+{
+    protected string $identifier = 'blog';
+
+    protected string $name = 'Blog Engine';
+
+    protected string $version = '1.0.0';
+
+    protected bool $isPageable = true;
+
+    public function register(): void
+    {
+        $this->app->bind(BlogCatalogueReaderInterface::class, BlogCatalogueReader::class);
+        $this->app->bind(BlogArticleReaderInterface::class, BlogArticleReader::class);
+        $this->app->bind(BlogPublicReaderInterface::class, BlogPublicReader::class);
+        $this->app->bind(CommentPublicationServiceInterface::class, CommentPublicationService::class);
+        $this->app->bind(PostDomainServiceInterface::class, PostDomainService::class);
+        $this->app->bind(CategoryDomainServiceInterface::class, CategoryDomainService::class);
+        $this->app->bind('widget.blog.featured_posts', fn () => FeaturedPostsWidget::class);
+        $this->app->bind('widget.blog.latest_posts_grid', fn () => LatestPostsGridWidget::class);
+    }
+
+    public function boot(): void
+    {
+        $this->app->make(PublicSemanticRegistry::class)->registerWidget(
+            new PublicEntityWidgetContributor('blog', 'post', ['blog.featured_posts', 'blog.latest_posts_grid', 'widget_posts', 'posts'])
+        );
+        $this->loadViewsFrom(__DIR__.'/Resources/views', 'blog');
+        $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
+
+        if ($this->app->bound(BlockRegistryInterface::class)) {
+            $this->app->make(BlockRegistryInterface::class)->register(new BlogPostsBlock);
+        }
+
+        if ($this->app->bound(EntitySchemaRegistryInterface::class)) {
+            foreach (BlogEntitySchemas::all() as $schema) {
+                $this->app->make(EntitySchemaRegistryInterface::class)->register($schema);
+            }
+        }
+
+        // Cross-entity search: declare the blog search source.
+        if ($this->app->bound(SearchSourceRegistryInterface::class)) {
+            $this->app->make(SearchSourceRegistryInterface::class)->register(
+                $this->app->make(PostSearchSource::class)
+            );
+        }
+
+        // Keep the search index in sync with content edits: saving or removing a
+        // post (or any of its translations) reindexes that post only.
+        if ($this->app->bound(SearchIndexer::class)) {
+            $syncPost = static function (Model $model): void {
+                $postId = $model instanceof PostTranslation ? $model->getAttribute('post_id') : $model->getKey();
+
+                if ($postId !== null) {
+                    app(SearchIndexer::class)->indexEntity('post', (int) $postId);
+                }
+            };
+
+            Post::saved($syncPost);
+            Post::deleted($syncPost);
+            PostTranslation::saved($syncPost);
+            PostTranslation::deleted($syncPost);
+        }
+
+        // Friendly filter URLs: declare the blog filter dimensions.
+        if ($this->app->bound(FilterModuleRegistry::class)) {
+            $this->app->make(FilterModuleRegistry::class)->register(new BlogFilters);
+        }
+
+        parent::boot();
+    }
+
+    public function registerPageableRoutes(): void
+    {
+        Route::middleware(['web', ResolveMarketAndLocaleMiddleware::class, CanonicalModulePrefix::class, EnsureSeoMeta::class, CachePublicPage::class])->group(function (): void {
+            /** @var LocalizationServiceInterface $localization */
+            $localization = app(LocalizationServiceInterface::class);
+            $blogPattern = implode('|', $localization->getAllModuleSlugs('blog'));
+            $adminPath = (string) config('cms.admin_path', 'admin');
+            $blocked = "admin|{$adminPath}|api|forms|geo|install|media|theme-assets|up";
+
+            // 1. Localized routes with {market}/{locale} prefix
+            Route::prefix('{market}/{locale}')
+                ->where(['market' => "^(?!{$blocked})[a-zA-Z0-9_\-]+$", 'locale' => FrontRoutePatterns::locale()])
+                ->group(function () use ($blogPattern): void {
+                    Route::get('/{blogPrefix}', [BlogFrontController::class, 'index'])
+                        ->where(['blogPrefix' => $blogPattern])
+                        ->name('blog.index');
+                    Route::get('/{blogPrefix}/{slug}', [BlogFrontController::class, 'resolveSlug'])
+                        ->where(['blogPrefix' => $blogPattern, 'slug' => '.*'])
+                        ->name('blog.show');
+                    Route::post('/{blogPrefix}/{slug}/comments', [BlogFrontController::class, 'storeComment'])
+                        ->where(['blogPrefix' => $blogPattern])
+                        ->name('blog.comments.store');
+                });
+
+            // 2. Localized routes with {locale} prefix only (for single-market setups)
+            Route::prefix('{locale}')
+                ->where(['locale' => "^(?!{$blocked}|{$blogPattern}|galeria|gallery|page)[a-zA-Z]{2,5}$"])
+                ->group(function () use ($blogPattern): void {
+                    Route::get('/{blogPrefix}', [BlogFrontController::class, 'index'])->where(['blogPrefix' => $blogPattern]);
+                    Route::get('/{blogPrefix}/{slug}', [BlogFrontController::class, 'resolveSlug'])->where(['blogPrefix' => $blogPattern, 'slug' => '.*']);
+                    Route::post('/{blogPrefix}/{slug}/comments', [BlogFrontController::class, 'storeComment'])->where(['blogPrefix' => $blogPattern]);
+                });
+
+            // 3. Default non-prefixed fallback routes (for 1-market / 1-lang setups)
+            Route::get('/{blogPrefix}', [BlogFrontController::class, 'index'])->where(['blogPrefix' => $blogPattern]);
+            Route::get('/{blogPrefix}/{slug}', [BlogFrontController::class, 'resolveSlug'])->where(['blogPrefix' => $blogPattern, 'slug' => '.*']);
+            Route::post('/{blogPrefix}/{slug}/comments', [BlogFrontController::class, 'storeComment'])->where(['blogPrefix' => $blogPattern]);
+        });
+    }
+
+    public function getWidgets(): array
+    {
+        return [
+            FeaturedPostsWidget::getKey() => FeaturedPostsWidget::class,
+            LatestPostsGridWidget::getKey() => LatestPostsGridWidget::class,
+        ];
+    }
+
+    public function getAdminNavigation(): array
+    {
+        return [
+            [
+                'title' => 'Blog Posts',
+                'route' => 'admin.blog.posts.index',
+                'icon' => 'book-open',
+                'permission' => 'manage:posts',
+            ],
+            [
+                'title' => 'Categories',
+                'route' => 'admin.blog.categories.index',
+                'icon' => 'tag',
+                'permission' => 'manage:posts',
+            ],
+        ];
+    }
+}

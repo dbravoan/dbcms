@@ -1,0 +1,10 @@
+
+    public function hasDedicatedPanel(): bool
+    {
+        return true;
+    }
+
+    public function getDedicatedPanelUrl(): ?string
+    {
+        return url('/__IDENTIFIER__/portal');
+    }

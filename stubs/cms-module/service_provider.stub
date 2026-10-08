@@ -1,0 +1,60 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\__STUDLY__;
+
+use App\Core\Modules\BaseModuleServiceProvider;
+use App\Http\Middleware\ResolveMarketAndLocaleMiddleware;
+use Illuminate\Support\Facades\Route;
+use Modules\__STUDLY__\Contracts\Services\__STUDLY__ServiceInterface;
+use Modules\__STUDLY__\Http\Controllers\__STUDLY__FrontController;
+use Modules\__STUDLY__\Services\__STUDLY__DomainService;
+use Modules\__STUDLY__\Widgets\Latest__STUDLY__Widget;
+
+class __STUDLY__ModuleServiceProvider extends BaseModuleServiceProvider
+{
+    protected string $identifier = '__IDENTIFIER__';
+
+    protected string $name = '__STUDLY__';
+
+    protected string $version = '1.0.0';
+
+    protected bool $isPageable = __PAGEABLE_FLAG__;
+
+    public function register(): void
+    {
+        $this->app->bind(__STUDLY__ServiceInterface::class, __STUDLY__DomainService::class);
+        $this->app->bind('widget.__IDENTIFIER__.latest', fn () => Latest__STUDLY__Widget::class);
+    }
+
+    public function boot(): void
+    {
+        parent::boot();
+
+        $this->loadViewsFrom(__DIR__.'/Resources/views', '__IDENTIFIER__');
+        $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
+__AUTH_BOOT__
+    }
+__ROUTES_METHOD__
+__PANEL_METHODS__
+
+    public function getWidgets(): array
+    {
+        return [
+            Latest__STUDLY__Widget::getKey() => Latest__STUDLY__Widget::class,
+        ];
+    }
+
+    public function getAdminNavigation(): array
+    {
+        return [
+            [
+                'title' => '__STUDLY__',
+                'route' => 'admin.__IDENTIFIER__.index',
+                'icon' => 'folder',
+                'permission' => 'manage:__IDENTIFIER__',
+            ],
+        ];
+    }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "Servidor MCP (Model Context Protocol)",
+  "identifier": "mcp",
+  "version": "1.0.0",
+  "author": "dbCMS Core Team",
+  "description": "Servidor MCP estándar con transporte SSE / JSON-RPC 2.0 y autenticación segura mediante Laravel Passport para OpenCode, Cursor, Claude Desktop y agentes autónomos.",
+  "provider": "Modules\\Mcp\\McpModuleServiceProvider",
+  "is_pageable": false,
+  "settings": {
+    "is_enabled": {
+      "type": "boolean",
+      "label": "Activar Servidor MCP",
+      "description": "Habilita o deshabilita los endpoints /api/mcp tanto HTTP como SSE para agentes externos.",
+      "default": true
+    },
+    "enable_sse": {
+      "type": "boolean",
+      "label": "Habilitar Transporte SSE (Server-Sent Events)",
+      "description": "Permite conexiones en streaming continuo para agentes MCP como OpenCode o Cursor.",
+      "default": true
+    },
+    "rate_limit_per_minute": {
+      "type": "number",
+      "label": "Límite de peticiones por minuto",
+      "description": "Rate limiting defensivo para llamadas a herramientas MCP.",
+      "default": 60
+    },
+    "log_mcp_requests": {
+      "type": "boolean",
+      "label": "Registrar llamadas a herramientas MCP en logs",
+      "description": "Guarda trazabilidad de herramientas invocadas y agentes clientes.",
+      "default": true
+    }
+  }
+}

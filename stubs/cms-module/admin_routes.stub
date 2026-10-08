@@ -1,0 +1,14 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Http\Middleware\CheckPermission;
+use Illuminate\Support\Facades\Route;
+use Modules\__STUDLY__\Http\Controllers\Admin\__STUDLY__GetController;__CRUD_IMPORTS__
+
+Route::middleware([CheckPermission::class.':manage:__IDENTIFIER__'])
+    ->prefix('__IDENTIFIER__')
+    ->name('__IDENTIFIER__.')
+    ->group(function (): void {
+        Route::get('/', __STUDLY__GetController::class)->name('index');__CRUD_ROUTES__
+    });

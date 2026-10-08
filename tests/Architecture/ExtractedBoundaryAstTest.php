@@ -1,0 +1,66 @@
+<?php
+
+declare(strict_types=1);
+
+use Tests\Support\ArchitectureBoundaryInspector;
+
+/** @return list<string> */
+function extractedBoundaryFiles(string $pattern, int $minimum): array
+{
+    $files = glob(base_path($pattern)) ?: [];
+    expect(count($files), $pattern)->toBeGreaterThanOrEqual($minimum);
+
+    return array_values($files);
+}
+
+test('controller AST guard accepts delegation and reports model aliases loops persistence and long actions', function (): void {
+    $inspector = new ArchitectureBoundaryInspector;
+    $valid = '<?php namespace Example; use App\Contracts\Services\ModuleSettingsAdministrationInterface; final class Controller { public function __construct(private ModuleSettingsAdministrationInterface $service) {} public function __invoke($request) { return $this->service->update($request); } }';
+    expect($inspector->controllerViolations($valid))->toBe([]);
+    $invalid = '<?php namespace Example; use App\Models\User as Person; use Illuminate\Support\Facades\DB as Database; final class Controller { public function __invoke() { foreach ([1] as $value) { Person::query()->update([]); } Database::statement("bad"); } }';
+    expect($inspector->controllerViolations($invalid))->not->toBeEmpty();
+    $long = "<?php final class Controller { public function __invoke() {\n".str_repeat("response();\n", 11).'} }';
+    expect($inspector->controllerViolations($long))->toContain('action_exceeds_ten_lines');
+    expect($inspector->controllerViolations('<?php use App\Models\User; class Controller { public function __invoke($request) { $actor = $request->user(); $actor->save(); } }'))->toContain('persistence_or_external_effect');
+});
+
+test('AST guard detects interface based constructor cycles in the owned service graph', function (): void {
+    $inspector = new ArchitectureBoundaryInspector;
+    expect($inspector->constructorCycles(['<?php interface PortA {} class ServiceA implements PortA { public function __construct(PortB $other) {} }', '<?php interface PortB {} class ServiceB implements PortB { public function __construct(PortA $other) {} }']))->not->toBeEmpty();
+    $paths = [...glob(base_path('app/Services/Install/Installation*Service.php')), base_path('app/Services/Cms/ModuleNotificationService.php'), base_path('app/Services/Cms/NotificationRecipientResolverService.php'), base_path('app/Services/Cms/ModuleSettingsService.php'), base_path('app/Services/Cms/ModuleSettingsAdministrationService.php'), base_path('app/Core/Modules/ModuleManager.php'), base_path('modules/Maintenance/Services/MaintenanceSettingsAdministrationService.php'), base_path('modules/Maintenance/Services/MaintenanceService.php')];
+    expect($inspector->constructorCycles(array_map(fn (string $path): string => (string) file_get_contents($path), $paths)))->toBe([]);
+});
+
+test('services AST guard resolves HTTP aliases and requires a declared contract', function (): void {
+    $inspector = new ArchitectureBoundaryInspector;
+    expect($inspector->serviceViolations('<?php use Illuminate\Http\Request as Input; class Service { public function run(Input $value) {} }'))->toContain('http_dependency', 'missing_contract');
+    expect($inspector->serviceViolations('<?php interface Contract {} class Service implements Contract {}'))->toBe([]);
+});
+
+test('AST guard distinguishes external effects in transactions from deferred effects', function (): void {
+    $inspector = new ArchitectureBoundaryInspector;
+    $immediate = '<?php use Illuminate\Support\Facades\DB as Database; use Illuminate\Support\Facades\Http as Client; Database::transaction(function () { Client::post("remote"); });';
+    $deferred = '<?php use Illuminate\Support\Facades\DB as Database; use Illuminate\Support\Facades\Mail; Database::transaction(function () { Database::afterCommit(function () { Mail::send("message"); }); });';
+    expect($inspector->transactionViolations($immediate))->toContain('external_effect_inside_transaction')
+        ->and($inspector->transactionViolations($deferred))->toBe([]);
+});
+
+test('all extracted HTTP adapters satisfy effective AST boundaries', function (): void {
+    $inspector = new ArchitectureBoundaryInspector;
+    $paths = [...extractedBoundaryFiles('app/Http/Controllers/Install/*.php', 9), ...extractedBoundaryFiles('app/Http/Controllers/Admin/ModuleSettings/*.php', 2), ...extractedBoundaryFiles('modules/Maintenance/Http/Controllers/*.php', 4), ...extractedBoundaryFiles('app/Http/Controllers/Admin/Notifications/*.php', 4), ...extractedBoundaryFiles('modules/Shop/Http/Controllers/Front/*.php', 5), base_path('app/Http/Controllers/Admin/Modules/ModuleUploadPostController.php'), base_path('app/Http/Controllers/Admin/Menus/MenusGetController.php'), base_path('modules/Forms/Http/Controllers/Admin/FormCreateGetController.php'), base_path('modules/Forms/Http/Controllers/Admin/FormEditGetController.php')];
+    foreach ($paths as $path) {
+        expect(is_file($path), $path)->toBeTrue();
+        expect($inspector->controllerViolations((string) file_get_contents($path)), $path)->toBe([]);
+    }
+});
+
+test('new application services implement contracts and keep transport and remote effects out of transactions', function (): void {
+    $inspector = new ArchitectureBoundaryInspector;
+    $paths = [...extractedBoundaryFiles('app/Services/Install/Installation*Service.php', 5), base_path('app/Services/Cms/ModulePackageInstallerService.php'), base_path('app/Services/Cms/ModuleNotificationService.php'), base_path('app/Services/Cms/NotificationRecipientResolverService.php'), base_path('app/Services/Cms/ModuleSettingsAdministrationService.php'), base_path('modules/Maintenance/Services/MaintenanceSettingsAdministrationService.php'), base_path('app/Services/Admin/MenuEditorService.php'), base_path('app/Services/Admin/DatatableQueryService.php'), base_path('modules/Forms/Services/FormEditorService.php'), base_path('modules/Shop/Services/CartApplicationService.php'), base_path('modules/Shop/Services/ShopCatalogueService.php'), base_path('modules/Shop/Services/ShopPurchaseWorkflow.php')];
+    foreach ($paths as $path) {
+        expect(is_file($path), $path)->toBeTrue();
+        $source = (string) file_get_contents($path);
+        expect($inspector->serviceViolations($source), $path)->toBe([])
+            ->and($inspector->transactionViolations($source), $path)->toBe([]);
+    }
+});

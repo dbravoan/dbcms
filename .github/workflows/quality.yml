@@ -1,0 +1,31 @@
+name: Container Quality Gate
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release version before publishing jobs
+        env:
+          RELEASE_VERSION: ${{ github.event.inputs.version || '' }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            RELEASE_VERSION="$GITHUB_REF_NAME"
+          fi
+          if [ -n "$RELEASE_VERSION" ]; then
+            test "${RELEASE_VERSION#v}" = "$(tr -d '[:space:]' < VERSION)"
+          fi
+      - name: Build and run isolated quality gate
+        run: docker compose -f docker/ci/compose.yml run --build --rm app bash bin/ci-check
+      - name: Build production image
+        run: docker build -f docker/production/Dockerfile -t dbcms:verified .
+      - name: Confirm artifact and bootstrap
+        run: |
+          docker run --rm --entrypoint sh dbcms:verified -c 'test -f public/build/manifest.json && test -f vendor/autoload.php && php artisan --version'
+      - name: Stop disposable services
+        if: always()
+        run: docker compose -f docker/ci/compose.yml down --volumes --remove-orphans
