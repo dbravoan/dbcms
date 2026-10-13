@@ -67,12 +67,13 @@ test('release publishes immutable platform digests only after runtime validation
     expect($runs)->toContain('steps.build.outputs.digest');
 });
 
-test('release waits for both native images and verifies their merged manifest before publishing archives', function (): void {
+test('release waits for exact successful main CI and both native images before publishing', function (): void {
     $workflow = Yaml::parseFile(__DIR__.'/../../.github/workflows/release.yml');
     $jobs = $workflow['jobs'];
-    expect((array) $jobs['docker-publish']['needs'])->toContain('quality-gate')
-        ->and((array) $jobs['build-standalone-zip']['needs'])->toContain('quality-gate')
-        ->and($jobs)->toHaveKey('docker-merge');
+    expect($jobs)->toHaveKey('verify-ci')
+        ->and($jobs)->toHaveKey('docker-merge')
+        ->and((array) $jobs['docker-publish']['needs'])->toContain('verify-ci')
+        ->and((array) $jobs['build-standalone-zip']['needs'])->toContain('verify-ci');
 
     $merge = $jobs['docker-merge'];
     expect((array) $merge['needs'])->toContain('docker-publish')
@@ -87,24 +88,49 @@ test('release waits for both native images and verifies their merged manifest be
     expect(strpos($runs, 'imagetools inspect'))->toBeGreaterThan(strpos($runs, 'imagetools create'));
 });
 
-test('the common release quality gate checks the requested version before testing or publishing', function (): void {
+test('release reuses the successful CI push for the exact main commit without repeating quality', function (): void {
     $workflow = Yaml::parseFile(__DIR__.'/../../.github/workflows/release.yml');
-    expect($workflow['jobs']['quality-gate']['uses'])->toBe('./.github/workflows/quality.yml');
-    $quality = Yaml::parseFile(__DIR__.'/../../.github/workflows/quality.yml');
-    $steps = $quality['jobs']['verify']['steps'];
-    $versionIndex = $verificationIndex = null;
-    foreach ($steps as $index => $step) {
-        $run = $step['run'] ?? '';
-        if (str_contains($run, '< VERSION')) {
-            $versionIndex = $index;
-            expect($run)->toContain('test ', 'RELEASE_VERSION', 'GITHUB_REF_NAME')
-                ->and($step['env']['RELEASE_VERSION'] ?? '')->toContain('github.event.inputs.version');
-        }
-        if (str_contains($run, 'bin/ci-check')) {
-            $verificationIndex = $index;
-        }
-    }
-    expect($versionIndex)->not->toBeNull()
-        ->and($verificationIndex)->not->toBeNull()
-        ->and($verificationIndex)->toBeGreaterThan($versionIndex);
+    $source = (string) file_get_contents(__DIR__.'/../../.github/workflows/release.yml');
+    $verifier = $workflow['jobs']['verify-ci'] ?? [];
+    $dispatchInputs = $workflow['on']['workflow_dispatch']['inputs'] ?? [];
+    $script = implode("\n", array_map(
+        static fn (array $step): string => ($step['script'] ?? '')."\n".($step['run'] ?? ''),
+        $verifier['steps'] ?? [],
+    ));
+
+    expect($source)->not->toContain('./.github/workflows/quality.yml', 'bin/ci-check')
+        ->and($dispatchInputs)->toHaveKey('sha')
+        ->and($dispatchInputs['sha']['required'] ?? false)->toBeTrue()
+        ->and($script)->toContain('ci.yml', 'head_sha', 'main', 'push', 'success')
+        ->and($script)->toMatch('/listWorkflowRuns|actions\/workflows\/ci\.yml\/runs/');
+});
+
+test('deployment consumes only the exact successful CI commit and never repeats quality', function (): void {
+    $workflow = Yaml::parseFile(__DIR__.'/../../.github/workflows/deploy.yml');
+    $source = (string) file_get_contents(__DIR__.'/../../.github/workflows/deploy.yml');
+    $on = $workflow['on'] ?? [];
+    $jobs = $workflow['jobs'] ?? [];
+    $verifier = $jobs['verify-ci'] ?? [];
+    $deploy = $jobs['deploy'] ?? [];
+    $verification = implode("\n", array_map(
+        static fn (array $step): string => ($step['script'] ?? '')."\n".($step['run'] ?? '')."\n".json_encode($step['env'] ?? []),
+        $verifier['steps'] ?? [],
+    ));
+    $checkout = array_values(array_filter(
+        $deploy['steps'] ?? [],
+        static fn (array $step): bool => str_starts_with($step['uses'] ?? '', 'actions/checkout@'),
+    ));
+
+    expect($source)->not->toContain('./.github/workflows/quality.yml', 'bin/ci-check')
+        ->and($on['workflow_run']['workflows'] ?? [])->toContain('Continuous Integration')
+        ->and($on['workflow_run']['types'] ?? [])->toContain('completed')
+        ->and($on)->toHaveKey('workflow_dispatch')
+        ->and($on['workflow_dispatch']['inputs']['sha']['required'] ?? false)->toBeTrue()
+        ->and($jobs)->toHaveKey('verify-ci')
+        ->and((array) ($deploy['needs'] ?? []))->toContain('verify-ci')
+        ->and($deploy['if'] ?? '')->toContain('VPS_DEPLOY_ENABLED')
+        ->and($verification)->toContain('workflow_run', 'head_sha', 'head_branch', 'main', 'push', 'success')
+        ->and($verification)->toMatch('/listWorkflowRuns|actions\/workflows\/ci\.yml\/runs/')
+        ->and($checkout)->toHaveCount(1)
+        ->and($checkout[0]['with']['ref'] ?? '')->toContain('needs.verify-ci.outputs');
 });

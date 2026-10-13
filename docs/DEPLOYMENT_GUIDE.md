@@ -1,6 +1,9 @@
 # Despliegue de dbCMS: VPS/Plesk y alternativa Docker
 
-El repositorio se verifica con Docker. CI, releases y despliegue reutilizan `.github/workflows/quality.yml`: Composer validate/audit, Pint, PHPStan nivel 8, Pest y Vite. El flujo también construye la imagen de producción y comprueba sus artefactos. No hay PHP ni Composer en el host de los workflows.
+El repositorio se verifica con Docker. `ci.yml` ejecuta Composer validate/audit,
+Pint, PHPStan nivel 8, Pest, Vite y la construcción de producción. Releases y
+despliegues exigen una ejecución correcta de ese CI para el SHA exacto que consumen,
+sin repetir el gate completo. No hay PHP ni Composer en el host de los workflows.
 
 ## VPS/Plesk: alojamiento existente
 
@@ -144,4 +147,4 @@ No elimine los volúmenes para actualizar. La desinstalación de un módulo del 
 
 ## Distribuciones ZIP
 
-`bin/build-release-zip.sh` delega en el contenedor CI al invocarlo desde el host. Exporta el commit de Git, instala dependencias de producción y compila Vite. El workflow de release exige que la versión coincida con `VERSION`, publica archivos con SHA256 y la imagen OCI. El mismo paquete admite el alojamiento VPS/Plesk existente. La imagen OCI y Compose son una alternativa opcional, no un requisito para servir la web.
+`bin/build-release-zip.sh` delega en el contenedor CI al invocarlo desde el host. Exporta el commit de Git, instala dependencias de producción y compila Vite. El workflow de release exige que la versión coincida con `VERSION` y que el SHA exacto haya superado CI; después publica archivos con SHA256 y la imagen OCI. El mismo paquete admite el alojamiento VPS/Plesk existente. La imagen OCI y Compose son una alternativa opcional, no un requisito para servir la web.

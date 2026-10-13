@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-10-13
+
+### Fixed
+- Release publication now requires a successful `main` CI run for the exact tagged commit instead of repeating the complete quality gate.
+- Deployment consumes the exact commit approved by CI and remains conditional on `VPS_DEPLOY_ENABLED=true`.
+- Stable tags are immutable. Packagist had already published `v1.0.0` from `3c8619b`; the recovery procedure restores that original source and assigns the corrected delivery to `v1.0.1`.
+- The recovery procedure withdraws incompatible `v1.0.0` archives and container tags, leaving the historical version as a source-only Composer/Git release.
+
 ## [1.0.0] - 2026-10-13
 
 ### Added
@@ -47,4 +55,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Local and remote release evidence is tracked separately in [the publication validation](docs/RELEASE_VALIDATION_2026-10-13.md). Providers and deployments require their own configured connections; this release does not certify external hosting or search rankings.
 
+[1.0.1]: https://github.com/dbravoan/dbcms/releases/tag/v1.0.1
 [1.0.0]: https://github.com/dbravoan/dbcms/releases/tag/v1.0.0

@@ -74,18 +74,18 @@ después del commit, del gate local y de los checks de `main`.
 
 ## 3. Pipeline de entrega
 
-CI, release y deploy llaman al mismo workflow reutilizable `quality.yml`, que ejecuta las comprobaciones dentro de Docker. El gate incluye Composer validate/audit, Pint, PHPStan nivel 8, Pest, compilación Vite y construcción de la imagen de producción.
+`ci.yml` ejecuta una sola vez el gate completo dentro de Docker: Composer validate/audit, Pint, PHPStan nivel 8, Pest, compilación Vite y construcción de la imagen de producción. La publicación y el despliegue consumen esa decisión para el mismo SHA y no repiten el gate.
 
-`release.yml` exige que la versión de tag o entrada manual coincida con `VERSION`.
+`release.yml` exige que la versión de tag o entrada manual coincida con `VERSION` y que exista una ejecución correcta de `ci.yml`, originada por un push a `main`, cuyo `head_sha` sea exactamente el commit que se publicará.
 Compila AMD64 y ARM64 en runners nativos separados, publica resultados intermedios
 por digest, arranca cada imagen para comprobar su runtime y sólo después crea y
 verifica el manifiesto multiarquitectura. La release espera ese manifiesto y los
 archivos ZIP, tarball y checksums. `bin/build-release-zip.sh` ejecuta Composer y PHP
 dentro del contenedor CI.
 
-`deploy.yml` requiere `VPS_DEPLOY_ENABLED=true`, un entorno `production` y los secretos SSH documentados en [la guía operativa](DEPLOYMENT_GUIDE.md). Envía un paquete construido en Docker y una imagen CLI identificada por SHA. Conserva PHP-FPM/Plesk, releases/current/shared; ejecuta una migración única en el contenedor CLI y exige /up con HTTP 200. Una promoción fallida restaura el enlace de código anterior si está disponible; no revierte la base de datos.
+`deploy.yml` se activa después de un CI correcto sobre `main` y usa exactamente su `head_sha`; la ejecución manual aplica la misma comprobación. Requiere además `VPS_DEPLOY_ENABLED=true`, un entorno `production` y los secretos SSH documentados en [la guía operativa](DEPLOYMENT_GUIDE.md). Envía un paquete construido en Docker y una imagen CLI identificada por SHA. Conserva PHP-FPM/Plesk, releases/current/shared; ejecuta una migración única en el contenedor CLI y exige /up con HTTP 200. Una promoción fallida restaura el enlace de código anterior si está disponible; no revierte la base de datos.
 
-Para publicar una versión ya preparada (esta primera publicación conserva `1.0.0`):
+Para publicar una versión ya preparada:
 
 ```bash
 git status --short
@@ -93,20 +93,27 @@ git status --short
 # Confirmar los archivos revisados y pasar el gate local antes de publicar main.
 git push -u origin main
 # Esperar los checks de GitHub del mismo commit antes de crear la etiqueta.
-git tag -a v1.0.0 -m 'dbCMS v1.0.0 - Initial Enterprise Release' main
-git rev-parse main 'v1.0.0^{}'
-git push origin refs/tags/v1.0.0
+git tag -a v1.0.1 -m 'dbCMS v1.0.1' main
+git rev-parse main 'v1.0.1^{}'
+git push origin refs/tags/v1.0.1
 ```
 
-Los dos SHA de la comprobación deben coincidir. Si existe una etiqueta únicamente
-local de una versión todavía no publicada, conservar antes una referencia de
-recuperación local y recrearla en el commit verificado; no publicar el respaldo.
-Las etiquetas remotas son inmutables. La única excepción registrada es la primera
-`v1.0.0`: su ejecución inicial no llegó a crear una release y el propietario autorizó
-moverla al commit que corrige la compilación ARM64, comprobando antes que la referencia
-remota conserva exactamente el objeto publicado por esta entrega. No usar
-`git push --tags`, que puede publicar referencias ajenas. Si los checks de `main`
-requieren una corrección, confirmar esa corrección y repetirlos antes de etiquetar.
+Los dos SHA de la comprobación deben coincidir. Toda etiqueta estable publicada es
+inmutable, incluso si GitHub todavía no ha creado su release: Packagist u otros
+consumidores pueden haber registrado ya su referencia. Una corrección requiere una
+nueva versión PATCH. No usar `git push --tags`, que puede publicar referencias ajenas.
+Si los checks de `main` requieren una corrección, confirmar esa corrección y repetirlos
+antes de crear la nueva etiqueta.
+
+### Recuperación de `v1.0.0`
+
+Packagist publicó `v1.0.0` desde `3c8619b05b253f4ac609e54ff9ec73a6d59d42d3`.
+La etiqueta se movió después a `7c79077cf683ae59b113eb71a712f636aadbdbcd`,
+operación que Packagist bloqueó por inmutabilidad. La recuperación restaura `v1.0.0`
+a su commit original, retira los archivos y etiquetas OCI creados desde el contenido
+incompatible y conserva esa versión como distribución source-only de Composer/Git.
+La corrección de entrega se publica como `v1.0.1`. Estas operaciones remotas sólo se
+consideran terminadas cuando GitHub, GHCR y Packagist muestran las referencias esperadas.
 
 Tras el push de la etiqueta, esperar el workflow `release.yml` y comprobar los dos
 archivos de distribución, sus checksums, la imagen multiarquitectura y la release.

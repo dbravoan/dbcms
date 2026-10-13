@@ -34,7 +34,7 @@ dbcms/
 │   ├── ci.yml                        # Calls containerized quality gate
 │   ├── quality.yml                   # Isolated CI: audits, assets, Pint, PHPStan 8, Pest, production smoke
 │   ├── deploy.yml                    # Opt-in VPS/Plesk releases, Docker CLI, strict health gate and symlink rollback
-│   ├── release.yml                   # Tagged releases: quality gate, version sync, ZIP + multi-arch image
+│   ├── release.yml                   # Tagged releases: exact-SHA CI proof, version sync, archives + multi-arch image
 │   └── dependabot.yml                # Automated dependency update PRs
 │
 ├── app/                              # Microkernel & Core Application Domain

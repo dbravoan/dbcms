@@ -7,35 +7,99 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (e.g. 1.0.0)"
+        description: "Release version (e.g. 1.0.1)"
         required: true
-        default: "1.0.0"
+        default: "1.0.1"
+      sha:
+        description: "Exact 40-character commit SHA already validated by CI"
+        required: true
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
-  contents: write
-  packages: write
+  actions: read
+  contents: read
 
 jobs:
-  quality-gate:
-    uses: ./.github/workflows/quality.yml
+  verify-ci:
+    name: Verify Exact Main CI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      target_sha: ${{ steps.release.outputs.target_sha }}
+      version: ${{ steps.release.outputs.version }}
+
+    steps:
+      - name: Checkout Candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.sha || github.ref }}
+          fetch-depth: 0
+
+      - name: Resolve Immutable Release Identity
+        id: release
+        env:
+          REQUESTED_SHA: ${{ inputs.sha || '' }}
+          REQUESTED_VERSION: ${{ inputs.version || '' }}
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          target_sha="$(git rev-parse 'HEAD^{commit}')"
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            [[ "$REQUESTED_SHA" =~ ^[0-9a-f]{40}$ ]]
+            test "$target_sha" = "$REQUESTED_SHA"
+            test "$REQUESTED_VERSION" = "$version"
+            test "$GITHUB_REF" = "refs/tags/v${version}"
+          else
+            test "$GITHUB_REF_TYPE" = tag
+            test "$GITHUB_REF_NAME" = "v${version}"
+            test "$(git cat-file -t "refs/tags/${GITHUB_REF_NAME}")" = tag
+          fi
+          echo "target_sha=${target_sha}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Require Successful CI Push For Exact Main Commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ steps.release.outputs.target_sha }}
+        run: |
+          response="$(curl --fail-with-body --silent --show-error \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --get "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" \
+            --data-urlencode "branch=main" \
+            --data-urlencode "event=push" \
+            --data-urlencode "status=success" \
+            --data-urlencode "head_sha=${TARGET_SHA}" \
+            --data-urlencode "per_page=1")"
+          jq -e --arg sha "$TARGET_SHA" '
+            [.workflow_runs[] | select(
+              .head_sha == $sha and
+              .head_branch == "main" and
+              .event == "push" and
+              .status == "completed" and
+              .conclusion == "success"
+            )] | length == 1
+          ' <<< "$response"
 
   build-standalone-zip:
     name: Build Standalone Versioned ZIP
-    needs: [quality-gate]
+    needs: [verify-ci]
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify-ci.outputs.target_sha }}
 
       - name: Package Standalone Release Archive
         env:
-          RELEASE_VER: ${{ github.event.inputs.version || github.ref_name }}
+          RELEASE_VER: ${{ needs.verify-ci.outputs.version }}
         run: |
           test "${RELEASE_VER#v}" = "$(tr -d '[:space:]' < VERSION)"
           bash bin/build-release-zip.sh --version="$RELEASE_VER"
@@ -49,7 +113,7 @@ jobs:
 
   docker-publish:
     name: Build & Verify Docker Image (${{ matrix.arch }})
-    needs: [quality-gate]
+    needs: [verify-ci]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     strategy:
@@ -66,9 +130,16 @@ jobs:
     env:
       REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
 
+    permissions:
+      actions: read
+      contents: read
+      packages: write
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify-ci.outputs.target_sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -86,8 +157,7 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ needs.verify-ci.outputs.version }}
 
       - name: Build and push multi-arch image
         id: build
@@ -129,12 +199,17 @@ jobs:
 
   docker-merge:
     name: Publish & Verify Multi-Arch Docker Manifest
-    needs: [docker-publish]
+    needs: [verify-ci, docker-publish]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
 
     env:
       REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
+
+    permissions:
+      actions: read
+      contents: read
+      packages: write
 
     steps:
       - name: Set up Docker Buildx
@@ -153,8 +228,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ needs.verify-ci.outputs.version }}
+            type=raw,value=latest
 
       - name: Download architecture digests
         uses: actions/download-artifact@v4
@@ -185,13 +260,19 @@ jobs:
 
   create-github-release:
     name: Publish GitHub Release
-    needs: [build-standalone-zip, docker-merge]
+    needs: [verify-ci, build-standalone-zip, docker-merge]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      actions: read
+      contents: write
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify-ci.outputs.target_sha }}
 
       - name: Download Built Archives
         uses: actions/download-artifact@v4

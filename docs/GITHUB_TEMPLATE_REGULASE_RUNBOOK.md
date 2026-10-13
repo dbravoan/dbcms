@@ -1,9 +1,11 @@
 # dbCMS como plantilla de GitHub para proyectos independientes
 
 Fecha: 13 de octubre de 2026. Repositorio: `git@github.com:dbravoan/dbcms.git`.
-La comprobación autenticada previa a la publicación confirmó un repositorio privado,
-sin ramas ni etiquetas remotas, con **Template repository** y Actions activados.
-No hay secretos ni variables de repositorio; el despliegue VPS sigue deshabilitado.
+La comprobación autenticada inicial confirmó un repositorio privado con
+**Template repository** y Actions activados. La plantilla ya tiene historial de
+publicación; antes de copiarla se debe comprobar que cada etiqueta estable conserva
+su commit original. No hay secretos ni variables de repositorio y el despliegue VPS
+sigue deshabilitado.
 Conservar la visibilidad privada. El [informe de publicación](RELEASE_VALIDATION_2026-10-13.md)
 separa estos datos de los resultados posteriores del push y de Actions.
 En esta entrega sólo se publica dbCMS: no se crean el blog personal ni RegulaSE.
@@ -24,14 +26,13 @@ En esta entrega sólo se publica dbCMS: no se crean el blog personal ni RegulaSE
 4. Mantener `CMS_QUICK_LOGIN=false`, ejecución nativa inicialmente desactivada y
    proveedores sin claves en las configuraciones de ejemplo. RegulaSE no hereda
    conexiones ni aprobaciones del CMS de desarrollo.
-5. Para esta primera publicación, conservar `VERSION=1.0.0`, confirmar el estado
-   revisado en el commit inicial, pasar el gate local y publicar sólo `main` sin
-   forzar. Esperar los checks de GitHub. Para futuras modificaciones, usar ramas y
-   PR con el mismo quality gate antes de fusionar.
-6. Conservar una referencia local de recuperación de la etiqueta antigua todavía
-   sin publicar. Recrear `v1.0.0` como etiqueta anotada sobre el commit definitivo
-   de `main` que haya superado las verificaciones. Publicar sólo esa etiqueta y
-   esperar el workflow de release; no enviar respaldos ni todas las referencias.
+5. Mantener las versiones canónicas alineadas, pasar el gate local y publicar sólo
+   `main` sin forzar. Esperar el CI del mismo SHA. Para futuras modificaciones, usar
+   ramas y PR con el mismo quality gate antes de fusionar.
+6. Crear una etiqueta anotada nueva sólo después de que el commit definitivo de
+   `main` haya superado CI. Las etiquetas estables publicadas son inmutables; cualquier
+   corrección requiere una versión PATCH nueva. Publicar sólo la etiqueta concreta;
+   no enviar respaldos ni todas las referencias.
 
 `bin/build-release-zip.sh` usa **`git archive HEAD`**. Un ZIP creado antes de
 commitear las correcciones contiene código anterior, aunque una imagen construida

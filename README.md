@@ -8,7 +8,7 @@
 [![MCP](https://img.shields.io/badge/MCP-Streamable%20HTTP%20%2B%20JSON--RPC%20%2B%20SSE-purple.svg)](#servidor-mcp)
 [![Entorno](https://img.shields.io/badge/Entorno-Sail%20(Docker)%20Zero--Host-sky.svg)](#puesta-en-marcha)
 [![Versionado](https://img.shields.io/badge/Versionado-SemVer%202.0.0-orange.svg)](#versionado-y-despliegue)
-[![Versión](https://img.shields.io/badge/Versión-1.0.0-orange.svg)](CHANGELOG.md)
+[![Versión](https://img.shields.io/badge/Versión-1.0.1-orange.svg)](CHANGELOG.md)
 [![PHPStan](https://img.shields.io/badge/PHPStan-nivel%208%20sin%20baseline-magenta.svg)](#calidad-y-verificación)
 [![Tests](https://img.shields.io/badge/Tests-Pest%20(Unit%2C%20Feature%2C%20Architecture)-green.svg)](#calidad-y-verificación)
 [![Stack](https://img.shields.io/badge/Stack-Laravel%2013%20·%20PHP%208.3-red.svg)](#qué-es-dbcms)
@@ -449,7 +449,7 @@ Para convertir el repositorio actual en plantilla y crear RegulaSE:
 
 ## Versionado y despliegue
 
-El proyecto sigue **SemVer 2.0.0** (`MAYOR.MENOR.PARCHE`) y mantiene su versión en el archivo `VERSION`. La versión actual es **1.0.0** (véase [`CHANGELOG.md`](CHANGELOG.md)).
+El proyecto sigue **SemVer 2.0.0** (`MAYOR.MENOR.PARCHE`) y mantiene su versión en el archivo `VERSION`. La versión actual es **1.0.1** (véase [`CHANGELOG.md`](CHANGELOG.md)).
 
 ```bash
 # Consultar la versión activa y el estado del repositorio
@@ -462,13 +462,13 @@ El proyecto sigue **SemVer 2.0.0** (`MAYOR.MENOR.PARCHE`) y mantiene su versión
 git diff -- VERSION package.json package-lock.json
 ```
 
-También admite `--set=2.1.0` para fijar una versión concreta. El comando actualiza `VERSION` y `APP_VERSION` si existe en `.env`; no sincroniza automáticamente `package.json` ni `package-lock.json`. Alinear esas versiones cuando se incrementen. `--tag` está retirado y falla antes de escribir: crear la etiqueta anotada después del commit y de sus verificaciones, siguiendo [el procedimiento de publicación](docs/DEPLOYMENT_AND_VERSIONING.md). Para esta primera publicación se conserva **1.0.0**. Los flujos de GitHub Actions cubren el ciclo completo:
+También admite `--set=2.1.0` para fijar una versión concreta. El comando actualiza `VERSION` y `APP_VERSION` si existe en `.env`; no sincroniza automáticamente `package.json` ni `package-lock.json`. Alinear esas versiones cuando se incrementen. `--tag` está retirado y falla antes de escribir: crear la etiqueta anotada después del commit y de sus verificaciones, siguiendo [el procedimiento de publicación](docs/DEPLOYMENT_AND_VERSIONING.md). Toda etiqueta estable publicada es inmutable; una corrección posterior requiere una nueva versión PATCH. Los flujos de GitHub Actions cubren el ciclo completo:
 
 | Workflow | Disparador | Acción |
 | --- | --- | --- |
 | `ci.yml` | Push y pull requests a `main` y `develop` | Validación de dependencias, auditoría de seguridad, Pint, PHPStan, build de frontend y Pest |
-| `deploy.yml` | Push a `main` o disparo manual; requiere `VPS_DEPLOY_ENABLED=true` | Conserva VPS/Plesk y releases/current/shared. Build y Artisan CLI en Docker; huella SSH fijada, mantenimiento, migración única, recarga PHP-FPM y `/up` HTTP 200. Fallos restauran el código anterior sin rollback de datos. Docker de producción es una alternativa opcional. |
-| `release.yml` | Etiquetas `v*.*.*` o disparo manual | Control de calidad, comprobación de sincronización de versión y publicación del artefacto: ZIP independiente e imagen Docker multiarquitectura |
+| `deploy.yml` | CI correcto sobre `main` o disparo manual; requiere `VPS_DEPLOY_ENABLED=true` | Consume el SHA exacto aprobado por CI. Conserva VPS/Plesk y releases/current/shared, con Artisan CLI en Docker, huella SSH fijada, mantenimiento, migración única, recarga PHP-FPM y `/up` HTTP 200. |
+| `release.yml` | Etiquetas `v*.*.*` o disparo manual | Verifica que el SHA exacto ya superó CI y publica ZIP, TAR.GZ, checksums e imagen Docker multiarquitectura sin repetir el gate completo |
 
 La guía completa está en [`docs/DEPLOYMENT_AND_VERSIONING.md`](docs/DEPLOYMENT_AND_VERSIONING.md), la [validación de publicación](docs/RELEASE_VALIDATION_2026-10-13.md) distingue pruebas locales y resultados de GitHub, y el runbook de rendimiento está en [`docs/19_PERFORMANCE_AND_DEPLOYMENT_RUNBOOK.md`](docs/19_PERFORMANCE_AND_DEPLOYMENT_RUNBOOK.md).
 

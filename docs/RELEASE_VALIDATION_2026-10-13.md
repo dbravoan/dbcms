@@ -1,18 +1,20 @@
-# Validación de publicación de dbCMS 1.0.0
+# Validación y recuperación de publicación de dbCMS 1.0.0 / 1.0.1
 
-Fecha: 13 de octubre de 2026. Entrega: repositorio privado `dbravoan/dbcms` como
-plantilla, rama `main` y etiqueta anotada `v1.0.0` en el mismo commit definitivo.
-No se crean proyectos derivados ni se despliega a un dominio en esta entrega.
+Fecha: 13 de octubre de 2026. El repositorio privado `dbravoan/dbcms` permanece
+como plantilla y no se despliega a un dominio. Packagist publicó `v1.0.0` desde
+`3c8619b05b253f4ac609e54ff9ec73a6d59d42d3`; una modificación posterior de la
+etiqueta fue bloqueada por su política de versiones estables inmutables. Este
+documento conserva la evidencia local y define la recuperación como `v1.0.0`
+histórica source-only más una nueva `v1.0.1` con las correcciones de entrega.
 
 ## Versión y preparación
 
-- `VERSION`, `package.json`, la raíz de `package-lock.json`, defaults y README
-  indican `1.0.0`. Se conserva esta versión para su primera publicación.
-- Las correcciones previas quedaron fusionadas mediante `--amend`. La etiqueta
-  local antigua señalaba el commit previo. Esta entrega conserva su referencia
-  de recuperación local y etiqueta el commit definitivo, sin publicar respaldos.
-- La comprobación autenticada previa a publicar confirmó repositorio privado sin referencias
-  remotas, plantilla y Actions habilitados, sin secretos ni variables de repositorio.
+- La recuperación alinea `VERSION`, los manifiestos Node, defaults y README en
+  `1.0.1`. `v1.0.0` conserva el contenido que Packagist ya hizo público.
+- Se conservan referencias locales de recuperación para los commits y objetos de
+  etiqueta implicados. Ningún respaldo local se publica como rama o etiqueta remota.
+- La comprobación autenticada confirmó repositorio privado, plantilla y Actions
+  habilitados, sin secretos ni variables de repositorio.
   `VPS_DEPLOY_ENABLED` no está activo; el alojamiento no recibe un despliegue.
 - La revisión de archivos e historial no encontró credenciales reales versionadas;
   las 35 capturas contienen contenido QA, sin claves ni tokens visibles.
@@ -46,7 +48,7 @@ La corrección retira el etiquetado automático y conserva `--tag` como opción
 obsoleta que se rechaza antes de escribir. Las guías utilizan:
 incrementar cuando corresponda, alinear los manifiestos, confirmar, verificar,
 publicar `main`, esperar sus checks y crear una etiqueta anotada explícita.
-Esta entrega no incrementa la versión.
+La corrección funcional conserva este comportamiento y la entrega pasa a `1.0.1`.
 
 Las tres regresiones fallaron antes de corregir el comando. Después pasaron los
 siete casos del comando, con 36 aserciones: rechazo sin alterar `VERSION`, `.env`
@@ -90,26 +92,42 @@ release. Las regresiones de YAML se registraron en rojo contra el workflow anter
 y pasan después de la corrección; también pasan las 103 pruebas del conjunto de
 regresión, con 1.943 aserciones, y `actionlint` no informa errores.
 
-El propietario decidió conservar `v1.0.0` y autorizó mover esta primera etiqueta,
-que aún no tenía release, al commit corregido. La operación queda limitada mediante
-una comprobación exacta del objeto remoto anterior; una referencia cambiada por otra
-parte no se sobrescribe. Esta excepción no cambia la regla de inmutabilidad para
-versiones futuras.
+Aunque GitHub todavía no había creado una release en el primer intento, Packagist
+ya había publicado `v1.0.0` desde `3c8619b`. La etiqueta se movió posteriormente a
+`7c79077cf683ae59b113eb71a712f636aadbdbcd`; Packagist rechazó la actualización
+porque una versión estable no puede cambiar de contenido. La regla se aplica desde
+la primera publicación y no admite esta excepción.
+
+La recuperación prevista restaura `v1.0.0` a `3c8619b`, retira de GitHub los
+archivos construidos desde `7c79077` y elimina de GHCR las referencias `1.0.0` y
+`latest` incompatibles. La release histórica queda limitada al código fuente que
+GitHub genera para la etiqueta. El código corregido se versiona como `v1.0.1`.
+Ninguna de estas operaciones remotas se da por terminada en este documento hasta
+comprobar sus referencias y artefactos después de ejecutarlas.
+
+Para reducir el tiempo sin rebajar el control, `main` ejecuta el gate completo una
+sola vez. La release exige mediante la API de GitHub un CI correcto de tipo `push`
+sobre `main` y con `head_sha` idéntico al commit etiquetado. El despliegue consume
+ese mismo SHA aprobado y permanece condicionado por `VPS_DEPLOY_ENABLED=true`.
 
 La publicación sólo se considera cerrada cuando quedan acreditados:
 
-1. Gate completo del código corregido y pruebas de que `--tag` no altera archivos
-   ni referencias, también al combinarlo con `--bump` o `--set`.
-2. Paquete construido desde el commit definitivo, checksum y arranque tras extraerlo.
-3. `main` local/remoto idénticos y checks de GitHub correspondientes en verde.
-4. Etiqueta `v1.0.0` local/remota resuelta al mismo commit que `main`.
-5. Workflow de release correcto, ZIP/TAR/checksums e imagen amd64/arm64 publicados.
-6. Plantilla privada utilizable, sin envío de respaldos ni activación de despliegue.
+1. `v1.0.0` local, GitHub y Packagist resuelven a `3c8619b`; su release no contiene
+   ZIP/TAR propios ni una imagen OCI bajo `1.0.0`.
+2. Gate completo del commit de `v1.0.1`, con pruebas de que `--tag` no altera
+   archivos ni referencias, también al combinarlo con `--bump` o `--set`.
+3. `main`, `origin/main` y `v1.0.1` resuelven al mismo SHA, cuyo CI está en verde.
+4. La release valida ese SHA exacto sin repetir el gate y publica ZIP, TAR.GZ,
+   checksums e imagen privada amd64/arm64 bajo `1.0.1` y `latest`.
+5. Packagist muestra `v1.0.1` con el mismo SHA y conserva `v1.0.0` en `3c8619b`.
+6. La plantilla sigue privada y el despliegue continúa omitido.
 
 El SHA final y los logs privados se registran en la evidencia de ejecución externa
 al contenido del commit, evitando que documentar su propio SHA cambie ese commit.
-Los resultados remotos y el SHA se consultan en [Actions](https://github.com/dbravoan/dbcms/actions)
-y en [la release v1.0.0](https://github.com/dbravoan/dbcms/releases/tag/v1.0.0).
+Los resultados remotos y el SHA se consultan en [Actions](https://github.com/dbravoan/dbcms/actions),
+en [v1.0.0](https://github.com/dbravoan/dbcms/releases/tag/v1.0.0), en
+[v1.0.1](https://github.com/dbravoan/dbcms/releases/tag/v1.0.1) y en
+[Packagist](https://packagist.org/packages/dbravoan/dbcms).
 Estos criterios no se presentan como comprobaciones remotas ya ejecutadas por el
 mero hecho de incluirlos en el commit. La evidencia local se conserva en
 `storage/app/runtime-verification/release-20261013/`, excluida de Git, sin credenciales.

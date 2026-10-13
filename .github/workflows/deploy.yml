@@ -1,24 +1,88 @@
 name: Deploy VPS / Plesk Release
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["Continuous Integration"]
+    types: [completed]
   workflow_dispatch:
+    inputs:
+      sha:
+        description: "Exact 40-character main commit SHA already validated by CI"
+        required: true
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false
 permissions:
+  actions: read
   contents: read
 jobs:
-  quality:
-    uses: ./.github/workflows/quality.yml
+  verify-ci:
+    name: Verify Exact Main CI
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      target_sha: ${{ steps.candidate.outputs.target_sha }}
+    steps:
+      - name: Resolve immutable deployment candidate
+        id: candidate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_RUN_SHA: ${{ github.event.workflow_run.head_sha || '' }}
+          WORKFLOW_RUN_BRANCH: ${{ github.event.workflow_run.head_branch || '' }}
+          WORKFLOW_RUN_EVENT: ${{ github.event.workflow_run.event || '' }}
+          WORKFLOW_RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion || '' }}
+          REQUESTED_SHA: ${{ inputs.sha || '' }}
+        run: |
+          if [ "$EVENT_NAME" = workflow_run ]; then
+            test "$WORKFLOW_RUN_BRANCH" = main
+            test "$WORKFLOW_RUN_EVENT" = push
+            test "$WORKFLOW_RUN_CONCLUSION" = success
+            target_sha="$WORKFLOW_RUN_SHA"
+          else
+            target_sha="$REQUESTED_SHA"
+          fi
+          [[ "$target_sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "target_sha=${target_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Require successful CI push for exact main commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ steps.candidate.outputs.target_sha }}
+        run: |
+          response="$(curl --fail-with-body --silent --show-error \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --get "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" \
+            --data-urlencode "branch=main" \
+            --data-urlencode "event=push" \
+            --data-urlencode "status=success" \
+            --data-urlencode "head_sha=${TARGET_SHA}" \
+            --data-urlencode "per_page=1")"
+          jq -e --arg sha "$TARGET_SHA" '
+            [.workflow_runs[] | select(
+              .head_sha == $sha and
+              .head_branch == "main" and
+              .event == "push" and
+              .status == "completed" and
+              .conclusion == "success"
+            )] | length == 1
+          ' <<< "$response"
+
   deploy:
-    needs: quality
+    needs: verify-ci
     # Explicit repository opt-in replaces unsupported secrets in job conditions.
     if: vars.VPS_DEPLOY_ENABLED == 'true'
     environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
+      TARGET_SHA: ${{ needs.verify-ci.outputs.target_sha }}
       VPS_HOST: ${{ secrets.VPS_HOST }}
       VPS_USER: ${{ secrets.VPS_USER }}
       VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
@@ -29,6 +93,8 @@ jobs:
       VPS_FPM_SERVICE: ${{ vars.VPS_FPM_SERVICE }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify-ci.outputs.target_sha }}
       - name: Validate destination and pin SSH host
         run: |
           [[ "$VPS_HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
@@ -44,19 +110,19 @@ jobs:
           test "$(ssh-keygen -lf ~/.ssh/known_hosts | awk '{print $2}' | head -1)" = "$VPS_SSH_FINGERPRINT"
       - name: Build verified package and CLI runtime in Docker
         run: |
-          RELEASE_NAME="release-$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA}"
+          RELEASE_NAME="release-$(date -u +%Y%m%d%H%M%S)-${TARGET_SHA}"
           VERSION="$(tr -d '[:space:]' < VERSION)"
           echo "RELEASE_NAME=$RELEASE_NAME" >> "$GITHUB_ENV"
           bash bin/build-release-zip.sh --version="$VERSION"
           cp "dist/dbcms-v$VERSION.tar.gz" "$RELEASE_NAME.tar.gz"
-          docker build --target php-base -f docker/production/Dockerfile -t "dbcms-cli:${GITHUB_SHA}" .
-          docker save "dbcms-cli:${GITHUB_SHA}" | gzip > "$RELEASE_NAME-cli.tar.gz"
+          docker build --target php-base -f docker/production/Dockerfile -t "dbcms-cli:${TARGET_SHA}" .
+          docker save "dbcms-cli:${TARGET_SHA}" | gzip > "$RELEASE_NAME-cli.tar.gz"
           sha256sum "$RELEASE_NAME.tar.gz" "$RELEASE_NAME-cli.tar.gz" > "$RELEASE_NAME.sha256"
       - name: Transfer package and preserve existing hosting
         run: |
           scp -P "$VPS_PORT" -o StrictHostKeyChecking=yes "$RELEASE_NAME.tar.gz" "$RELEASE_NAME-cli.tar.gz" "$RELEASE_NAME.sha256" "$VPS_USER@$VPS_HOST:/tmp/"
           scp -P "$VPS_PORT" -o StrictHostKeyChecking=yes bin/deploy-vps-release.sh "$VPS_USER@$VPS_HOST:/tmp/$RELEASE_NAME-deploy.sh"
-          printf -v remote 'env VPS_DIR=%q RELEASE_NAME=%q VPS_CLI_IMAGE=%q VPS_HEALTH_URL=%q VPS_FPM_SERVICE=%q bash -s' "$VPS_DIR" "$RELEASE_NAME" "dbcms-cli:$GITHUB_SHA" "$VPS_HEALTH_URL" "$VPS_FPM_SERVICE"
+          printf -v remote 'env VPS_DIR=%q RELEASE_NAME=%q VPS_CLI_IMAGE=%q VPS_HEALTH_URL=%q VPS_FPM_SERVICE=%q bash -s' "$VPS_DIR" "$RELEASE_NAME" "dbcms-cli:$TARGET_SHA" "$VPS_HEALTH_URL" "$VPS_FPM_SERVICE"
           ssh -p "$VPS_PORT" -o StrictHostKeyChecking=yes "$VPS_USER@$VPS_HOST" "$remote" <<'REMOTE'
           set -euo pipefail
           cd /tmp
