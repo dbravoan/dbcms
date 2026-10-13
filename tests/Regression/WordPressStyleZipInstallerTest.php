@@ -79,6 +79,7 @@ test('release builder publishes a clearly named self-contained installer archive
 
     expect($builder)->toContain('dbcms-installer-v${VERSION}.zip')
         ->and($builder)->toContain('.env.installation.example', 'EMPEZAR.html')
+        ->and($builder)->toContain("! -name 'packages.php'", "! -name 'services.php'")
         ->and($builder)->toContain('vendor/autoload.php', 'public/build/manifest.json', 'storage/installed')
         ->and($builder)->toMatch('/(?:\.env|APP_KEY|private)[\s\S]*(?:fail|ERROR|exit)/i')
         ->and($workflow)->toContain('dbcms-installer-', 'Source code')
