@@ -66,7 +66,7 @@ final class InstallationProvisioningService implements InstallationProvisioningS
             throw new \RuntimeException('The existing OAuth key pair is incomplete; it will not be overwritten.');
         }
         if (! $privateExists) {
-            $this->command('passport:keys', ['--force' => true], $output);
+            $this->generateOAuthKeyPair();
             if (! File::isFile(storage_path('oauth-private.key')) || ! File::isFile(storage_path('oauth-public.key'))) {
                 throw new \RuntimeException('OAuth keys were not created.');
             }
@@ -85,6 +85,33 @@ final class InstallationProvisioningService implements InstallationProvisioningS
         if (! File::exists(public_path('storage')) && ! is_link(public_path('storage'))) {
             $this->command('storage:link', [], $output);
             $this->verifyStorageLink(public_path('storage'));
+        }
+    }
+
+    private function generateOAuthKeyPair(): void
+    {
+        $key = openssl_pkey_new([
+            'private_key_bits' => 4096,
+            'private_key_type' => OPENSSL_KEYTYPE_RSA,
+        ]);
+        if ($key === false || ! openssl_pkey_export($key, $private)) {
+            throw new \RuntimeException('OAuth private key generation failed.');
+        }
+        $details = openssl_pkey_get_details($key);
+        if ($details === false || ! isset($details['key'])) {
+            throw new \RuntimeException('OAuth public key generation failed.');
+        }
+
+        $this->writeKeyAtomically(storage_path('oauth-private.key'), $private, 0600);
+        $this->writeKeyAtomically(storage_path('oauth-public.key'), $details['key'], 0644);
+    }
+
+    private function writeKeyAtomically(string $path, string $contents, int $permissions): void
+    {
+        $temporary = $path.'.tmp.'.bin2hex(random_bytes(8));
+        if (file_put_contents($temporary, $contents, LOCK_EX) === false || ! chmod($temporary, $permissions) || ! rename($temporary, $path)) {
+            @unlink($temporary);
+            throw new \RuntimeException('OAuth key could not be persisted securely.');
         }
     }
 
