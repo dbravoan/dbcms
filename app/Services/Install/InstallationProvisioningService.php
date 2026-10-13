@@ -49,7 +49,10 @@ final class InstallationProvisioningService implements InstallationProvisioningS
 
             return new InstallationResultDTO(true, 'Aprovisionamiento completado con éxito.', $logs);
         } catch (\Throwable $error) {
-            Log::error('Installer provisioning failed', ['exception' => $error::class]);
+            Log::error('Installer provisioning failed', [
+                'exception' => $error::class,
+                'message' => $error->getMessage(),
+            ]);
 
             return new InstallationResultDTO(false, 'Error durante el aprovisionamiento. Revisa los logs del servidor.', $logs);
         }
