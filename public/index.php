@@ -6,6 +6,17 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
+require_once __DIR__.'/../bootstrap/InstallerBootstrap.php';
+
+$installerFailure = (new InstallerBootstrap(dirname(__DIR__), $_SERVER))->prepare();
+if ($installerFailure !== null) {
+    http_response_code(503);
+    header('Content-Type: text/html; charset=UTF-8');
+    header('Cache-Control: no-store, private');
+    echo InstallerBootstrap::render($installerFailure);
+    exit;
+}
+
 // Determine if the application is in maintenance mode...
 if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
     require $maintenance;

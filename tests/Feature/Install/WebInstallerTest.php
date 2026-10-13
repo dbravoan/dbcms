@@ -106,6 +106,7 @@ test('installer step 4 exposes the brand and front theme selectors', function ()
     $response->assertSee('Marca del CMS', false);
     $response->assertSee('name="brand"', false);
     $response->assertSee('name="front_theme"', false);
+    $response->assertSee('name="app_url"', false);
     // Brands discovered from disk, not hardcoded.
     $response->assertSee('value="dbcms"', false);
     $response->assertSee('value="termocms"', false);

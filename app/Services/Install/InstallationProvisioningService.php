@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Install;
 
+use App\Contracts\Services\InstallationEnvironmentServiceInterface;
 use App\Contracts\Services\InstallationProvisioningServiceInterface;
 use App\DTOs\Install\InstallationResultDTO;
 use App\Models\Role;
@@ -19,7 +20,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 final class InstallationProvisioningService implements InstallationProvisioningServiceInterface
 {
-    public function __construct(private readonly PassportKeyPermissionService $keys, private readonly ClientRepository $clients) {}
+    public function __construct(private readonly PassportKeyPermissionService $keys, private readonly ClientRepository $clients, private readonly InstallationEnvironmentServiceInterface $environment) {}
 
     public function provision(bool $withDemo = false, ?OutputInterface $output = null): InstallationResultDTO
     {
@@ -39,6 +40,12 @@ final class InstallationProvisioningService implements InstallationProvisioningS
             $this->command('db:seed', ['--class' => $withDemo ? PlatformShowcaseSeeder::class : CmsFoundationSeeder::class, '--force' => true], $output);
             DB::transaction(fn () => Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Administrador', 'description' => 'Acceso administrativo total']));
             $logs[] = $withDemo ? 'Datos de demostración solicitados inicializados.' : 'Estructura base inicializada sin contenido de demostración.';
+            $this->environment->write([
+                'SESSION_DRIVER' => 'database',
+                'CACHE_STORE' => 'database',
+                'QUEUE_CONNECTION' => 'database',
+            ]);
+            $logs[] = 'Sesiones, caché y cola configuradas para usar la base de datos.';
 
             return new InstallationResultDTO(true, 'Aprovisionamiento completado con éxito.', $logs);
         } catch (\Throwable $error) {

@@ -5,7 +5,7 @@ set -euo pipefail
 # dbCMS Standalone Release Package Builder
 # ==============================================================================
 # Produces self-contained, WordPress-style distribution archives:
-#   - dist/dbcms-v<VERSION>.zip
+#   - dist/dbcms-installer-v<VERSION>.zip
 #   - dist/dbcms-v<VERSION>.tar.gz
 #   - dist/checksums.txt (SHA256)
 # ==============================================================================
@@ -55,6 +55,10 @@ BUILD_TMP="$(mktemp -d /tmp/dbcms-build-XXXXXX)"
 SMOKE_TMP="$(mktemp -d /tmp/dbcms-smoke-XXXXXX)"
 
 cleanup() {
+    if [ -n "${SMOKE_PID:-}" ]; then
+        kill "$SMOKE_PID" 2>/dev/null || true
+        wait "$SMOKE_PID" 2>/dev/null || true
+    fi
     rm -rf "${BUILD_TMP}" "${SMOKE_TMP}"
 }
 trap cleanup EXIT
@@ -65,7 +69,11 @@ git archive HEAD | tar -x -C "${BUILD_TMP}"
 # Tracked development manifests must never be shipped as runtime configuration.
 find "$BUILD_TMP/bootstrap/cache" -type f -name '*.php' -delete
 rm -f "$BUILD_TMP/mcp/mcp_config.json" "$BUILD_TMP/.mcp.json"
-find "$BUILD_TMP" -maxdepth 1 -type f -name '.env*' ! -name '.env.example' ! -name '.env.production.example' -delete
+find "$BUILD_TMP" -maxdepth 1 -type f -name '.env*' \
+    ! -name '.env.example' \
+    ! -name '.env.production.example' \
+    ! -name '.env.installation.example' \
+    -delete
 
 echo "--> 2. Installing production PHP dependencies (no-dev, no-classmap-authoritative)..."
 cd "${BUILD_TMP}"
@@ -125,8 +133,45 @@ rm -f "${BUILD_TMP}/.env" \
 find "${BUILD_TMP}/storage" -type f -name '*.key' -delete
 find "${BUILD_TMP}/bootstrap/cache" -type f -name '*.php' -delete
 
-ZIP_NAME="dbcms-v${VERSION}.zip"
+ZIP_NAME="dbcms-installer-v${VERSION}.zip"
 TAR_NAME="dbcms-v${VERSION}.tar.gz"
+
+required_files=(
+    "EMPEZAR.html"
+    ".env.installation.example"
+    ".htaccess"
+    "public/.htaccess"
+    "public/index.php"
+    "public/build/manifest.json"
+    "vendor/autoload.php"
+)
+for required_file in "${required_files[@]}"; do
+    if [ ! -f "${BUILD_TMP}/${required_file}" ]; then
+        echo "ERROR: Required installer file missing: ${required_file}" >&2
+        exit 1
+    fi
+done
+
+# A release must start unconfigured. Templates may contain names and placeholders,
+# but runtime secrets, installation markers and generated OAuth keys are forbidden.
+for forbidden_file in \
+    "${BUILD_TMP}/.env" \
+    "${BUILD_TMP}/.env.production" \
+    "${BUILD_TMP}/storage/installed" \
+    "${BUILD_TMP}/storage/oauth-private.key" \
+    "${BUILD_TMP}/storage/oauth-public.key"; do
+    if [ -e "$forbidden_file" ]; then
+        echo "ERROR: Secret or installation state included in package: ${forbidden_file#${BUILD_TMP}/}" >&2
+        exit 1
+    fi
+done
+if grep -E '^APP_KEY=base64:[A-Za-z0-9+/]{43}=$' \
+    "${BUILD_TMP}/.env.example" \
+    "${BUILD_TMP}/.env.production.example" \
+    "${BUILD_TMP}/.env.installation.example" >/dev/null; then
+    echo "ERROR: A generated APP_KEY was found in an environment template" >&2
+    exit 1
+fi
 
 echo "--> 5. Packaging standalone archives into ${DIST_DIR}..."
 cd "${BUILD_TMP}"
@@ -137,19 +182,117 @@ echo "--> 6. Generating SHA256 checksums..."
 cd "${DIST_DIR}"
 sha256sum "${ZIP_NAME}" "${TAR_NAME}" > checksums.txt
 
-echo "--> 7. Executing automated smoke test on release ZIP..."
+echo "--> 7. Executing automated HTTP smoke test on release ZIP..."
 unzip -q "${DIST_DIR}/${ZIP_NAME}" -d "${SMOKE_TMP}"
 cd "${SMOKE_TMP}"
 
-php artisan --version >/dev/null 2>&1 || {
-    echo "ERROR: Smoke test failed: php artisan --version failed inside unpacked release archive" >&2
+test ! -e .env
+test ! -e storage/installed
+grep -Eq 'RewriteRule.+public/' .htaccess
+
+SMOKE_PORT="$((18000 + RANDOM % 1000))"
+SMOKE_URL="http://localhost:${SMOKE_PORT}"
+COOKIE_JAR="${SMOKE_TMP}/cookies.txt"
+php -S "127.0.0.1:${SMOKE_PORT}" -t public >"${SMOKE_TMP}/http-smoke.log" 2>&1 &
+SMOKE_PID=$!
+for _ in $(seq 1 30); do
+    if curl --fail-with-body --silent --show-error --location \
+        --cookie-jar "$COOKIE_JAR" --cookie "$COOKIE_JAR" \
+        --output "${SMOKE_TMP}/first-response.html" \
+        --write-out '%{http_code}' "${SMOKE_URL}/" >"${SMOKE_TMP}/http-status"; then
+        break
+    fi
+    sleep 0.2
+done
+
+HTTP_STATUS="$(cat "${SMOKE_TMP}/http-status" 2>/dev/null || true)"
+if [[ "$HTTP_STATUS" != "200" && "$HTTP_STATUS" != "302" ]]; then
+    cat "${SMOKE_TMP}/http-smoke.log" >&2
+    echo "ERROR: First HTTP request returned ${HTTP_STATUS:-no response}" >&2
+    exit 1
+fi
+if grep -qiE 'MissingAppKeyException|No application encryption key has been specified|Whoops, looks like something went wrong' \
+    "${SMOKE_TMP}/first-response.html"; then
+    echo "ERROR: First HTTP request exposed a Laravel bootstrap failure" >&2
+    exit 1
+fi
+test -s .env || {
+    echo "ERROR: First HTTP request did not create the installation environment" >&2
+    exit 1
+}
+grep -Eq '^APP_KEY="?base64:[A-Za-z0-9+/]{43}="?$' .env || {
+    echo "ERROR: First HTTP request did not persist a valid APP_KEY" >&2
     exit 1
 }
 
-php artisan route:list --path=install >/dev/null 2>&1 || {
-    echo "ERROR: Smoke test failed: install routes missing from route:list" >&2
-    exit 1
+# Complete the same browser workflow against a fresh MySQL database. This uses
+# only HTTP requests and the files extracted from the release archive.
+extract_form_token() {
+    sed -n 's/.*name="_token" value="\([^"]*\)".*/\1/p' "$1" | head -n 1
 }
+extract_script_token() {
+    sed -n "s/.*X-CSRF-TOKEN': '\([^']*\)'.*/\1/p" "$1" | head -n 1
+}
+
+SMOKE_DATABASE="dbcms_release_${RANDOM}_${RANDOM}"
+curl --fail-with-body --silent --show-error \
+    --cookie-jar "$COOKIE_JAR" --cookie "$COOKIE_JAR" \
+    "${SMOKE_URL}/install/database" --output "${SMOKE_TMP}/database.html"
+DATABASE_TOKEN="$(extract_form_token "${SMOKE_TMP}/database.html")"
+test -n "$DATABASE_TOKEN"
+curl --fail-with-body --silent --show-error --location \
+    --cookie-jar "$COOKIE_JAR" --cookie "$COOKIE_JAR" \
+    --data-urlencode "_token=${DATABASE_TOKEN}" \
+    --data-urlencode "host=mysql" \
+    --data-urlencode "port=3306" \
+    --data-urlencode "database=${SMOKE_DATABASE}" \
+    --data-urlencode "username=root" \
+    --data-urlencode "password=ci-only-password" \
+    --data-urlencode "auto_create=1" \
+    "${SMOKE_URL}/install/database/save" --output "${SMOKE_TMP}/migrate.html"
+
+MIGRATION_TOKEN="$(extract_script_token "${SMOKE_TMP}/migrate.html")"
+test -n "$MIGRATION_TOKEN"
+curl --fail-with-body --silent --show-error \
+    --cookie-jar "$COOKIE_JAR" --cookie "$COOKIE_JAR" \
+    --header 'Content-Type: application/json' \
+    --header "X-CSRF-TOKEN: ${MIGRATION_TOKEN}" \
+    --data '{"with_demo":false}' \
+    "${SMOKE_URL}/install/migrate/run" --output "${SMOKE_TMP}/migrate.json"
+grep -Eq '"success"[[:space:]]*:[[:space:]]*true' "${SMOKE_TMP}/migrate.json"
+
+curl --fail-with-body --silent --show-error \
+    --cookie-jar "$COOKIE_JAR" --cookie "$COOKIE_JAR" \
+    "${SMOKE_URL}/install/admin" --output "${SMOKE_TMP}/admin.html"
+ADMIN_TOKEN="$(extract_form_token "${SMOKE_TMP}/admin.html")"
+test -n "$ADMIN_TOKEN"
+curl --fail-with-body --silent --show-error --location \
+    --cookie-jar "$COOKIE_JAR" --cookie "$COOKIE_JAR" \
+    --data-urlencode "_token=${ADMIN_TOKEN}" \
+    --data-urlencode "name=Release Smoke Admin" \
+    --data-urlencode "email=release-smoke@example.invalid" \
+    --data-urlencode "password=release-smoke-password" \
+    --data-urlencode "password_confirmation=release-smoke-password" \
+    --data-urlencode "site_name=dbCMS Release Smoke" \
+    --data-urlencode "app_url=${SMOKE_URL}" \
+    --data-urlencode "admin_path=control" \
+    --data-urlencode "brand=dbcms" \
+    --data-urlencode "front_theme=db-cyber" \
+    "${SMOKE_URL}/install/admin/store" --output "${SMOKE_TMP}/complete.html"
+
+test -s storage/installed
+grep -Fq '"version": "'"${VERSION}"'"' storage/installed
+grep -Eq '^SESSION_DRIVER="?database"?$' .env
+grep -Eq '^CACHE_STORE="?database"?$' .env
+grep -Eq '^QUEUE_CONNECTION="?database"?$' .env
+curl --fail-with-body --silent --show-error "${SMOKE_URL}/up" --output "${SMOKE_TMP}/up.html"
+curl --fail-with-body --silent --show-error "${SMOKE_URL}/control/login" --output "${SMOKE_TMP}/login.html"
+curl --fail-with-body --silent --show-error "${SMOKE_URL}/" --output "${SMOKE_TMP}/homepage.html"
+grep -qiE '<form|iniciar sesi[oó]n|login' "${SMOKE_TMP}/login.html"
+
+kill "$SMOKE_PID" 2>/dev/null || true
+wait "$SMOKE_PID" 2>/dev/null || true
+SMOKE_PID=""
 
 echo "======================================================================"
 echo " Standalone release successfully built and verified!"

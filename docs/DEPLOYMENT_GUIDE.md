@@ -147,4 +147,17 @@ No elimine los volúmenes para actualizar. La desinstalación de un módulo del 
 
 ## Distribuciones ZIP
 
-`bin/build-release-zip.sh` delega en el contenedor CI al invocarlo desde el host. Exporta el commit de Git, instala dependencias de producción y compila Vite. El workflow de release exige que la versión coincida con `VERSION` y que el SHA exacto haya superado CI; después publica archivos con SHA256 y la imagen OCI. El mismo paquete admite el alojamiento VPS/Plesk existente. La imagen OCI y Compose son una alternativa opcional, no un requisito para servir la web.
+La release publica **`dbcms-installer-v<VERSIÓN>.zip`** como archivo principal. No descargue los enlaces automáticos **Source code (zip/tar.gz)** de GitHub para una instalación: están destinados a desarrollo y no incluyen las dependencias preparadas.
+
+Instalación sin consola en Plesk/cPanel:
+
+1. Descargue `dbcms-installer-v1.0.2.zip`, compruebe su SHA256 con `checksums.txt` y súbalo desde el administrador de archivos.
+2. Extráigalo en el directorio del dominio. Cuando el panel lo permita, configure la raíz pública del dominio en `public/`; el `.htaccess` de la raíz ofrece compatibilidad para Apache cuando no pueda cambiarla.
+3. Compruebe que el usuario PHP puede escribir en `storage/`, `bootstrap/cache/` y en el directorio raíz para crear `.env`. Use los permisos del panel y evite `777`.
+4. Abra el dominio por HTTPS. La primera petición crea la clave cifrada y abre el asistente web.
+5. Pegue los datos de una base MySQL/MariaDB vacía. Si la cuenta no puede crear bases, créela antes desde el panel.
+6. Complete el administrador, la marca y el tema; después compruebe el acceso al panel, la portada y `/up`.
+
+El ZIP incorpora `EMPEZAR.html`, `vendor/`, los recursos compilados y la plantilla previa a la instalación. No incorpora `.env`, credenciales, claves OAuth ni el marcador `storage/installed`.
+
+`bin/build-release-zip.sh` delega en el contenedor CI al invocarlo desde el host. Exporta el commit de Git, instala dependencias de producción, compila Vite, inspecciona el contenido y prueba la primera petición HTTP sobre el archivo desempaquetado. El workflow de release exige que la versión coincida con `VERSION` y que el SHA exacto haya superado CI; después publica los archivos con SHA256 y la imagen OCI. La imagen OCI y Compose son una alternativa opcional, no un requisito para servir la web.

@@ -48,7 +48,7 @@ return [
     'name' => env('APP_NAME', 'CMS'),
     'tagline' => env('CMS_TAGLINE'),
     'admin_path' => env('ADMIN_PATH', 'admin'),
-    'version' => env('APP_VERSION', '1.0.1'),
+    'version' => env('APP_VERSION', '1.0.2'),
 
     /*
     |--------------------------------------------------------------------------

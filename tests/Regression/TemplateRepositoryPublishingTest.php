@@ -105,6 +105,22 @@ test('release reuses the successful CI push for the exact main commit without re
         ->and($script)->toMatch('/listWorkflowRuns|actions\/workflows\/ci\.yml\/runs/');
 });
 
+test('release uploads a clearly named self-contained browser installer', function (): void {
+    $workflow = Yaml::parseFile(__DIR__.'/../../.github/workflows/release.yml');
+    $archiveJob = $workflow['jobs']['build-standalone-zip'];
+    $releaseJob = $workflow['jobs']['create-github-release'];
+    $archiveRuns = implode("\n", array_column($archiveJob['steps'], 'run'));
+    $releaseSource = json_encode($releaseJob, JSON_THROW_ON_ERROR);
+    $releaseStep = array_values(array_filter(
+        $releaseJob['steps'],
+        static fn (array $step): bool => str_starts_with($step['uses'] ?? '', 'softprops/action-gh-release@'),
+    ))[0];
+
+    expect($archiveRuns)->toContain('dbcms-installer-v${RELEASE_VER}.zip')
+        ->and($releaseSource)->toContain('Descarga este archivo', 'Source code')
+        ->and($releaseStep['with']['files'] ?? '')->toContain('dist/*.zip', 'dist/*.tar.gz', 'dist/checksums.txt');
+});
+
 test('deployment consumes only the exact successful CI commit and never repeats quality', function (): void {
     $workflow = Yaml::parseFile(__DIR__.'/../../.github/workflows/deploy.yml');
     $source = (string) file_get_contents(__DIR__.'/../../.github/workflows/deploy.yml');

@@ -76,6 +76,7 @@ final class InstallationViewService implements InstallationViewServiceInterface
 
         return [
             'defaultAdminPath' => (string) config('cms.admin_path', 'admin'),
+            'defaultAppUrl' => rtrim((string) config('app.url', url('/')), '/'),
             'installBrands' => $brandList,
             'brandChoice' => $this->resolveChoice($brandList, (string) config('cms.admin_theme', 'dbcms')),
             'frontThemes' => $frontThemes,

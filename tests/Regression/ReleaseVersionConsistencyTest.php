@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-test('all canonical release version surfaces identify version 1.0.1', function (): void {
+test('all canonical release version surfaces identify version 1.0.2', function (): void {
     $root = dirname(__DIR__, 2);
     $version = trim((string) file_get_contents($root.'/VERSION'));
     $package = json_decode((string) file_get_contents($root.'/package.json'), true, flags: JSON_THROW_ON_ERROR);
@@ -10,10 +10,29 @@ test('all canonical release version surfaces identify version 1.0.1', function (
     $cms = (string) file_get_contents($root.'/config/cms.php');
     $readme = (string) file_get_contents($root.'/README.md');
 
-    expect($version)->toBe('1.0.1')
+    expect($version)->toBe('1.0.2')
         ->and($package['version'] ?? null)->toBe($version)
         ->and($lock['version'] ?? null)->toBe($version)
         ->and($lock['packages']['']['version'] ?? null)->toBe($version)
-        ->and($cms)->toContain("env('APP_VERSION', '1.0.1')")
-        ->and($readme)->toContain('Versión-1.0.1', 'versión actual es **1.0.1**');
+        ->and($cms)->toContain("env('APP_VERSION', '1.0.2')")
+        ->and($readme)->toContain('Versión-1.0.2', 'versión actual es **1.0.2**');
+});
+
+test('the standalone release is presented as a browser installer', function (): void {
+    $root = dirname(__DIR__, 2);
+    $builder = (string) file_get_contents($root.'/bin/build-release-zip.sh');
+    $workflow = (string) file_get_contents($root.'/.github/workflows/release.yml');
+
+    expect($builder)->toContain(
+        'dbcms-installer-v${VERSION}.zip',
+        'EMPEZAR.html',
+        'vendor/autoload.php',
+        'public/build/manifest.json',
+        'curl --fail-with-body',
+    )->and($workflow)->toContain(
+        'dbcms-installer-v',
+        'default: "1.0.2"',
+        'Descarga este archivo',
+        'Source code',
+    );
 });

@@ -47,13 +47,13 @@ final class InstallationAdminService implements InstallationAdminServiceInterfac
                 $user->fill(['name' => $admin->name, 'password' => $admin->password])->save();
                 $role = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Administrador', 'description' => 'Acceso administrativo total']);
                 $user->roles()->syncWithoutDetaching([$role->id]);
-                $this->environment->write(['APP_NAME' => $admin->siteName, 'ADMIN_PATH' => $admin->adminPath, 'CMS_BRAND' => $admin->brand, 'CMS_THEME' => $admin->frontTheme]);
-                File::replace($installed, json_encode(['installed_at' => now()->toIso8601String(), 'admin_email' => $admin->email, 'admin_path' => $admin->adminPath, 'site_name' => $admin->siteName, 'brand' => $admin->brand, 'front_theme' => $admin->frontTheme, 'version' => '1.0.0', 'platform' => 'dbCMS Enterprise'], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT), 0600);
+                $this->environment->write(['APP_NAME' => $admin->siteName, 'APP_URL' => $admin->appUrl !== '' ? $admin->appUrl : (string) config('app.url'), 'ADMIN_PATH' => $admin->adminPath, 'CMS_BRAND' => $admin->brand, 'CMS_THEME' => $admin->frontTheme]);
+                File::replace($installed, json_encode(['installed_at' => now()->toIso8601String(), 'admin_email' => $admin->email, 'admin_path' => $admin->adminPath, 'site_name' => $admin->siteName, 'brand' => $admin->brand, 'front_theme' => $admin->frontTheme, 'version' => (string) config('cms.version'), 'platform' => 'dbCMS Enterprise'], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT), 0600);
                 if (app()->configurationIsCached() && Artisan::call('config:clear') !== 0) {
                     throw new \RuntimeException('Could not invalidate the installation configuration cache.');
                 }
             });
-            config(['cms.admin_theme' => $admin->brand, 'cms.theme' => $admin->frontTheme, 'cms.name' => $admin->siteName]);
+            config(['app.url' => $admin->appUrl !== '' ? $admin->appUrl : (string) config('app.url'), 'cms.admin_theme' => $admin->brand, 'cms.theme' => $admin->frontTheme, 'cms.name' => $admin->siteName]);
         } catch (\Throwable $error) {
             if ($previousEnvironment !== null && (! File::isFile($envPath) || File::get($envPath) !== $previousEnvironment)) {
                 File::replace($envPath, $previousEnvironment, 0600);
@@ -74,10 +74,10 @@ final class InstallationAdminService implements InstallationAdminServiceInterfac
 
     private function validate(InstallationAdminDTO $admin): void
     {
-        if (trim($admin->name) === '' || trim($admin->siteName) === '' || filter_var($admin->email, FILTER_VALIDATE_EMAIL) === false || strlen($admin->password) < 8 || ! preg_match('/\A[a-zA-Z0-9_\-]+\z/', $admin->adminPath) || ! in_array($admin->brand, $this->brands->brandIdentifiers(), true) || ($this->brands->frontThemeIdentifiers() !== [] && ! in_array($admin->frontTheme, $this->brands->frontThemeIdentifiers(), true))) {
+        if (trim($admin->name) === '' || trim($admin->siteName) === '' || filter_var($admin->email, FILTER_VALIDATE_EMAIL) === false || strlen($admin->password) < 8 || ($admin->appUrl !== '' && (filter_var($admin->appUrl, FILTER_VALIDATE_URL) === false || ! in_array((string) parse_url($admin->appUrl, PHP_URL_SCHEME), ['http', 'https'], true))) || ! preg_match('/\A[a-zA-Z0-9_\-]+\z/', $admin->adminPath) || ! in_array($admin->brand, $this->brands->brandIdentifiers(), true) || ($this->brands->frontThemeIdentifiers() !== [] && ! in_array($admin->frontTheme, $this->brands->frontThemeIdentifiers(), true))) {
             throw new \InvalidArgumentException('Invalid administrator or installation settings.');
         }
-        foreach ([$admin->siteName, $admin->adminPath, $admin->brand, $admin->frontTheme] as $value) {
+        foreach ([$admin->siteName, $admin->appUrl, $admin->adminPath, $admin->brand, $admin->frontTheme] as $value) {
             EnvValueSerializer::encode($value);
         }
     }

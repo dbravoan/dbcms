@@ -6,6 +6,7 @@
 <div x-data="{
     adminSlug: '{{ $defaultAdminPath }}',
     siteName: @js(old('site_name', config('cms.name', 'CMS'))),
+    appUrl: @js(old('app_url', $defaultAppUrl)),
     brand: @js(old('brand', $brandChoice['selected'])),
     frontTheme: @js(old('front_theme', $themeChoice['selected']))
 }" class="space-y-6">
@@ -136,6 +137,14 @@
                         Ejemplo de uso: <code class="text-gray-300" x-text="'https://tudominio.com/' + adminSlug"></code> (cambiarlo ayuda a mitigar escaneos de bots).
                     </p>
                 </div>
+            </div>
+
+            <div class="space-y-1">
+                <label class="block text-xs font-bold text-gray-400 uppercase" for="install_app_url">Dirección pública del sitio</label>
+                <input id="install_app_url" type="url" name="app_url" x-model="appUrl" required
+                       placeholder="https://tudominio.com"
+                       class="w-full bg-[#181818] border border-gray-700 focus:border-[#00FF99] focus:ring-1 focus:ring-[#00FF99] rounded-lg px-4 py-2 text-white text-sm">
+                <p class="text-[11px] text-gray-500">La hemos detectado automáticamente. Revísala antes de finalizar, especialmente si el dominio usa HTTPS o una subcarpeta.</p>
             </div>
         </div>
 

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2026-10-13
+
+### Fixed
+
+- The standalone browser installer now creates its initial encrypted environment before Laravel boots, preventing `No application encryption key has been specified` on the first visit.
+- Existing sealed installations never generate a replacement key automatically when their environment is damaged.
+
+### Changed
+
+- The primary distribution is named `dbcms-installer-v1.0.2.zip` and includes production dependencies, compiled assets, the installation environment template and `EMPEZAR.html`.
+- Release validation now exercises the unpacked package through HTTP, checks its required contents and rejects bundled credentials or installation locks.
+- Release notes clearly distinguish the ready-to-install archive from GitHub's developer-oriented automatic “Source code” downloads.
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -55,5 +68,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Local and remote release evidence is tracked separately in [the publication validation](docs/RELEASE_VALIDATION_2026-10-13.md). Providers and deployments require their own configured connections; this release does not certify external hosting or search rankings.
 
+[1.0.2]: https://github.com/dbravoan/dbcms/releases/tag/v1.0.2
 [1.0.1]: https://github.com/dbravoan/dbcms/releases/tag/v1.0.1
 [1.0.0]: https://github.com/dbravoan/dbcms/releases/tag/v1.0.0

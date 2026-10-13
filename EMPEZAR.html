@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Empezar con dbCMS</title>
+    <style>
+        :root { color-scheme: light; font-family: system-ui, sans-serif; }
+        body { margin: 0 auto; max-width: 760px; padding: 3rem 1.5rem; color: #172033; line-height: 1.6; }
+        h1, h2 { line-height: 1.2; }
+        code { background: #eef2f7; border-radius: .25rem; padding: .15rem .35rem; }
+        .notice { border-left: .3rem solid #f97316; background: #fff7ed; padding: 1rem 1.25rem; }
+    </style>
+</head>
+<body>
+    <h1>Instalar dbCMS desde el navegador</h1>
+    <p>Este paquete ya incluye las dependencias PHP y los recursos web compilados. No necesitas Composer, Node, Artisan ni acceso SSH.</p>
+
+    <h2>1. Sube y extrae el ZIP</h2>
+    <p>Desde el administrador de archivos de Plesk o cPanel, sube el archivo <code>dbcms-installer-v1.0.2.zip</code> al directorio del dominio y extráelo.</p>
+
+    <h2>2. Configura el directorio público</h2>
+    <p>Si tu panel permite elegir la raíz del dominio, apunta a la carpeta <code>public</code>. El paquete también incorpora una regla compatible para alojamientos Apache cuya raíz de dominio no se pueda cambiar.</p>
+
+    <h2>3. Abre el dominio</h2>
+    <p>Visita tu dominio con HTTPS. dbCMS preparará de forma segura su configuración inicial y mostrará el asistente.</p>
+
+    <h2>4. Indica la base de datos</h2>
+    <p>Usa una base MySQL o MariaDB vacía. Si el hosting no permite que dbCMS la cree, créala desde Plesk/cPanel y copia en el asistente el servidor, puerto, nombre, usuario y contraseña.</p>
+
+    <h2>5. Termina la instalación</h2>
+    <p>Revisa la URL, crea el administrador y elige la marca y el tema. El instalador preparará las tablas, el almacenamiento y el acceso del CMS.</p>
+
+    <div class="notice">
+        <strong>Si aparece un aviso de permisos:</strong> marca como escribibles para el usuario PHP las carpetas <code>storage</code> y <code>bootstrap/cache</code>, y permite crear el archivo <code>.env</code> en esta carpeta. No uses permisos 777.
+    </div>
+
+    <p>Después de instalar, elimina este archivo si no quieres conservar la guía en el servidor. Las actualizaciones y opciones avanzadas están documentadas en <code>docs/DEPLOYMENT_GUIDE.md</code>.</p>
+</body>
+</html>

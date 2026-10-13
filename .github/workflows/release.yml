@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (e.g. 1.0.1)"
+        description: "Release version (e.g. 1.0.2)"
         required: true
-        default: "1.0.1"
+        default: "1.0.2"
       sha:
         description: "Exact 40-character commit SHA already validated by CI"
         required: true
@@ -103,6 +103,7 @@ jobs:
         run: |
           test "${RELEASE_VER#v}" = "$(tr -d '[:space:]' < VERSION)"
           bash bin/build-release-zip.sh --version="$RELEASE_VER"
+          test -f "dist/dbcms-installer-v${RELEASE_VER}.zip"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -288,5 +289,12 @@ jobs:
             dist/*.tar.gz
             dist/checksums.txt
           generate_release_notes: true
+          body: |
+            ## Descarga este archivo
+
+            Para instalar dbCMS desde Plesk o cPanel sin Composer, Node, Artisan ni SSH, descarga **`dbcms-installer-v${{ needs.verify-ci.outputs.version }}.zip`**. Súbelo, extráelo y abre el dominio para continuar en el navegador.
+
+            El archivo TAR.GZ está destinado a administradores. Los enlaces automáticos **Source code (zip)** y **Source code (tar.gz)** de GitHub contienen únicamente el código fuente para desarrolladores y no son instaladores autónomos.
+          append_body: true
           draft: false
           prerelease: false

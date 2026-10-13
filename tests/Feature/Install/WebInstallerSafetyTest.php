@@ -8,14 +8,16 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 
 beforeEach(function (): void {
+    $this->originalEnvironmentPath = app()->environmentPath();
     $this->originalStorage = app()->storagePath();
     $this->privateStorage = sys_get_temp_dir().'/dbcms-web-install-'.bin2hex(random_bytes(8));
     File::ensureDirectoryExists($this->privateStorage, 0700);
-    app()->useStoragePath($this->privateStorage);
+    File::put($this->privateStorage.'/.env', (string) File::get(app()->environmentFilePath()));
+    app()->useEnvironmentPath($this->privateStorage)->useStoragePath($this->privateStorage);
 });
 
 afterEach(function (): void {
-    app()->useStoragePath($this->originalStorage);
+    app()->useEnvironmentPath($this->originalEnvironmentPath)->useStoragePath($this->originalStorage);
     File::deleteDirectory($this->privateStorage);
 });
 

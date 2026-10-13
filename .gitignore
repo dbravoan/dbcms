@@ -15,6 +15,7 @@
 .env.production
 .env.*
 !.env.example
+!.env.installation.example
 !.env.production.example
 .mcp.json
 *.pem
