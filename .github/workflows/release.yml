@@ -232,7 +232,7 @@ jobs:
             type=raw,value=latest
 
       - name: Download architecture digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digests-*
@@ -275,7 +275,7 @@ jobs:
           ref: ${{ needs.verify-ci.outputs.target_sha }}
 
       - name: Download Built Archives
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-archives
           path: dist
