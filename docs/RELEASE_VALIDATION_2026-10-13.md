@@ -73,6 +73,29 @@ conserva la misma huella. Los checks de GitHub validan después el commit public
 
 ## Aceptación remota y evidencia de publicación
 
+### Primer intento y corrección multiarquitectura
+
+El primer workflow de la etiqueta `v1.0.0` fue
+[la ejecución 38353192279](https://github.com/dbravoan/dbcms/actions/runs/38353192279).
+El gate de calidad y la construcción de archivos terminaron correctamente, pero la
+imagen conjunta agotó sus 30 minutos durante la emulación ARM64. GitHub canceló el
+trabajo Docker y no se creó una release. El artefacto de esa ejecución no sustituye
+la aceptación de la entrega definitiva.
+
+La corrección distribuye AMD64 y ARM64 en runners nativos. Cada trabajo publica una
+imagen intermedia por digest, ejecuta `php artisan --version` dentro de esa imagen y
+sólo entonces entrega su digest. Un trabajo posterior reúne ambos digests, crea el
+manifiesto y comprueba que contiene las dos arquitecturas antes de permitir la
+release. Las regresiones de YAML se registraron en rojo contra el workflow anterior
+y pasan después de la corrección; también pasan las 103 pruebas del conjunto de
+regresión, con 1.943 aserciones, y `actionlint` no informa errores.
+
+El propietario decidió conservar `v1.0.0` y autorizó mover esta primera etiqueta,
+que aún no tenía release, al commit corregido. La operación queda limitada mediante
+una comprobación exacta del objeto remoto anterior; una referencia cambiada por otra
+parte no se sobrescribe. Esta excepción no cambia la regla de inmutabilidad para
+versiones futuras.
+
 La publicación sólo se considera cerrada cuando quedan acreditados:
 
 1. Gate completo del código corregido y pruebas de que `--tag` no altera archivos

@@ -76,7 +76,12 @@ después del commit, del gate local y de los checks de `main`.
 
 CI, release y deploy llaman al mismo workflow reutilizable `quality.yml`, que ejecuta las comprobaciones dentro de Docker. El gate incluye Composer validate/audit, Pint, PHPStan nivel 8, Pest, compilación Vite y construcción de la imagen de producción.
 
-`release.yml` exige que la versión de tag o entrada manual coincida con `VERSION`. Publica el ZIP, tarball, checksums y la imagen OCI cuando las verificaciones pasan. `bin/build-release-zip.sh` ejecuta Composer y PHP dentro del contenedor CI.
+`release.yml` exige que la versión de tag o entrada manual coincida con `VERSION`.
+Compila AMD64 y ARM64 en runners nativos separados, publica resultados intermedios
+por digest, arranca cada imagen para comprobar su runtime y sólo después crea y
+verifica el manifiesto multiarquitectura. La release espera ese manifiesto y los
+archivos ZIP, tarball y checksums. `bin/build-release-zip.sh` ejecuta Composer y PHP
+dentro del contenedor CI.
 
 `deploy.yml` requiere `VPS_DEPLOY_ENABLED=true`, un entorno `production` y los secretos SSH documentados en [la guía operativa](DEPLOYMENT_GUIDE.md). Envía un paquete construido en Docker y una imagen CLI identificada por SHA. Conserva PHP-FPM/Plesk, releases/current/shared; ejecuta una migración única en el contenedor CLI y exige /up con HTTP 200. Una promoción fallida restaura el enlace de código anterior si está disponible; no revierte la base de datos.
 
@@ -93,13 +98,15 @@ git rev-parse main 'v1.0.0^{}'
 git push origin refs/tags/v1.0.0
 ```
 
-Los dos SHA de la comprobación deben coincidir. Si existe una etiqueta local antigua
-de una versión todavía no publicada, conservar antes una referencia de recuperación
-local y recrearla en el commit verificado; no publicar el respaldo. Si la etiqueta
-ya está publicada, no reemplazarla mediante un push forzado: resolver la discrepancia
-y preparar otra versión. No usar `git push --tags`, que puede publicar referencias
-ajenas a esta entrega. Si los checks de `main` requieren una corrección, confirmar
-esa corrección y repetirlos antes de etiquetar.
+Los dos SHA de la comprobación deben coincidir. Si existe una etiqueta únicamente
+local de una versión todavía no publicada, conservar antes una referencia de
+recuperación local y recrearla en el commit verificado; no publicar el respaldo.
+Las etiquetas remotas son inmutables. La única excepción registrada es la primera
+`v1.0.0`: su ejecución inicial no llegó a crear una release y el propietario autorizó
+moverla al commit que corrige la compilación ARM64, comprobando antes que la referencia
+remota conserva exactamente el objeto publicado por esta entrega. No usar
+`git push --tags`, que puede publicar referencias ajenas. Si los checks de `main`
+requieren una corrección, confirmar esa corrección y repetirlos antes de etiquetar.
 
 Tras el push de la etiqueta, esperar el workflow `release.yml` y comprobar los dos
 archivos de distribución, sus checksums, la imagen multiarquitectura y la release.
