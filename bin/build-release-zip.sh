@@ -200,6 +200,11 @@ grep -Eq 'RewriteRule.+public/' .htaccess
 SMOKE_PORT="$((18000 + RANDOM % 1000))"
 SMOKE_URL="http://localhost:${SMOKE_PORT}"
 COOKIE_JAR="${SMOKE_TMP}/cookies.txt"
+# The CI service injects its own testing database and runtime drivers. The
+# extracted package must instead exercise the values written by the browser
+# installer, exactly as it would on shared hosting.
+unset APP_ENV DB_CONNECTION DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD
+unset SESSION_DRIVER CACHE_STORE QUEUE_CONNECTION
 php -S "127.0.0.1:${SMOKE_PORT}" -t public >"${SMOKE_TMP}/http-smoke.log" 2>&1 &
 SMOKE_PID=$!
 for _ in $(seq 1 30); do
