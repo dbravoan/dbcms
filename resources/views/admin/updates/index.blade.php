@@ -29,7 +29,7 @@
                 @foreach($recentRuns as $previousRun)
                     <li class="flex flex-wrap items-center justify-between gap-3">
                         <span>{{ $previousRun['version'] ?? '' }} · <span x-text="stateLabel(@js($previousRun['status'] ?? ''))"></span> · {{ $previousRun['updated_at'] ?? '' }}</span>
-                        <x-admin.button x-on:click="resume(@js($previousRun['id']))" x-bind:disabled="busy">{{ __('updates.open_run') }}</x-admin.button>
+                    <x-admin.button x-on:click="resume('{{ $previousRun['id'] }}')" x-bind:disabled="busy">{{ __('updates.open_run') }}</x-admin.button>
                     </li>
                 @endforeach
             </ul>

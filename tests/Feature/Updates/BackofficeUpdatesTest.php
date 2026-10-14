@@ -112,4 +112,13 @@ it('lists bounded persisted history only for the current authorized human', func
     $foreign = $store->create(['actor_id' => $other->id, 'status' => 'managed', 'mode' => 'managed', 'version' => '1.3.0']);
     $history = app(UpdateHistoryServiceInterface::class)->recent($owner->id);
     expect($history)->toHaveCount(20)->and(array_column($history, 'id'))->not->toContain($foreign['id'])->and($history[0])->not->toHaveKeys(['stage_path', 'actor_id']);
+    $response = $this->actingAs($owner)->get(route('admin.updates.index'))->assertOk();
+    $document = new DOMDocument;
+    $document->loadHTML($response->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING);
+    $handlers = [];
+    foreach ($document->getElementsByTagName('button') as $button) {
+        $handlers[] = $button->getAttribute('x-on:click');
+    }
+    expect($handlers)->toContain("resume('".$history[0]['id']."')");
+    $response->assertDontSee($foreign['id'])->assertDontSee('@js($previousRun', false);
 });
