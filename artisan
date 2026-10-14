@@ -8,7 +8,8 @@ use Symfony\Component\Console\Input\ArgvInput;
 define('LARAVEL_START', microtime(true));
 
 $updateCommand = $_SERVER['argv'][1] ?? '';
-$updateRecoveryCommand = in_array($updateCommand, ['cms:updates:advance', 'cms:updates:status'], true);
+$updateOperation = $_SERVER['argv'][2] ?? '';
+$updateRecoveryCommand = $updateCommand === 'cms:updates' && in_array($updateOperation, ['advance', 'status', 'cancel'], true);
 if (is_file(__DIR__.'/storage/app/private/core-updates/active.json') && ! $updateRecoveryCommand) {
     fwrite(STDERR, "Actualización del núcleo en curso. Reintenta después.\n");
     exit(75);

@@ -41,10 +41,14 @@ final class UpdatePreparationService implements UpdatePreparationServiceInterfac
             }
         }
         $root = $this->root();
-        $managed = $this->deployment->isManaged($root) || $identity['distribution'] !== 'runtime' || version_compare(explode('.', $version)[0], explode('.', $identity['version'])[0], '>') || ! $manifest->data['rollback_compatible'];
-        $distribution = $managed ? 'source' : $identity['distribution'];
-        // A runtime baseline cannot compare a source-only vendor inventory. Use the
-        // official source baseline for review exports and leave runtime untouched.
+        $managed = $this->deployment->isManaged($root) || version_compare(explode('.', $version)[0], explode('.', $identity['version'])[0], '>') || ! $manifest->data['rollback_compatible'];
+        if (! $managed && $identity['distribution'] !== 'runtime') {
+            $managed = ! $this->sourceHasVerifiedRuntime($identity);
+        }
+        $managed = $managed || ! isset($manifest->data['distributions']['runtime']);
+        $distribution = $managed ? 'source' : 'runtime';
+        // A copied source project may use the runtime path only when its original
+        // signed release proves the installed dependency/build tree is identical.
         $baseline = $this->baselineFiles($identity, $distribution);
         $target = $manifest->distribution($distribution);
         foreach (array_keys($baseline) as $path) {
@@ -275,6 +279,71 @@ final class UpdatePreparationService implements UpdatePreparationServiceInterfac
     private function baselineFiles(array $identity, string $distribution): array
     {
         return $this->verifier->verify($identity['manifest_raw'], $identity['signature_raw'], $this->keys())->distribution($distribution)['files'];
+    }
+
+    /** @param array<string,mixed> $identity */
+    private function sourceHasVerifiedRuntime(array $identity): bool
+    {
+        try {
+            $files = $this->baselineFiles($identity, 'runtime');
+        } catch (\DomainException) {
+            return false;
+        }
+        $required = ['composer.json', 'composer.lock', 'vendor/autoload.php', 'public/build/manifest.json'];
+        foreach ($required as $path) {
+            if (! isset($files[$path])) {
+                return false;
+            }
+        }
+        $dependencyPaths = ['composer.json', 'composer.lock', 'package.json', 'package-lock.json', 'vite.config.js', 'vite.config.ts'];
+        $local = $this->local($dependencyPaths);
+        foreach ($dependencyPaths as $path) {
+            if (($local[$path] ?? null) !== ($files[$path] ?? null)) {
+                return false;
+            }
+        }
+        foreach (['vendor', 'public/build'] as $directory) {
+            $root = $this->root().'/'.$directory;
+            if (! is_dir($root) || is_link($root)) {
+                return false;
+            }
+            for ($ancestor = dirname($root); strlen($ancestor) > strlen($this->root()); $ancestor = dirname($ancestor)) {
+                if (is_link($ancestor)) {
+                    return false;
+                }
+            }
+            $expected = array_filter($files, fn (string $path): bool => str_starts_with($path, $directory.'/'), ARRAY_FILTER_USE_KEY);
+            $actual = [];
+            try {
+                $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
+                foreach ($iterator as $entry) {
+                    if ($entry->isLink()) {
+                        return false;
+                    }
+                    if ($entry->isDir()) {
+                        continue;
+                    }
+                    if (! $entry->isFile()) {
+                        return false;
+                    }
+                    $path = substr($entry->getPathname(), strlen($this->root()) + 1);
+                    $hash = hash_file('sha256', $entry->getPathname());
+                    if ($hash === false || ! isset($expected[$path]) || $expected[$path] !== $hash) {
+                        return false;
+                    }
+                    $actual[$path] = $hash;
+                }
+            } catch (\UnexpectedValueException) {
+                return false;
+            }
+            ksort($actual);
+            ksort($expected);
+            if ($actual !== $expected) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

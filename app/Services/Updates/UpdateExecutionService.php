@@ -22,6 +22,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Facade;
 use RuntimeException;
 use Throwable;
 
@@ -391,19 +392,70 @@ final class UpdateExecutionService implements UpdateExecutionServiceInterface
         if ($expectedIdentity === null || trim((string) file_get_contents($root.'/VERSION')) !== $expectedIdentity['version'] || (! $restored && $this->migrations->pending($run['manifest']) !== [])) {
             throw new RuntimeException('La versión o las migraciones todavía no son correctas.');
         }
-        $kernel = app(Kernel::class);
-        $checks = [];
-        foreach (['/up', '/'.trim((string) config('cms.admin_path', 'control'), '/').'/login', '/'] as $path) {
-            $request = Request::create(rtrim((string) config('app.url'), '/').$path, 'GET');
-            $response = $kernel->handle($request);
-            $kernel->terminate($request, $response);
-            if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 400) {
-                throw new RuntimeException('No pasó la comprobación privada de '.$path);
-            }
-            $checks[$path] = $response->getStatusCode();
-        }
+        $checks = $this->probeHealthSurfaces();
 
         return ['verified_at' => gmdate(DATE_ATOM), 'source_sha' => $expectedIdentity['source_sha'], 'checks' => $checks];
+    }
+
+    /**
+     * Health requests must never rotate the approving administrator's session.
+     * Use separate anonymous managers and restore all outer bindings even when
+     * middleware or a failing probe rebinds the application request.
+     *
+     * @return array<string,int>
+     */
+    private function probeHealthSurfaces(): array
+    {
+        $incoming = app('request');
+        $sessions = app('session');
+        $store = app('session.store');
+        $auth = app('auth');
+        $driver = app('auth.driver');
+        $originalId = $store->getId();
+        $originalData = $store->all();
+        $originalUser = $driver->user();
+        $anonymousSessions = clone $sessions;
+        $anonymousSessions->forgetDrivers();
+        $anonymousAuth = clone $auth;
+        $anonymousAuth->forgetGuards();
+        $checks = [];
+        try {
+            app()->instance('session', $anonymousSessions);
+            app()->instance('session.store', $anonymousSessions->driver());
+            app()->instance('auth', $anonymousAuth);
+            app()->instance('auth.driver', $anonymousAuth->guard());
+            foreach (['auth', 'session', 'request'] as $binding) {
+                Facade::clearResolvedInstance($binding);
+            }
+            $kernel = app(Kernel::class);
+            foreach (['/up', '/'.trim((string) config('cms.admin_path', 'control'), '/').'/login', '/'] as $path) {
+                $probe = Request::create(rtrim((string) config('app.url'), '/').$path, 'GET');
+                $response = $kernel->handle($probe);
+                $kernel->terminate($probe, $response);
+                if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 400) {
+                    throw new RuntimeException('No pasó la comprobación privada de '.$path);
+                }
+                $checks[$path] = $response->getStatusCode();
+            }
+        } finally {
+            $store->setId($originalId);
+            $store->flush();
+            $store->replace($originalData);
+            foreach (['session' => $sessions, 'session.store' => $store, 'auth' => $auth, 'auth.driver' => $driver, 'request' => $incoming] as $binding => $instance) {
+                app()->instance($binding, $instance);
+            }
+            if (method_exists($driver, 'setRequest')) {
+                $driver->setRequest($incoming);
+            }
+            if ($originalUser !== null) {
+                $driver->setUser($originalUser);
+            }
+            foreach (['auth', 'session', 'request'] as $binding) {
+                Facade::clearResolvedInstance($binding);
+            }
+        }
+
+        return $checks;
     }
 
     /** @param array<string,mixed> $run

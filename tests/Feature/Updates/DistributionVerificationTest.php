@@ -69,6 +69,53 @@ function distributionPrepareFixture(string $directory, bool $managed): UpdatePre
     return app(UpdatePreparationService::class);
 }
 
+function distributionSourceRuntimeFixture(string $directory, bool $withRuntime = true, string $installedVersion = '1.0.1'): UpdatePreparationService
+{
+    $source = ['app/example.php' => 'old content', 'composer.json' => '{"name":"dbravoan/dbcms"}', 'composer.lock' => '{"packages":[]}'];
+    $runtime = [...$source, 'vendor/autoload.php' => 'official autoloader', 'vendor/composer/installed.php' => 'official installed dependencies', 'public/build/manifest.json' => '{"app":"app.js"}', 'public/build/app.js' => 'official compiled asset'];
+    [$manifest, $key, $public] = distributionFixture();
+    $manifest['supported_from'] = [$installedVersion];
+    $baseline = $manifest;
+    $baseline['version'] = $installedVersion;
+    $baseline['source_sha'] = str_repeat('a', 40);
+    $baseline['distributions']['source']['files'] = array_map(fn (string $content): string => hash('sha256', $content), $source);
+    if ($withRuntime) {
+        $baseline['distributions']['runtime']['files'] = array_map(fn (string $content): string => hash('sha256', $content), $runtime);
+    } else {
+        unset($baseline['distributions']['runtime']);
+    }
+    [$oldRaw, $oldSignature] = distributionSign($baseline, $key);
+    config(['updates.trusted_keys' => ['test' => $public]]);
+    $store = new UpdateRunStore;
+    $store->atomic($store->root().'/identity.json', json_encode(['version' => $installedVersion, 'source_sha' => str_repeat('a', 40), 'distribution' => 'source', 'manifest_raw' => $oldRaw, 'signature_raw' => $oldSignature], JSON_THROW_ON_ERROR));
+    foreach ($runtime as $path => $contents) {
+        if (! is_dir(dirname($directory.'/root/'.$path))) {
+            mkdir(dirname($directory.'/root/'.$path), 0700, true);
+        }
+        file_put_contents($directory.'/root/'.$path, $contents);
+    }
+    $newSource = [...$source, 'app/example.php' => 'new content'];
+    $newRuntime = [...$runtime, ...$newSource, 'vendor/autoload.php' => 'new official autoloader'];
+    $archives = [];
+    foreach (['source' => $newSource, 'runtime' => $newRuntime] as $name => $files) {
+        $zip = new ZipArchive;
+        $path = $directory.'/'.$name.'.zip';
+        $zip->open($path, ZipArchive::CREATE);
+        foreach ($files as $file => $contents) {
+            $zip->addFromString($file, $contents);
+        }
+        $zip->close();
+        $archives[$name] = file_get_contents($path);
+        $manifest['distributions'][$name] = ['asset' => $name.'.zip', 'sha256' => hash_file('sha256', $path), 'size' => filesize($path), 'files' => array_map(fn (string $contents): string => hash('sha256', $contents), $files)];
+    }
+    [$raw, $signature] = distributionSign($manifest, $key);
+    $url = 'https://github.com/dbravoan/dbcms/releases/download/v1.1.0/';
+    $assets = array_map(fn (string $name): array => ['name' => $name, 'browser_download_url' => $url.$name], ['manifest.json', 'manifest.sig', 'source.zip', 'runtime.zip']);
+    Http::fake(['api.github.com/repos/dbravoan/dbcms/releases/tags/v1.1.0' => Http::response(['draft' => false, 'prerelease' => false, 'published_at' => '2026-10-14', 'tag_name' => 'v1.1.0', 'assets' => $assets]), $url.'manifest.json' => Http::response($raw), $url.'manifest.sig' => Http::response($signature), $url.'source.zip' => Http::response($archives['source']), $url.'runtime.zip' => Http::response($archives['runtime'])]);
+
+    return app(UpdatePreparationService::class);
+}
+
 beforeEach(function (): void {
     $this->updateTmp = sys_get_temp_dir().'/distribution-'.bin2hex(random_bytes(8));
     mkdir($this->updateTmp, 0700);
@@ -196,4 +243,41 @@ it('denies preparation and adoption from actors without administrative update au
     $this->updateActor->forceFill(['is_service_account' => true])->save();
     expect(fn () => $service->prepare('1.1.0', $this->updateActor->id))->toThrow(AuthorizationException::class);
     Http::assertNothingSent();
+});
+
+it('allows standalone source projects to prepare a runtime update with exact signed dependencies and assets', function (): void {
+    $service = distributionSourceRuntimeFixture($this->updateTmp);
+    $prepared = $service->prepare('1.1.0', $this->updateActor->id);
+    $run = (new UpdateRunStore)->read($prepared['id']);
+    expect($prepared['mode'])->toBe('runtime')->and($prepared['status'])->toBe('prepared');
+    expect($run['distribution'])->toBe('runtime')->and($run['target_identity']['distribution'])->toBe('runtime');
+    expect(array_column($run['plan'], 'path'))->toContain('vendor/autoload.php');
+    expect(file_get_contents($this->updateTmp.'/root/vendor/autoload.php'))->toBe('official autoloader');
+    expect((new UpdateRunStore)->identity()['distribution'])->toBe('source');
+});
+
+it('keeps source projects with unverifiable runtime trees on the source review path', function (string $change): void {
+    $service = distributionSourceRuntimeFixture($this->updateTmp);
+    $root = $this->updateTmp.'/root';
+    match ($change) {
+        'vendor' => file_put_contents($root.'/vendor/autoload.php', 'custom autoloader'),
+        'dependencies' => file_put_contents($root.'/composer.json', '{"name":"custom/project"}'),
+        'extra-vendor' => file_put_contents($root.'/vendor/custom-package.php', 'extra dependency'),
+        'extra-build' => file_put_contents($root.'/public/build/custom.js', 'extra compiled asset'),
+        'symlink' => symlink($root.'/app/example.php', $root.'/vendor/unverified-link'),
+    };
+    $before = file_get_contents($root.'/vendor/autoload.php');
+    $prepared = $service->prepare('1.1.0', $this->updateActor->id);
+    $run = (new UpdateRunStore)->read($prepared['id']);
+    expect($prepared['mode'])->toBe('managed')->and($run['distribution'])->toBe('source');
+    expect(array_column($run['plan'], 'path'))->not->toContain('vendor/autoload.php');
+    expect(file_get_contents($root.'/vendor/autoload.php'))->toBe($before);
+})->with(['vendor', 'dependencies', 'extra-vendor', 'extra-build', 'symlink']);
+
+it('requires managed review when the original source release has no signed runtime inventory', function (): void {
+    $service = distributionSourceRuntimeFixture($this->updateTmp, false, '1.0.0');
+    $prepared = $service->prepare('1.1.0', $this->updateActor->id);
+    expect($prepared['mode'])->toBe('managed');
+    expect((new UpdateRunStore)->read($prepared['id'])['distribution'])->toBe('source');
+    expect(file_get_contents($this->updateTmp.'/root/vendor/autoload.php'))->toBe('official autoloader');
 });

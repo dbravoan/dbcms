@@ -7,6 +7,8 @@ test('all canonical release version surfaces identify version 1.1.0', function (
     $version = trim((string) file_get_contents($root.'/VERSION'));
     $package = json_decode((string) file_get_contents($root.'/package.json'), true, flags: JSON_THROW_ON_ERROR);
     $lock = json_decode((string) file_get_contents($root.'/package-lock.json'), true, flags: JSON_THROW_ON_ERROR);
+    $core = json_decode((string) file_get_contents($root.'/resources/updates/core-version.json'), true, flags: JSON_THROW_ON_ERROR);
+    $policy = json_decode((string) file_get_contents($root.'/resources/updates/release-policy.json'), true, flags: JSON_THROW_ON_ERROR);
     $cms = (string) file_get_contents($root.'/config/cms.php');
     $readme = (string) file_get_contents($root.'/README.md');
 
@@ -14,6 +16,9 @@ test('all canonical release version surfaces identify version 1.1.0', function (
         ->and($package['version'] ?? null)->toBe($version)
         ->and($lock['version'] ?? null)->toBe($version)
         ->and($lock['packages']['']['version'] ?? null)->toBe($version)
+        ->and($core['version'] ?? null)->toBe($version)
+        ->and($core['repository'] ?? null)->toBe('dbravoan/dbcms')
+        ->and($policy['version'] ?? null)->toBe($version)
         ->and($cms)->toContain("env('APP_VERSION', '1.1.0')")
         ->and($readme)->toContain('Versión-1.1.0', 'versión actual es **1.1.0**');
 });

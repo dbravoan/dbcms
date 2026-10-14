@@ -16,6 +16,7 @@ use App\Services\Updates\UpdateExecutionService;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -214,3 +215,53 @@ it('records a real interactive CLI approval and discards its transient authority
         ->and(request()->attributes->has('_cms_update_cli_approval'))->toBeFalse()
         ->and(is_file($this->executionStore->root().'/active.json'))->toBeTrue();
 });
+
+it('preserves the approving request and session across health probes including failures', function (bool $healthy): void {
+    $run = executionLifecycleRun($this->executionActor, $this->executionStore, 'health_pending');
+    (new FileUpdateEngine(config('updates.root_path'), $run['stage_path'], $this->executionStore->directory($run['id']).'/backup'))->apply($run['plan']);
+    $run['files_applied_request'] = 1;
+    $this->executionStore->save($run['id'], $run);
+    (new UpdateBarrier($this->executionStore->root()))->close(['run_id' => $run['id']]);
+    config(['session.driver' => 'array']);
+    $session = app('session')->driver('array');
+    $session->start();
+    $session->setId(str_repeat('r', 40));
+    $session->put('outer.recovery', 'retain this approval');
+    app()->instance('session.store', $session);
+    $original = Request::create('/update.php', 'POST', [], [$session->getName() => $session->getId()]);
+    $original->setLaravelSession($session);
+    app()->instance('request', $original);
+    Auth::forgetGuards();
+    $guard = Auth::guard('web');
+    $guard->setUser($this->executionActor);
+    $session->put($guard->getName(), $this->executionActor->id);
+    $sessionId = $session->getId();
+    $attributes = $session->all();
+    $kernel = Mockery::mock(Kernel::class);
+    $kernel->shouldReceive('handle')->times($healthy ? 3 : 1)->andReturnUsing(function (Request $probe) use ($healthy, $session): Response {
+        app()->instance('request', $probe);
+        // Model a nested kernel reusing and mutating the outer session store.
+        $session->setId(str_repeat('s', 40));
+        $session->put('probe.leaked', true);
+        app('session.store')->setId(str_repeat('t', 40));
+        app('session.store')->put('probe.isolated', true);
+        Auth::forgetGuards();
+
+        return new Response($healthy ? 'healthy' : 'unavailable', $healthy ? 200 : 500);
+    });
+    $kernel->shouldReceive('terminate')->times($healthy ? 3 : 1);
+    app()->instance(Kernel::class, $kernel);
+    if ($healthy) {
+        expect($this->execution->advance($run['id'], $this->executionActor->id)['status'])->toBe('health_verified');
+    } else {
+        expect(fn () => $this->execution->advance($run['id'], $this->executionActor->id))->toThrow(DomainException::class);
+    }
+    expect(request())->toBe($original)->and(app('session.store'))->toBe($session);
+    expect($session->getId())->toBe($sessionId)->and($session->all())->toBe($attributes);
+    expect(request()->session()->getId())->toBe($sessionId)->and(Auth::id())->toBe($this->executionActor->id);
+    if ($healthy) {
+        expect($this->execution->advance($run['id'], $this->executionActor->id)['status'])->toBe('completed');
+    } else {
+        expect(is_file($this->executionStore->root().'/active.json'))->toBeTrue();
+    }
+})->with([true, false]);

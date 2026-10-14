@@ -60,6 +60,8 @@ jobs:
         run: |
           version="$(tr -d '[:space:]' < VERSION)"
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          jq -e --arg version "$version" '.version == $version' resources/updates/core-version.json
+          jq -e --arg version "$version" '.version == $version' resources/updates/release-policy.json
           target_sha="$(git rev-parse 'HEAD^{commit}')"
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             [[ "$REQUESTED_SHA" =~ ^[0-9a-f]{40}$ ]]
