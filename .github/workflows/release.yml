@@ -323,6 +323,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          overwrite_files: false
+          fail_on_unmatched_files: true
           files: |
             dist/*.zip
             dist/*.tar.gz
