@@ -7,11 +7,25 @@ use Symfony\Component\Console\Input\ArgvInput;
 
 define('LARAVEL_START', microtime(true));
 
+$updateCommand = $_SERVER['argv'][1] ?? '';
+$updateRecoveryCommand = in_array($updateCommand, ['cms:updates:advance', 'cms:updates:status'], true);
+if (is_file(__DIR__.'/storage/app/private/core-updates/active.json') && ! $updateRecoveryCommand) {
+    fwrite(STDERR, "Actualización del núcleo en curso. Reintenta después.\n");
+    exit(75);
+}
+
+require_once __DIR__.'/bootstrap/UpdateRuntime.php';
+// Queue workers acquire admission per reservation in CoreUpdateServiceProvider.
+if (! $updateRecoveryCommand && ! in_array($updateCommand, ['queue:work', 'queue:listen'], true) && ! UpdateRuntime::admit(__DIR__)) {
+    fwrite(STDERR, "Actualización del núcleo en curso. Reintenta después.\n");
+    exit(75);
+}
+
 // Register the Composer autoloader...
-require __DIR__ . '/vendor/autoload.php';
+require __DIR__.'/vendor/autoload.php';
 
 // Bootstrap Laravel and handle the command...
-$status = (require_once __DIR__ . '/bootstrap/app.php')
+$status = (require_once __DIR__.'/bootstrap/app.php')
     ->handleCommand(new ArgvInput);
 
 exit($status);

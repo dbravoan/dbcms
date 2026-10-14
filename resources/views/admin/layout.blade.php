@@ -466,6 +466,7 @@
     <!-- Autonomous Module UI Stacks & Injections -->
     @stack('admin_modals')
     @stack('admin_scripts')
+    @include('admin.partials.update-check')
 
 </body>
 </html>

@@ -10,6 +10,7 @@ use App\Jobs\SendModuleNotificationEmailJob;
 use App\Models\NotificationEmailDelivery;
 use App\Models\SystemNotification;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -65,7 +66,7 @@ class ModuleNotificationService implements ModuleNotificationServiceInterface
      */
     public function getUnreadNotifications(int $limit = 10): Collection
     {
-        return SystemNotification::unread()
+        return $this->visibleQuery()->unread()
             ->forUser($this->currentUserId())
             ->orderBy('id', 'desc')
             ->limit($limit)
@@ -74,14 +75,14 @@ class ModuleNotificationService implements ModuleNotificationServiceInterface
 
     public function getUnreadCount(): int
     {
-        return SystemNotification::unread()
+        return $this->visibleQuery()->unread()
             ->forUser($this->currentUserId())
             ->count();
     }
 
     public function markAsRead(int|string $id): bool
     {
-        $query = SystemNotification::query()->where('is_visible', true)->forUser($this->currentUserId());
+        $query = $this->visibleQuery()->where('is_visible', true)->forUser($this->currentUserId());
 
         if (is_numeric($id)) {
             $notification = $query->find((int) $id);
@@ -99,12 +100,24 @@ class ModuleNotificationService implements ModuleNotificationServiceInterface
 
     public function markAllAsRead(): int
     {
-        return SystemNotification::unread()
+        return $this->visibleQuery()->unread()
             ->forUser($this->currentUserId())
             ->update([
                 'is_read' => true,
                 'read_at' => now(),
             ]);
+    }
+
+    /** @return Builder<SystemNotification> */
+    private function visibleQuery(): Builder
+    {
+        $query = SystemNotification::query();
+        $user = Auth::user();
+        if (! $user instanceof User || ! $user->hasPermission('manage:updates')) {
+            $query->where('module', '!=', 'core_updates');
+        }
+
+        return $query;
     }
 
     private function currentUserId(): ?int

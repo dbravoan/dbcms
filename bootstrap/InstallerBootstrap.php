@@ -28,7 +28,7 @@ final class InstallerBootstrap
 
         if (! is_file($this->root.'/vendor/autoload.php')) {
             return $this->failure('El paquete está incompleto', 'Faltan las dependencias incluidas en el instalador.', [
-                'Descarga dbcms-installer-v1.0.2.zip desde los archivos de la release.',
+                'Descarga dbcms-installer-v1.1.0.zip desde los archivos de la release.',
                 'No uses el archivo automático «Source code (zip)» de GitHub.',
             ]);
         }

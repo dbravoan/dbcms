@@ -123,3 +123,7 @@ La plantilla no se despliega por publicar código o una release mientras
 `VPS_DEPLOY_ENABLED` no esté activado.
 
 El despliegue usa una ventana de mantenimiento y no promete ausencia de interrupción. Conserva los enlaces y el alojamiento Plesk/Linux existentes; evita ejecutar PHP/Composer CLI en el host. Docker de producción sigue disponible como alternativa explícita.
+
+## Actualizaciones de proyectos derivados
+
+La versión del núcleo se registra independientemente de la versión del proyecto. Los proyectos Git/CI preparan propuestas verificadas y continúan usando su despliegue por releases. La aplicación web queda reservada a instalaciones autónomas con procesos y caché controlables; no reemplaza el despliegue de contenedores ni de varios nodos. Las releases añaden manifiestos e inventarios firmados; hashes de transferencia solos no autorizan código. Ver [CORE_UPDATES_RUNBOOK](CORE_UPDATES_RUNBOOK.md).

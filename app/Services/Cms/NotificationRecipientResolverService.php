@@ -54,10 +54,10 @@ final class NotificationRecipientResolverService implements NotificationRecipien
                 return false;
             }
         }
-        if (! $this->modules->isActive($notification->module)) {
+        if ($notification->module !== 'core_updates' && ! $this->modules->isActive($notification->module)) {
             return false;
         }
-        $permission = $notification->data['required_permission'] ?? config('module_notifications.module_permissions.'.$notification->module);
+        $permission = $notification->module === 'core_updates' ? 'manage:updates' : ($notification->data['required_permission'] ?? config('module_notifications.module_permissions.'.$notification->module));
         if (is_string($permission) && ! $user->hasPermission($permission)) {
             return false;
         }

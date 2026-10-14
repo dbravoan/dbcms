@@ -493,7 +493,7 @@ class AdminNavigationService implements AdminNavigationServiceInterface
         $isViewer = $ctx['isViewer'];
         $can = $ctx['can'];
 
-        if (! ($isAdmin || $isViewer || $can('manage:modules') || $can('manage:users') || $can('manage:storage'))) {
+        if (! ($isAdmin || $isViewer || $can('manage:modules') || $can('manage:users') || $can('manage:storage') || $can('manage:updates'))) {
             return null;
         }
 
@@ -546,6 +546,16 @@ class AdminNavigationService implements AdminNavigationServiceInterface
                 route: 'admin.markets.index',
                 icon: 'fa-solid fa-globe',
                 active: request()->routeIs('admin.markets.*')
+            );
+        }
+
+        if ($can('manage:updates')) {
+            $items[] = new AdminNavigationItem(
+                id: 'nav-updates',
+                label: __('updates.title'),
+                route: 'admin.updates.index',
+                icon: 'fa-solid fa-cloud-arrow-down',
+                active: request()->routeIs('admin.updates.*')
             );
         }
 

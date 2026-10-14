@@ -10,6 +10,7 @@ use App\Providers\FormFieldTypesServiceProvider;
 use App\Providers\PassportServiceProvider;
 use App\Providers\SearchServiceProvider;
 use App\Providers\SeoServiceProvider;
+use App\Providers\UpdateServiceProvider;
 
 return [
     AppServiceProvider::class,
@@ -21,4 +22,5 @@ return [
     PassportServiceProvider::class,
     SearchServiceProvider::class,
     SeoServiceProvider::class,
+    UpdateServiceProvider::class,
 ];

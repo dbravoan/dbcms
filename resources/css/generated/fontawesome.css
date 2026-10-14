@@ -409,6 +409,8 @@
 .fa-solid.fa-eye-slash { --fa: "\f070"; }
 .fa-solid.fa-bell-slash::before { content: "\f1f6"; }
 .fa-solid.fa-bell-slash { --fa: "\f1f6"; }
+.fa-solid.fa-rotate::before { content: "\f2f1"; }
+.fa-solid.fa-rotate { --fa: "\f2f1"; }
 .fa-solid.fa-cookie-bite::before { content: "\f564"; }
 .fa-solid.fa-cookie-bite { --fa: "\f564"; }
 .fa-solid.fa-house::before { content: "\f015"; }
@@ -423,3 +425,5 @@
 .fa-solid.fa-window-minimize { --fa: "\f2d1"; }
 .fa-solid.fa-circle-dot::before { content: "\f192"; }
 .fa-solid.fa-circle-dot { --fa: "\f192"; }
+.fa-solid.fa-cloud-arrow-down::before { content: "\f0ed"; }
+.fa-solid.fa-cloud-arrow-down { --fa: "\f0ed"; }

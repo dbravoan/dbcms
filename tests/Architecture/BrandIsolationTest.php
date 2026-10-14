@@ -17,6 +17,10 @@ it('never hardcodes a brand identifier in configuration files', function (): voi
     foreach (glob(__DIR__.'/../../config/*.php') ?: [] as $file) {
         $contents = (string) file_get_contents($file);
         $relative = 'config/'.basename($file);
+        // The upstream package identity is not an administrative theme/brand.
+        if (basename($file) === 'updates.php') {
+            $contents = str_replace("'dbravoan/dbcms'", "'upstream/package'", $contents);
+        }
 
         foreach ($forbidden as $needle) {
             // Allowed only as an `env('...', 'default')` fallback value.

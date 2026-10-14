@@ -20,3 +20,5 @@ node --test tests/Frontend/*.test.mjs
 vendor/bin/pint --test
 vendor/bin/phpstan analyse --memory-limit=2G
 php -d memory_limit=2G vendor/bin/pest --colors=always
+
+bash bin/test-update-apache.sh

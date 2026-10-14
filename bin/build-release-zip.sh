@@ -16,7 +16,11 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # Packaging uses exactly the container runtime used by CI.
 if [ ! -f /.dockerenv ]; then
     cd "$ROOT_DIR"
-    exec docker compose -f docker/ci/compose.yml run --build --rm app bash bin/build-release-zip.sh "$@"
+    signing_args=()
+    if [ -n "${DBCMS_UPDATE_SIGNING_KEY_FILE:-}" ]; then
+        signing_args=(--volume "${DBCMS_UPDATE_SIGNING_KEY_FILE}:/run/secrets/updates-signing.pem:ro" --env DBCMS_UPDATE_SIGNING_KEY_FILE=/run/secrets/updates-signing.pem --env DBCMS_UPDATE_SIGNING_KEY_ID="${DBCMS_UPDATE_SIGNING_KEY_ID:-releases-2026}")
+    fi
+    exec docker compose -f docker/ci/compose.yml run --build --rm "${signing_args[@]}" app bash bin/build-release-zip.sh "$@"
 fi
 
 VERSION=""
@@ -188,6 +192,24 @@ tar -czf "${DIST_DIR}/${TAR_NAME}" .
 echo "--> 6. Generating SHA256 checksums..."
 cd "${DIST_DIR}"
 sha256sum "${ZIP_NAME}" "${TAR_NAME}" > checksums.txt
+
+if [ -n "${DBCMS_UPDATE_SIGNING_KEY_FILE:-}" ]; then
+    SOURCE_TMP="$(mktemp -d /tmp/dbcms-update-source-XXXXXX)"
+    git -C "$ROOT_DIR" archive HEAD | tar -x -C "$SOURCE_TMP"
+    php "$ROOT_DIR/bin/build-update-release.php" \
+        --source-root="$SOURCE_TMP" --runtime-root="$BUILD_TMP" \
+        --version="$VERSION" --sha="$(git -C "$ROOT_DIR" rev-parse HEAD)" \
+        --output="$DIST_DIR" --key-file="$DBCMS_UPDATE_SIGNING_KEY_FILE" \
+        --key-id="${DBCMS_UPDATE_SIGNING_KEY_ID:-releases-2026}"
+    CMS_UPDATE_SIGNING_KEY_FILE="$DBCMS_UPDATE_SIGNING_KEY_FILE" \
+        CMS_UPDATE_SIGNING_KEY_ID="${DBCMS_UPDATE_SIGNING_KEY_ID:-releases-2026}" \
+        bash "$ROOT_DIR/bin/build-update-baselines.sh"
+    cp "$DIST_DIR/manifest.json" "$BUILD_TMP/resources/updates/installed-manifest.json"
+    cp "$DIST_DIR/manifest.sig" "$BUILD_TMP/resources/updates/installed-manifest.sig"
+    (cd "$BUILD_TMP" && zip -q -r "$DIST_DIR/$ZIP_NAME" . && tar -czf "$DIST_DIR/$TAR_NAME" .)
+    rm -rf "$SOURCE_TMP"
+    (cd "$DIST_DIR" && sha256sum ./*.zip ./*.tar.gz ./*manifest.json ./*manifest.sig > checksums.txt)
+fi
 
 echo "--> 7. Executing automated HTTP smoke test on release ZIP..."
 unzip -q "${DIST_DIR}/${ZIP_NAME}" -d "${SMOKE_TMP}"

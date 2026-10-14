@@ -25,6 +25,7 @@ RUN printf '%s\n' 'short_open_tag=Off' > /usr/local/etc/php/conf.d/dbcms-compati
 WORKDIR /var/www/html
 
 FROM php-base AS ci
+RUN apk add --no-cache apache2 apache2-proxy
 COPY --from=frontend /usr/local/bin/node /usr/local/bin/node
 COPY --from=frontend /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \

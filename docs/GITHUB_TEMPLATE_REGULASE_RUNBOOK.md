@@ -60,7 +60,7 @@ Este recorrido se realizará después, en una tarea independiente. Para el blog
 personal se aplica el mismo procedimiento: elegir su propio nombre de repositorio,
 identidad, tema, puertos, base, almacenamiento y claves; no reutilizar los de dbCMS
 ni los de RegulaSE. Generar sólo la rama predeterminada y registrar el SHA de origen.
-La plantilla crea una copia inicial, sin sincronización automática de mejoras.
+La plantilla crea una copia inicial; el actualizador permite descubrir y preparar futuras mejoras del núcleo sin sincronizar historiales Git.
 
 En `dbravoan/dbcms`, elegir **Use this template → Create a new repository**:
 
@@ -80,7 +80,7 @@ cd regulase
 
 Estos comandos **no se han ejecutado**. Comprobar que `origin` apunta a
 `dbravoan/regulase` antes de cualquier push. El repositorio generado tiene historial
-independiente y no recibe futuras actualizaciones automáticamente.
+independiente; las futuras releases se descubren desde el actualizador y requieren revisión y aprobación.
 [GitHub: crear desde template](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template),
 [CLI: opciones reales](https://cli.github.com/manual/gh_repo_create).
 
@@ -206,14 +206,14 @@ Tools y observar indexación/citas reales. No enviar borradores a validadores ex
 Las migraciones deben ser compatibles y preceder la activación; recuperación de
 código no implica revertir datos. Puede existir una ventana de mantenimiento.
 
-## 7. Recibir mejoras de la plantilla
+## 7. Recibir mejoras del núcleo
 
-Guardar `TEMPLATE_VERSION.md` en RegulaSE con repo, versión/SHA inicial, fecha y
-actualizaciones aplicadas. Mantener tema y módulo editorial aislados de core.
-Revisar releases de dbCMS y portar sus cambios en una rama de RegulaSE, con prueba
-de migraciones, permisos y schemas. No hacer `pull` ni merge automático de historiales
-independientes, y no usar `--allow-unrelated-histories` como proceso rutinario.
-Para cambios pequeños, aplicar un diff/cherry-pick revisado; para una evolución mayor,
-comparar versiones, resolver conflictos y repetir el gate. Si muchos proyectos
-necesitan actualizaciones constantes, evaluar distribuir el core como paquete en
-una futura decisión arquitectónica, sin prometer que ya está desacoplado así.
+Las copias que incorporan el actualizador consultan releases estables públicas de `dbravoan/dbcms` independientemente de su propio origin. Guardar la identidad del núcleo y la versión del proyecto por separado: cambiar el nombre de RegulaSE no cambia su proveedor de actualizaciones.
+
+El panel notifica la nueva versión a quienes tienen `manage:updates`. En un proyecto gestionado con Git/CI prepara una propuesta de fuentes, dependencias, conflictos y requisitos. Incorporarla a una rama de RegulaSE, revisar personalizaciones, construir los assets y ejecutar el gate del proyecto antes de desplegar. El panel no modifica el checkout ni hace push/merge automáticamente.
+
+La plantilla conserva un historial independiente. No utilizar `--allow-unrelated-histories` como mecanismo rutinario ni sobrescribir archivos personalizados. La comparación se realiza contra inventarios oficiales firmados del núcleo, no contra la historia Git del proyecto.
+
+Una copia antigua necesita incorporar primero el actualizador y adoptar una base verificable. No puede recibir notificaciones de código que aún no tiene. Una instalación autónoma creada desde ZIP o Composer create-project puede usar aplicación web si supera las condiciones de alojamiento y respaldo; Composer no distribuye actualmente el núcleo como dependencia actualizable mediante composer update.
+
+Seguir [CORE_UPDATES_RUNBOOK](CORE_UPDATES_RUNBOOK.md) para incorporación, firmas, permisos, respaldo consistente, revisión, despliegue y recuperación. Las etiquetas estables anteriores permanecen inmutables.

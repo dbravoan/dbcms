@@ -110,6 +110,7 @@ dbcms/
 │   ├── AI_EDITOR_TRANSLATION.md      # Structured entity translation, review, permissions and provider limits
 │   ├── FINAL_SYSTEM_AUDIT_2026-10-12.md # Final isolated checks, backoffice coverage, defects and launch limitations
 │   ├── GITHUB_TEMPLATE_REGULASE_RUNBOOK.md # Existing dbCMS repo template, clean RegulaSE bootstrap and updates
+│   ├── CORE_UPDATES_RUNBOOK.md       # Signed core updates, adoption, backups, conflicts and recovery
 │   ├── RELEASE_VALIDATION_2026-10-13.md # Release version regression, local evidence and GitHub publication checks
 │   ├── REGULASE_PROJECT_BLUEPRINT.md # European quality/normative editorial scope, sources and launch gates
 │   ├── MODULE_AUDIT_SECURITY_CONNECTIVITY_2026-10-11.md # Auth, tracking, connections and architecture evidence

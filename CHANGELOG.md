@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-10-14
+
+### Added
+- Public stable release discovery, private permission-scoped update notifications and a shared backoffice/CLI update workflow.
+- RSA-signed source/runtime inventories, verified legacy adoption, three-way customization checks and managed review proposals.
+- Browser update preparation, verified backup prerequisites, durable recovery journal and independent update admission barrier.
+- Maintainer runbook for update distribution, signing, conflicts, hosting limits and code recovery without automatic database rollback.
+
+
 ## [1.0.2] - 2026-10-13
 
 ### Fixed

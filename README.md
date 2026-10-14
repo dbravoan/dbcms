@@ -8,7 +8,7 @@
 [![MCP](https://img.shields.io/badge/MCP-Streamable%20HTTP%20%2B%20JSON--RPC%20%2B%20SSE-purple.svg)](#servidor-mcp)
 [![Entorno](https://img.shields.io/badge/Entorno-Sail%20(Docker)%20Zero--Host-sky.svg)](#puesta-en-marcha)
 [![Versionado](https://img.shields.io/badge/Versionado-SemVer%202.0.0-orange.svg)](#versionado-y-despliegue)
-[![Versión](https://img.shields.io/badge/Versión-1.0.2-orange.svg)](CHANGELOG.md)
+[![Versión](https://img.shields.io/badge/Versión-1.1.0-orange.svg)](CHANGELOG.md)
 [![PHPStan](https://img.shields.io/badge/PHPStan-nivel%208%20sin%20baseline-magenta.svg)](#calidad-y-verificación)
 [![Tests](https://img.shields.io/badge/Tests-Pest%20(Unit%2C%20Feature%2C%20Architecture)-green.svg)](#calidad-y-verificación)
 [![Stack](https://img.shields.io/badge/Stack-Laravel%2013%20·%20PHP%208.3-red.svg)](#qué-es-dbcms)
@@ -151,7 +151,7 @@ Dos temas de panel, seleccionables con `CMS_BRAND`: `dbcms` y `termocms`. La ide
 Tienes 3 formas de comenzar con dbCMS:
 1. **GitHub Template (Recomendada en la nube)**: Haz clic en [**Use this template**](https://github.com/new?template_name=dbcms&template_owner=dbravoan) en la parte superior para generar un repositorio independiente limpio para tu web con los pipelines de CI/CD ya listos.
 2. **Composer CLI (Línea de comandos)**: Ejecuta `composer create-project dbravoan/dbcms mi-sitio`.
-3. **Instalador ZIP para navegador (recomendado)**: Descarga **`dbcms-installer-v1.0.2.zip`** desde [Releases](https://github.com/dbravoan/dbcms/releases), súbelo y extráelo desde Plesk/cPanel y abre el dominio. Incluye dependencias y recursos compilados; no requiere Composer, Node, Artisan ni SSH. Los enlaces automáticos **Source code (zip/tar.gz)** de GitHub son para desarrollo y no sirven como instalador autónomo.
+3. **Instalador ZIP para navegador (recomendado)**: Descarga **`dbcms-installer-v1.1.0.zip`** desde [Releases](https://github.com/dbravoan/dbcms/releases), súbelo y extráelo desde Plesk/cPanel y abre el dominio. Incluye dependencias y recursos compilados; no requiere Composer, Node, Artisan ni SSH. Los enlaces automáticos **Source code (zip/tar.gz)** de GitHub son para desarrollo y no sirven como instalador autónomo.
 
 ### Requisitos locales (Desarrollo)
 
@@ -451,7 +451,9 @@ Para convertir el repositorio actual en plantilla y crear RegulaSE:
 
 ## Versionado y despliegue
 
-El proyecto sigue **SemVer 2.0.0** (`MAYOR.MENOR.PARCHE`) y mantiene su versión en el archivo `VERSION`. La versión actual es **1.0.2** (véase [`CHANGELOG.md`](CHANGELOG.md)).
+El núcleo incorpora comprobación de releases estables y preparación de actualizaciones desde **Sistema → Actualizaciones**, con permiso `manage:updates`. Las instalaciones autónomas compatibles pueden actualizarse desde el navegador; los proyectos con Git o CI reciben una propuesta revisable para su despliegue. La primera incorporación en versiones antiguas requiere mantenimiento y adopción de una base oficial firmada. Consulta el [procedimiento de actualizaciones](docs/CORE_UPDATES_RUNBOOK.md), incluidos respaldos, conflictos y recuperación.
+
+El proyecto sigue **SemVer 2.0.0** (`MAYOR.MENOR.PARCHE`) y mantiene su versión en el archivo `VERSION`. La versión actual es **1.1.0** (véase [`CHANGELOG.md`](CHANGELOG.md)).
 
 ```bash
 # Consultar la versión activa y el estado del repositorio
