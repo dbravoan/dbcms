@@ -36,8 +36,8 @@ for baseline_version in 1.0.0 1.0.1; do
                 "https://github.com/dbravoan/dbcms/releases/download/v1.0.1/${baseline_asset}" \
                 --output "$baseline_tmp/download/$baseline_asset"
         done
-        (cd "$baseline_tmp/download" && awk '$2 == "dbcms-v1.0.1.zip" { print }' checksums.txt > selected-checksum.txt && test -s selected-checksum.txt && sha256sum --check selected-checksum.txt)
-        printf '%s  %s\n' 7cb9b8eeb65cbfdd2144047ac5ead6a40f4e3eff94b50b3be02db8b5744f44a1 "$baseline_tmp/download/dbcms-v1.0.1.zip" | sha256sum --check -
+        (cd "$baseline_tmp/download" && awk '$2 == "dbcms-v1.0.1.zip" { print }' checksums.txt > selected-checksum.txt && test -s selected-checksum.txt && sha256sum -c selected-checksum.txt)
+        printf '%s  %s\n' 7cb9b8eeb65cbfdd2144047ac5ead6a40f4e3eff94b50b3be02db8b5744f44a1 "$baseline_tmp/download/dbcms-v1.0.1.zip" | sha256sum -c -
         unzip -q "$baseline_tmp/download/dbcms-v1.0.1.zip" -d "$baseline_runtime"
         baseline_runtime_args=(--runtime-root="$baseline_runtime")
     fi
