@@ -186,6 +186,8 @@ fi
 
 echo "--> 5. Packaging standalone archives into ${DIST_DIR}..."
 cd "${BUILD_TMP}"
+# A retry must not retain files removed since the previous candidate build.
+rm -f "${DIST_DIR}/${ZIP_NAME}" "${DIST_DIR}/${TAR_NAME}"
 zip -q -r "${DIST_DIR}/${ZIP_NAME}" .
 tar -czf "${DIST_DIR}/${TAR_NAME}" .
 

@@ -84,4 +84,6 @@ Para construir localmente en Docker se proporciona `DBCMS_UPDATE_SIGNING_KEY_FIL
 
 La clave pública inicial está en resources/updates/trusted-keys/releases-2026.pub. La rotación necesita firma autorizada por una clave ya confiada; añadir un PEM arbitrario descargado junto al paquete no establece confianza. Las pruebas contractuales generan claves ficticias por ejecución; no usan la clave de publicación como fixture.
 
+El workflow rechaza una versión que ya tenga release, incluso si se intenta volver a ejecutar con el mismo SHA: reconstruir un ZIP puede cambiar sus bytes y no autoriza sustituir artefactos estables firmados. Un fallo después de publicar parcialmente requiere revisar el incidente y publicar otra versión; no mover etiquetas ni reemplazar distribuciones ya entregadas.
+
 Antes de publicar: pruebas de firma/manipulación, conflictos, adopción, backup/restauración, interrupción/concurrencia, denegaciones y HTTP raíz/public; Pest, navegador, PHPStan, Pint, auditorías y build en Docker. Comprobar artefactos de instalación y actualización sobre el mismo SHA. Un test local no demuestra despliegue ni entrega de correo externa.
