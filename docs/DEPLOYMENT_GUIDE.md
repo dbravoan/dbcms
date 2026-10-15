@@ -120,18 +120,26 @@ Variables principales:
 | `MAIL_*` | Transporte SMTP; por defecto el contenedor usa log |
 | `RUN_MIGRATIONS` | Por defecto false; las migraciones se ejecutan como tarea única |
 
-Compose usa Redis para sesiones, caché y colas. Supervisor mantiene PHP-FPM, Nginx y un worker como usuario `dbcms`. Los jobs de IA y orquestación tienen timeout de 1200 s; la reserva de la cola dura 1500 s para evitar que otro worker ejecute el mismo job antes de que termine.
+Compose usa Redis para sesiones, caché y colas. Supervisor mantiene PHP-FPM, Nginx, cinco workers de cola (general y cuatro de marketing) y scheduler; los procesos de aplicación se ejecutan como usuario `dbcms`. Los jobs de IA y orquestación tienen timeout de 1200 s; la reserva de la cola dura 1500 s para evitar que otro worker ejecute el mismo job antes de que termine.
 
 ## Instalación inicial
 
 ```bash
 docker compose -f docker-compose.prod.yml config --quiet
 docker compose -f docker-compose.prod.yml up -d --wait mysql redis
-docker compose -f docker-compose.prod.yml run --rm app php artisan migrate --force
+docker compose -f docker-compose.prod.yml run --rm app php artisan cms:install \
+  --db-host=mysql \
+  --without-demo \
+  --site-name="Mi sitio" \
+  --admin-path=admin \
+  --brand=dbcms \
+  --theme=db-cyber
 docker compose -f docker-compose.prod.yml up -d --wait app
 ```
 
-Complete la configuración del CMS mediante el instalador correspondiente. El entrypoint crea las claves Passport únicamente si faltan, conserva `oauth-private.key` con permisos 0600 y construye las cachés de Laravel. Un error de caché detiene el arranque en lugar de ocultarse. La aplicación dispone de `/up` para salud.
+El comando `cms:install` realiza la instalación inicial completa: conexión, migraciones, roles, administrador y cierre del instalador. Pregunta de forma interactiva el nombre, correo y contraseña del administrador. Hereda la base de datos, usuario y contraseña que Compose inyecta; `--db-host=mysql` selecciona el servicio interno y evita volver a preguntar esos datos. Ajuste `--admin-path`, `--brand` y `--theme` a los valores elegidos para Compose; el ejemplo usa `admin`, `dbcms` y `db-cyber`. No ejecute solo `migrate` para sustituir este aprovisionamiento inicial.
+
+La CLI de instalación se ha probado en una imagen de producción local 1.2.0. La imagen enlaza `.env` con `storage/app/runtime/.env`; el entrypoint prepara el volumen persistente y ejecuta la CLI como usuario `dbcms`, de modo que la configuración escrita por el instalador permanece al retirar el contenedor temporal `run --rm`. Conserve ese volumen al arrancar `app` y compruebe `/up` y el login. El entrypoint crea las claves Passport únicamente si faltan, conserva `oauth-private.key` con permisos 0600 y construye las cachés de Laravel. Un error de caché detiene el arranque en lugar de ocultarse. La aplicación dispone de `/up` para salud.
 
 ## Rollback y mantenimiento
 

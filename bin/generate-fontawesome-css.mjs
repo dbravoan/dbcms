@@ -60,7 +60,8 @@ function build() {
     const rules = [];
     const missing = [];
 
-    for (const entry of used) {
+    // Filesystem scan order varies across source checkouts and release archives.
+    for (const entry of [...used].sort()) {
         const [style, rawName] = entry.split('|');
         const name = ALIASES[rawName] ?? rawName;
         const icon = families[name];

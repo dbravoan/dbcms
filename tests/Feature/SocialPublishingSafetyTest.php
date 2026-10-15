@@ -213,6 +213,27 @@ it('does not pause another installations delivery backlog', function (): void {
         ->and($foreign->refresh()->status)->toBe('scheduled');
 });
 
+it('associates each social preparation and import control with its own unique label', function (string $brand): void {
+    config(['cms.admin_theme' => $brand]);
+    socialSafetyActor();
+    $response = $this->get(route('admin.social-publishing.index'))->assertOk();
+    $document = new DOMDocument;
+    @$document->loadHTML('<?xml encoding="UTF-8">'.$response->getContent());
+    $xpath = new DOMXPath($document);
+
+    foreach (['account_id', 'metadata[title]', 'metadata[made_for_kids]'] as $name) {
+        $controls = $xpath->query('//form//*[self::input or self::select][@name="'.$name.'"]');
+        expect($controls->length)->toBe(2);
+        foreach ($controls as $control) {
+            $id = $control->getAttribute('id');
+            expect($id)->not->toBe('');
+            expect($xpath->query('//*[@id="'.$id.'"]')->length)->toBe(1);
+            $form = $xpath->query('ancestor::form[1]', $control)->item(0);
+            expect($xpath->query('.//label[@for="'.$id.'"]', $form)->length)->toBe(1);
+        }
+    }
+})->with(['dbcms', 'termocms']);
+
 it('does not fetch metrics for another installations delivery', function (): void {
     $actor = socialSafetyActor();
     $service = app(PublicationService::class);

@@ -77,7 +77,7 @@
 
 @csrf
 
-            <x-admin.select name="account_id" label="Cuenta de destino" required placeholder="Selecciona una cuenta">
+            <x-admin.select name="account_id" id="social-prepare-account" label="Cuenta de destino" required placeholder="Selecciona una cuenta">
 
 @foreach($accounts as $a)<option value="{{ $a->id }}">{{ $a->label }} · {{ $a->provider }}</option>
 
@@ -89,7 +89,7 @@
             <x-admin.input name="destination_url" label="Destino publicado del minisite" type="url" hint="Opcional. Se congelarán las UTM antes de la aprobación." />
             <x-admin.input name="campaign_id" label="Identificador de campaña" />
             <x-admin.input name="files[]" label="Archivos finales, en orden" type="file" multiple accept="image/jpeg,image/png,video/mp4" />
-            <details><summary>Metadatos para YouTube y LinkedIn</summary><div class="space-y-3 mt-3"><x-admin.input name="metadata[title]" label="Título" /><x-admin.select name="metadata[made_for_kids]" label="Creado para niños" placeholder="Selecciona para YouTube" :options="['0'=>'No','1'=>'Sí']" /><x-admin.select name="metadata[synthetic_media]" label="Contenido sintético que necesita declaración" :options="['0'=>'No','1'=>'Sí']" /></div></details>
+            <details><summary>Metadatos para YouTube y LinkedIn</summary><div class="space-y-3 mt-3"><x-admin.input name="metadata[title]" id="social-prepare-title" label="Título" /><x-admin.select name="metadata[made_for_kids]" id="social-prepare-made-for-kids" label="Creado para niños" placeholder="Selecciona para YouTube" :options="['0'=>'No','1'=>'Sí']" /><x-admin.select name="metadata[synthetic_media]" label="Contenido sintético que necesita declaración" :options="['0'=>'No','1'=>'Sí']" /></div></details>
             <x-admin.form-actions :cancelRoute="route('admin.social-publishing.index')" submitLabel="Guardar y revisar" />
         </form>
         <form action="{{ route('admin.social-publishing.store') }}" method="POST" class="grid gap-4 mt-6 md:grid-cols-3">
@@ -97,15 +97,15 @@
 @csrf
 
             <x-admin.input name="creative_revision_id" label="Revisión de CreativeStudio" required />
-            <x-admin.select name="account_id" label="Cuenta para la importación" required>
+            <x-admin.select name="account_id" id="social-import-account" label="Cuenta para la importación" required>
 
 @foreach($accounts as $a)<option value="{{ $a->id }}">{{ $a->label }} · {{ $a->provider }}</option>
 
 @endforeach
 
 </x-admin.select>
-            <x-admin.input name="metadata[title]" label="Título para YouTube / LinkedIn" />
-            <x-admin.select name="metadata[made_for_kids]" label="Creado para niños (YouTube)" placeholder="Seleccionar para YouTube" :options="['0'=>'No','1'=>'Sí']" />
+            <x-admin.input name="metadata[title]" id="social-import-title" label="Título para YouTube / LinkedIn" />
+            <x-admin.select name="metadata[made_for_kids]" id="social-import-made-for-kids" label="Creado para niños (YouTube)" placeholder="Seleccionar para YouTube" :options="['0'=>'No','1'=>'Sí']" />
             <button class="admin-btn-secondary self-end" type="submit">Importar revisión autorizada</button>
         </form>
     </x-admin.form-card>
