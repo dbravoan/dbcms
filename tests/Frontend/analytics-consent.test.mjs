@@ -5,7 +5,8 @@ import vm from 'node:vm';
 
 const source = readFileSync(new URL('../../modules/Analytics/Services/AnalyticsManagerService.php', import.meta.url), 'utf8');
 const script = source.match(/<script nonce="\{\$nonce\}">([\s\S]*?)<\/script>/)?.[1]
-    .replaceAll('{$encodedId}', JSON.stringify('G-ABC1234567'));
+    .replaceAll('{$encodedId}', JSON.stringify('G-ABC1234567'))
+    .replaceAll('{$encodedEvents}', JSON.stringify(['generate_lead', 'purchase']));
 
 function visitor(cookie = '', stored = null) {
     const loaded = [];
@@ -15,7 +16,7 @@ function visitor(cookie = '', stored = null) {
     context.addEventListener = (name, callback) => listeners.set(name, callback);
     assert.ok(script, 'The emitted GA4 script must be executable.');
     vm.runInNewContext(script, context);
-    return { loaded, context, consent: analytics => listeners.get('cookie-consent-updated')({ detail: { analytics } }) };
+    return { loaded, context, consent: analytics => listeners.get('cookie-consent-updated')({ detail: { analytics } }), conversion: detail => listeners.get('cms-conversion-success')?.({ detail }) };
 }
 
 test('absent, malformed, denied and unrelated consent never loads tracking', () => {
@@ -40,4 +41,27 @@ test('revoking consent disables an already loaded property and regranting reuses
     view.consent(true);
     assert.equal(view.context['ga-disable-G-ABC1234567'], false);
     assert.equal(view.loaded.length, 1);
+});
+
+test('conversion entrypoint requires current consent and an allowlisted event', () => {
+    const view = visitor();
+    assert.equal(typeof view.context.cmsTrackConversion, 'function');
+    assert.equal(view.context.cmsTrackConversion('generate_lead', {}), false);
+    assert.equal(view.context.dataLayer, undefined);
+    view.consent(true);
+    const before = view.context.dataLayer.length;
+    assert.equal(view.context.cmsTrackConversion('unconfigured_event', {}), false);
+    assert.equal(view.context.dataLayer.length, before);
+    assert.equal(view.context.cmsTrackConversion('generate_lead', { content_id: 'page-1', email: 'private@example.com', value: 2, nested: { field: 'private' } }), true);
+    const emitted = view.context.dataLayer.at(-1);
+    assert.equal(emitted[0], 'event');
+    assert.equal(emitted[1], 'generate_lead');
+    assert.equal(emitted[2].content_id, 'page-1');
+    assert.equal(emitted[2].email, undefined);
+    assert.equal(emitted[2].nested, undefined);
+    view.consent(false);
+    const revoked = view.context.dataLayer.length;
+    assert.equal(view.context.cmsTrackConversion('generate_lead', {}), false);
+    view.conversion({ name: 'generate_lead', params: { content_id: 'page-1' } });
+    assert.equal(view.context.dataLayer.length, revoked);
 });

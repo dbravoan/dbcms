@@ -69,6 +69,7 @@ final class OpenAiProvider extends AbstractOpenAiCompatibleProvider implements A
             binaryData: $binary,
             mimeType: 'image/png',
             prompt: $request->prompt,
+            metadata: ['usage' => (array) $response->json('usage', []), 'trace_id' => (string) $response->header('x-request-id')],
         );
     }
 

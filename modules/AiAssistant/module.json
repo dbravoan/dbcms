@@ -247,7 +247,22 @@
         },
         "higgsfield_api_key": {
             "type": "password",
-            "label": "higgsfield api_key",
+            "label": "Higgsfield · credencial anterior ID:secret",
+            "default": "",
+            "secret": true,
+            "description": "Compatibilidad con instalaciones anteriores. Los nuevos campos separados se guardan cifrados."
+        },
+        "higgsfield_api_key_id": {
+            "type": "password",
+            "label": "Higgsfield API Key ID",
+            "description": "Identificador APIKEY_ID del par de acceso. Vacío conserva el valor guardado.",
+            "default": "",
+            "secret": true
+        },
+        "higgsfield_api_key_secret": {
+            "type": "password",
+            "label": "Higgsfield API Key Secret",
+            "description": "Secreto APIKEY_SECRET del mismo par. Vacío conserva el valor guardado.",
             "default": "",
             "secret": true
         },

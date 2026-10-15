@@ -103,6 +103,7 @@ dbcms/
 │   ├── DEVELOPER_CONVENTIONS_AND_STANDARDS.md # Canonical guide for human and AI developers
 │   ├── DEPLOYMENT_AND_VERSIONING.md  # Canonical SemVer deployment and release guide
 │   ├── NATIVE_ORCHESTRATION_RUNBOOK.md # Activation, RBAC, approvals, checkpoints and recovery
+│   ├── MARKETING_MODULES_RUNBOOK.md  # Optional marketing activation, isolated workers, budgets, OAuth/GA4, recovery and pending Matrix pilot
 │   ├── NATIVE_ORCHESTRATION_VERIFICATION.md # Verification evidence for the native engine and audit fixes
 │   ├── CMS_RUNTIME_VERIFICATION_2026-10-10.md # Local Sail, browser and real MCP verification with screenshots
 │   ├── CMS_MODULE_FUNCTIONAL_AUDIT_2026-10-11.md # Module matrix, QA entities, fixes, evidence and verification limits
@@ -112,6 +113,7 @@ dbcms/
 │   ├── GITHUB_TEMPLATE_REGULASE_RUNBOOK.md # Existing dbCMS repo template, clean RegulaSE bootstrap and updates
 │   ├── CORE_UPDATES_RUNBOOK.md       # Signed core updates, adoption, backups, conflicts and recovery
 │   ├── RELEASE_VALIDATION_2026-10-13.md # Release version regression, local evidence and GitHub publication checks
+│   ├── RELEASE_1.2.0_INTEGRATION.md  # Integration provenance, immutable baselines, compatibility review and pending validation matrix
 │   ├── REGULASE_PROJECT_BLUEPRINT.md # European quality/normative editorial scope, sources and launch gates
 │   ├── MODULE_AUDIT_SECURITY_CONNECTIVITY_2026-10-11.md # Auth, tracking, connections and architecture evidence
 │   ├── MODULE_AUDIT_SEO_GEO_AEO_2026-10-11.md # Discovery surfaces, localization, schemas and heuristic limits

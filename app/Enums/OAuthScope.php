@@ -12,6 +12,11 @@ enum OAuthScope: string
     case ADMIN_SYSTEM = 'admin:system';
     case AI_USE = 'ai:use';
     case AI_MANAGE = 'ai:manage';
+    case CREATIVE_READ = 'read:creative-studio';
+    case CREATIVE_WRITE = 'write:creative-studio';
+    case SOCIAL_READ = 'read:social-publishing';
+    case SOCIAL_WRITE = 'write:social-publishing';
+    case SOCIAL_ACCOUNTS = 'manage:social-accounts';
 
     // MCP and Machine-to-Machine scopes
     case MCP_ACCESS = 'mcp:access';
@@ -39,6 +44,11 @@ enum OAuthScope: string
             self::ADMIN_SYSTEM->value => 'System administration and agent monitoring',
             self::AI_USE->value => 'Use authorized AI capabilities',
             self::AI_MANAGE->value => 'Manage AI provider configuration',
+            self::CREATIVE_READ->value => 'Read private creative campaigns and material',
+            self::CREATIVE_WRITE->value => 'Prepare creative material and request budgeted generation',
+            self::SOCIAL_READ->value => 'Read private social drafts, schedules and results',
+            self::SOCIAL_WRITE->value => 'Prepare and schedule human-approved social material',
+            self::SOCIAL_ACCOUNTS->value => 'Manage authorized social connections',
             self::MCP_ACCESS->value => 'Inspect system topology, read entities, search content and run anti-AI audits',
             self::MCP_PUBLISH->value => 'Publish and mutate posts, pages, and products via MCP (legacy alias of mcp:write)',
             self::MCP_READ->value => 'MCP: read any backoffice resource (listings, entities, settings, audit trail)',

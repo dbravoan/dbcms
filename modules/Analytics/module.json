@@ -18,6 +18,25 @@
       "placeholder": "G-XXXXXXXXXX",
       "required": false
     },
+    "ga4_property_id": {
+      "type": "text",
+      "label": "ID numérico de propiedad GA4",
+      "description": "Propiedad de la que leer sesiones y eventos clave. Es diferente del ID G- de medición.",
+      "default": ""
+    },
+    "ga4_service_account_json": {
+      "type": "textarea",
+      "label": "JSON privado de cuenta de servicio",
+      "description": "Añade el correo de la cuenta como Lector en la propiedad GA4. Se cifra; dejar en blanco conserva la credencial guardada.",
+      "secret": true,
+      "default": ""
+    },
+    "ga4_conversion_events": {
+      "type": "text",
+      "label": "Eventos de conversión autorizados",
+      "description": "Nombres separados por comas, por ejemplo generate_lead,purchase. Marca estos eventos como clave en GA4.",
+      "default": ""
+    },
     "gtm_id": {
       "type": "text",
       "label": "Google Tag Manager ID",

@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Route;
 
 test('all registered static backoffice get surfaces respond coherently in both themes', function (string $theme): void {
     $this->seed(PlatformShowcaseSeeder::class);
+    app(ModuleManager::class)->activate('creative-studio');
+    app(ModuleManager::class)->activate('social-publishing');
     app(AdminThemeServiceInterface::class)->setActiveTheme($theme);
     $user = User::whereHas('roles', fn ($roles) => $roles->where('slug', 'admin'))->firstOrFail();
     $this->actingAs($user);
@@ -20,7 +22,7 @@ test('all registered static backoffice get surfaces respond coherently in both t
         if (! str_starts_with($name, 'admin.') || ! in_array('GET', $route->methods(), true) || str_contains($route->uri(), '{')) {
             continue;
         }
-        $response = in_array($name, ['admin.api.entity-search', 'admin.ai_assistant.providers.models'], true)
+        $response = in_array($name, ['admin.api.entity-search', 'admin.ai_assistant.providers.models', 'admin.creative-studio.sources'], true)
             ? $this->getJson('/'.$route->uri())
             : $this->get('/'.$route->uri());
         $status = $response->getStatusCode();
@@ -33,7 +35,7 @@ test('all registered static backoffice get surfaces respond coherently in both t
         };
         $expected = match (true) {
             // These endpoints require explicit query arguments or an enabled feature.
-            in_array($name, ['admin.api.entity-search', 'admin.ai_assistant.providers.models'], true) => [422],
+            in_array($name, ['admin.api.entity-search', 'admin.ai_assistant.providers.models', 'admin.creative-studio.sources'], true) => [422],
             in_array($name, ['admin.orchestration.catalog', 'admin.maintenance.preview'], true) => [200, 404],
             $redirectTarget !== null => [302],
             default => [200],

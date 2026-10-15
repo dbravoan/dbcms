@@ -32,6 +32,9 @@ class AnalyticsManagerService
         }
 
         $encodedId = json_encode($id, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
+        $events = preg_split('/[\s,]+/', (string) module_setting('analytics', 'ga4_conversion_events', ''), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $events = array_values(array_filter($events, static fn (string $event): bool => preg_match('/\A[a-zA-Z][a-zA-Z0-9_]{0,39}\z/', $event) === 1));
+        $encodedEvents = json_encode($events, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR);
         $nonce = htmlspecialchars((string) (Vite::cspNonce() ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
         return <<<HTML
@@ -39,11 +42,33 @@ class AnalyticsManagerService
         <script nonce="{$nonce}">
             (function() {
                 var disableKey = 'ga-disable-' + {$encodedId};
+                var allowedEvents = {$encodedEvents};
+                var analyticsGranted = false;
                 window[disableKey] = true;
+                function gtag(){ window.dataLayer.push(arguments); }
                 function updateConsent(granted) {
+                    analyticsGranted = granted;
                     window[disableKey] = !granted;
                     if (granted) loadGa4();
                 }
+                // Call only after an explicit successful public action. No form data is collected.
+                window.cmsTrackConversion = function(name, params) {
+                    if (!analyticsGranted || !window.__ga4_loaded || allowedEvents.indexOf(name) === -1) return false;
+                    var safe = {};
+                    params = params && typeof params === 'object' ? params : {};
+                    ['content_id', 'item_id', 'campaign_id'].forEach(function(key) {
+                        if (typeof params[key] === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(params[key])) safe[key] = params[key];
+                    });
+                    if (typeof params.value === 'number' && Number.isFinite(params.value) && params.value >= 0) safe.value = params.value;
+                    if (typeof params.currency === 'string' && /^[A-Z]{3}$/.test(params.currency)) safe.currency = params.currency;
+                    safe.send_to = {$encodedId};
+                    gtag('event', name, safe);
+                    return true;
+                };
+                window.addEventListener('cms-conversion-success', function(e) {
+                    var detail = e.detail || {};
+                    window.cmsTrackConversion(detail.name, detail.params);
+                });
                 function loadGa4() {
                     if (window.__ga4_loaded) return;
                     window.__ga4_loaded = true;
@@ -52,7 +77,6 @@ class AnalyticsManagerService
                     s.src = 'https://www.googletagmanager.com/gtag/js?id=' + {$encodedId};
                     document.head.appendChild(s);
                     window.dataLayer = window.dataLayer || [];
-                    function gtag(){dataLayer.push(arguments);}
                     gtag('js', new Date());
                     gtag('config', {$encodedId}, { 'anonymize_ip': true, 'allow_google_signals': false, 'allow_ad_personalization_signals': false });
                 }

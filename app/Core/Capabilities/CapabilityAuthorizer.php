@@ -78,6 +78,15 @@ class CapabilityAuthorizer
             if ($permission === 'manage:ai') {
                 return OAuthScope::AI_MANAGE->value;
             }
+            if ($permission === 'manage:creative-studio') {
+                return ($ability === 'read' ? OAuthScope::CREATIVE_READ : OAuthScope::CREATIVE_WRITE)->value;
+            }
+            if ($permission === 'manage:social-accounts') {
+                return OAuthScope::SOCIAL_ACCOUNTS->value;
+            }
+            if (in_array($permission, ['read:social-publishing', 'manage:social-publishing', 'approve:social-publishing'], true)) {
+                return ($ability === 'read' ? OAuthScope::SOCIAL_READ : OAuthScope::SOCIAL_WRITE)->value;
+            }
 
             return match ($ability) {
                 'read' => OAuthScope::READ_CONTENT->value, 'destructive' => OAuthScope::ADMIN_SYSTEM->value, default => OAuthScope::WRITE_CONTENT->value

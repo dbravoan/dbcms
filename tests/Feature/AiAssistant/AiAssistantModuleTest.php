@@ -129,12 +129,15 @@ test('generate seo metadata returns bounded length', function (): void {
     expect(mb_strlen($seo['meta_description']))->toBeLessThanOrEqual(160);
 });
 
-test('test provider connection reports success', function (): void {
+test('test provider connection requires configured credentials instead of synthesizing success', function (): void {
     $aiService = app(AiAssistantDomainServiceInterface::class);
 
     $test = $aiService->testProviderConnection('gemini');
 
-    expect($test['success'])->toBeTrue();
+    expect($test['success'])->toBeFalse();
+    expect($test['connection_state'])->toBe('unconfigured');
+    expect($test['generation_verified'])->toBeFalse();
+    Http::assertNothingSent();
     expect($test['provider'])->toBe('gemini');
     expect($test['latency_ms'])->toBeGreaterThanOrEqual(0);
 });

@@ -7,6 +7,7 @@ namespace Modules\AiAssistant;
 use App\Contracts\Services\LocalizationServiceInterface;
 use App\Core\Capabilities\CapabilityRegistry;
 use App\Core\Capabilities\Contracts\PlannerInterface;
+use App\Core\Integrations\IntegrationGuideRegistry;
 use App\Core\Modules\BaseModuleServiceProvider;
 use App\Core\Modules\ModuleSettingsExtensionRegistry;
 use App\Http\Middleware\EnsureAdminAuthenticated;
@@ -100,6 +101,7 @@ class AiAssistantModuleServiceProvider extends BaseModuleServiceProvider
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
 
         $this->app->make(AiCapabilityRegistrar::class)->register($this->app->make(CapabilityRegistry::class));
+        $this->app->make(IntegrationGuideRegistry::class)->register('ai_assistant', require __DIR__.'/Resources/guides/providers.php');
         $this->registerRoutes();
         $this->registerLayoutExtensions();
         $this->registerCreateFill();

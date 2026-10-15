@@ -56,6 +56,7 @@ final class AiModelCatalogService implements AiModelCatalogInterface
     public function forget(string $provider): void
     {
         Cache::forget($this->cacheKey($provider));
+        Cache::forget($this->cacheKey($provider).':connection');
     }
 
     /** @return array{state: string, verified: bool} */

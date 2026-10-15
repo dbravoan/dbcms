@@ -6,6 +6,7 @@ namespace Modules\AiAssistant\Services;
 
 use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Services\Media\RemoteMediaUrlPolicy;
+use Illuminate\Validation\ValidationException;
 use Modules\AiAssistant\Contracts\AiProviderRegistryInterface;
 
 /**
@@ -59,6 +60,13 @@ final class AiProviderSettings
     {
         $stored = $this->settings->get(self::MODULE, $this->key($provider, 'api_key'))
             ?: config("services.{$provider}.key");
+
+        if ($provider === 'higgsfield' && empty($stored)) {
+            $parts = $this->higgsfieldCredentials();
+            if ($parts['id'] !== null && $parts['secret'] !== null) {
+                return $parts['id'].':'.$parts['secret'];
+            }
+        }
 
         return ! empty($stored) ? (string) $stored : null;
     }
@@ -115,7 +123,7 @@ final class AiProviderSettings
         $normalized = $settings;
         foreach ($this->registry->ids() as $provider) {
             $data = [];
-            foreach (['api_key', 'model', 'text_model', 'image_model', 'video_model', 'base_url'] as $field) {
+            foreach (array_merge(['api_key', 'model', 'text_model', 'image_model', 'video_model', 'base_url'], $provider === 'higgsfield' ? ['api_key_id', 'api_key_secret'] : []) as $field) {
                 $key = $this->key($provider, $field);
                 if (array_key_exists($key, $settings)) {
                     if ($settings[$key] !== null && ! is_string($settings[$key])) {
@@ -157,6 +165,12 @@ final class AiProviderSettings
             $payload[$this->key($provider, 'api_key')] = $apiKey;
         }
 
+        $explicitReplacement = $this->unmasked($apiKey) !== null;
+        if ($provider === 'higgsfield') {
+            $payload = array_merge($payload, $this->prepareHiggsfield($data));
+            $explicitReplacement = $explicitReplacement || ($this->unmasked($data['api_key_id'] ?? null) !== null && $this->unmasked($data['api_key_secret'] ?? null) !== null);
+        }
+
         $model = $data['model'] ?? null;
         if (is_string($model) && $model !== '') {
             $payload[$this->key($provider, 'model')] = $model;
@@ -178,13 +192,64 @@ final class AiProviderSettings
             }
             $previous = rtrim((string) ($this->baseUrl($provider) ?? $definition->defaultBaseUrl), '/');
             $changed = rtrim($baseUrl, '/') !== $previous;
-            if ($changed && $this->hasApiKey($provider) && ! isset($payload[$this->key($provider, 'api_key')])) {
+            if ($changed && $this->hasApiKey($provider) && ! $explicitReplacement) {
                 throw new \InvalidArgumentException('Changing the endpoint requires an explicit replacement API key.');
             }
             $payload[$this->key($provider, 'base_url')] = rtrim($baseUrl, '/');
         }
 
         return $payload;
+    }
+
+    /** @return array{id:?string,secret:?string} */
+    public function higgsfieldCredentials(): array
+    {
+        $legacy = $this->settings->get(self::MODULE, 'higgsfield_api_key') ?: config('services.higgsfield.key');
+        if (is_string($legacy) && $legacy !== '') {
+            if (! str_contains($legacy, ':')) {
+                return ['id' => null, 'secret' => null];
+            }
+            [$id,$secret] = explode(':', $legacy, 2);
+
+            return ['id' => $id !== '' ? $id : null, 'secret' => $secret !== '' ? $secret : null];
+        }
+        $id = $this->settings->get(self::MODULE, 'higgsfield_api_key_id');
+        $secret = $this->settings->get(self::MODULE, 'higgsfield_api_key_secret');
+
+        return ['id' => is_string($id) && $id !== '' ? $id : null, 'secret' => is_string($secret) && $secret !== '' ? $secret : null];
+    }
+
+    /**
+     * @param  array<string,mixed>  $data
+     * @return array<string,mixed>
+     */
+    private function prepareHiggsfield(array $data): array
+    {
+        $parts = $this->higgsfieldCredentials();
+        $legacy = $this->unmasked($data['api_key'] ?? null);
+        $id = $this->unmasked($data['api_key_id'] ?? null);
+        $secret = $this->unmasked($data['api_key_secret'] ?? null);
+        if ($legacy !== null && str_contains($legacy, ':')) {
+            [$legacyId,$legacySecret] = explode(':', $legacy, 2);
+            $parts = ['id' => $legacyId, 'secret' => $legacySecret];
+        } elseif ($legacy !== null && $id === null && $secret === null) {
+            return [];
+        }
+        if ($legacy === null && $id === null && $secret === null) {
+            return [];
+        }
+        $id = $id ?? $parts['id'];
+        $secret = $secret ?? $parts['secret'];
+        if ($id === null || $secret === null || $id === '' || $secret === '' || preg_match('/[\s:]/u', $id) || preg_match('/[\r\n\x00]/', $secret)) {
+            throw ValidationException::withMessages(['api_key_id' => 'Introduce el ID y el secreto del mismo par de Higgsfield. Los campos vacíos conservan una credencial completa existente.']);
+        }
+
+        return ['higgsfield_api_key_id' => $id, 'higgsfield_api_key_secret' => $secret, 'higgsfield_api_key' => $id.':'.$secret];
+    }
+
+    private function unmasked(mixed $value): ?string
+    {
+        return is_string($value) && trim($value) !== '' && ! str_starts_with($value, '••••') ? trim($value) : null;
     }
 
     public function hasKey(string $provider): bool

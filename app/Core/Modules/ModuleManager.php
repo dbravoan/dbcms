@@ -9,6 +9,7 @@ use App\Contracts\Services\ModulePackageUploadServiceInterface;
 use App\Core\Search\Contracts\SearchSourceRegistryInterface;
 use App\Core\Search\SearchIndexer;
 use App\DTOs\Modules\ModulePackageDTO;
+use App\Events\ModuleAvailabilityChanged;
 use App\Models\CmsModule;
 use App\Models\MenuItem;
 use App\Services\Cms\PageCacheService;
@@ -79,10 +80,14 @@ class ModuleManager implements ModulePackageUploadServiceInterface
                         'is_pageable' => (bool) ($manifest['is_pageable'] ?? false),
                         'is_core' => $isCore,
                         'is_installed' => true,
-                        'is_active' => true,
+                        'is_active' => (bool) ($manifest['default_active'] ?? true),
                     ])->save();
                 } else {
                     $module->update([
+                        'name' => (string) ($manifest['name'] ?? $identifier),
+                        'version' => (string) ($manifest['version'] ?? '1.0.0'),
+                        'description' => (string) ($manifest['description'] ?? ''),
+                        'provider' => (string) $manifest['provider'],
                         'is_core' => $isCore,
                         'is_pageable' => (bool) ($manifest['is_pageable'] ?? false),
                     ]);
@@ -167,13 +172,19 @@ class ModuleManager implements ModulePackageUploadServiceInterface
             }
         }
 
-        $module->update(['is_installed' => true, 'is_active' => true]);
-        if (isset($this->registeredModules[$identifier])) {
+        $manifest = $this->getModuleManifest($identifier);
+        $active = $module->is_active || (bool) ($manifest['default_active'] ?? true);
+        $module->update(['is_installed' => true, 'is_active' => $active]);
+        if ($active && isset($this->registeredModules[$identifier])) {
             $this->activeModules[$identifier] = $this->registeredModules[$identifier];
+        } else {
+            unset($this->activeModules[$identifier]);
         }
         app(PageCacheService::class)->invalidate();
 
         $this->rebuildSearchAfterCommit($identifier);
+
+        $this->notifyAvailabilityAfterCommit($identifier, 'install');
 
         return true;
     }
@@ -187,6 +198,8 @@ class ModuleManager implements ModulePackageUploadServiceInterface
         $module->update(['is_installed' => false, 'is_active' => false]);
         unset($this->activeModules[$identifier]);
         app(PageCacheService::class)->invalidate();
+
+        $this->notifyAvailabilityAfterCommit($identifier, 'uninstall');
 
         return true;
     }
@@ -204,6 +217,7 @@ class ModuleManager implements ModulePackageUploadServiceInterface
 
         if ($updated) {
             $this->rebuildSearchAfterCommit($identifier);
+            $this->notifyAvailabilityAfterCommit($identifier, 'activate');
         }
 
         return $updated;
@@ -219,7 +233,17 @@ class ModuleManager implements ModulePackageUploadServiceInterface
         $updated = (bool) CmsModule::where('identifier', $identifier)->update(['is_active' => false]);
         app(PageCacheService::class)->invalidate();
 
+        if ($updated) {
+            $this->notifyAvailabilityAfterCommit($identifier, 'deactivate');
+        }
+
         return $updated;
+    }
+
+    private function notifyAvailabilityAfterCommit(string $identifier, string $operation): void
+    {
+        $event = new ModuleAvailabilityChanged($identifier, $this->isModuleEnabled($identifier), $operation);
+        DB::afterCommit(static fn () => event($event));
     }
 
     private function rebuildSearchAfterCommit(string $identifier): void

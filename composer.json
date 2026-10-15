@@ -74,7 +74,7 @@
         "post-create-project-cmd": [
             "@php artisan key:generate --ansi",
             "@php artisan passport:keys --ansi",
-            "@php -r \"echo PHP_EOL.'==============================================='.PHP_EOL.'dbCMS installed successfully!'.PHP_EOL.'Next steps:'.PHP_EOL.'  1. cp .env.example .env && configure DB'.PHP_EOL.'  2. php artisan migrate'.PHP_EOL.'  3. Visit http://localhost/install to complete setup!'.PHP_EOL.'==============================================='.PHP_EOL;\""
+            "@php -r \"echo PHP_EOL.'==============================================='.PHP_EOL.'dbCMS installed successfully!'.PHP_EOL.'Next steps:'.PHP_EOL.'  1. Review the generated .env without replacing APP_KEY'.PHP_EOL.'  2. Build frontend assets in Docker (npm ci && npm run build)'.PHP_EOL.'  3. Visit http://localhost/install to complete setup!'.PHP_EOL.'==============================================='.PHP_EOL;\""
         ],
         "test": [
             "pest"

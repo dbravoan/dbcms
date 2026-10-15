@@ -85,3 +85,25 @@ test('disabled providers remain unavailable to filter and search consumers', fun
     $this->manager->deactivate('shop');
     expect($filters->get('shop'))->toBeNull()->and($sources->has('product'))->toBeFalse();
 });
+
+test('rediscovery refreshes shipped module metadata without changing installation choices', function (bool $installed, bool $active): void {
+    $this->manager->discoverModules();
+    $manifest = $this->manager->getModuleManifest('blog');
+    $module = CmsModule::where('identifier', 'blog')->firstOrFail();
+    $settings = ['is_enabled' => false, 'editorial_setting' => 'preserve'];
+    $module->update([
+        'name' => 'Old name', 'version' => '0.0.1', 'description' => 'Old description',
+        'provider' => 'Old\\Provider', 'is_installed' => $installed,
+        'is_active' => $active, 'settings' => $settings,
+    ]);
+
+    $this->manager->discoverModules();
+
+    expect($module->fresh())->name->toBe($manifest['name'])
+        ->version->toBe($manifest['version'])
+        ->description->toBe($manifest['description'])
+        ->provider->toBe($manifest['provider'])
+        ->is_installed->toBe($installed)
+        ->is_active->toBe($active)
+        ->settings->toBe($settings);
+})->with([[true, true], [true, false], [false, false]]);

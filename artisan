@@ -16,8 +16,9 @@ if (is_file(__DIR__.'/storage/app/private/core-updates/active.json') && ! $updat
 }
 
 require_once __DIR__.'/bootstrap/UpdateRuntime.php';
-// Queue workers acquire admission per reservation in CoreUpdateServiceProvider.
-if (! $updateRecoveryCommand && ! in_array($updateCommand, ['queue:work', 'queue:listen'], true) && ! UpdateRuntime::admit(__DIR__)) {
+// Workers acquire admission per reservation; schedule:work delegates execution to
+// fresh schedule:run children, each holding admission through task completion.
+if (! $updateRecoveryCommand && ! in_array($updateCommand, ['queue:work', 'queue:listen', 'schedule:work'], true) && ! UpdateRuntime::admit(__DIR__)) {
     fwrite(STDERR, "Actualización del núcleo en curso. Reintenta después.\n");
     exit(75);
 }

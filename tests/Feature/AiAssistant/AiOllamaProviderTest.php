@@ -114,6 +114,8 @@ test('the catalog exposes ollama models only once the endpoint is reachable', fu
 });
 
 test('the connection test succeeds for a configured ollama provider', function (): void {
+    Http::fake(['host.docker.internal:11434/v1/models' => Http::response(['data' => [['id' => 'llama3.2:3b']]])]);
+    app(AiConfigBridgeInterface::class)->saveProviderConfig('ollama', ['base_url' => OLLAMA_BASE, 'model' => 'llama3.2:3b']);
     $result = app(AiAssistantDomainServiceInterface::class)->testProviderConnection('ollama');
 
     expect($result['success'])->toBeTrue()

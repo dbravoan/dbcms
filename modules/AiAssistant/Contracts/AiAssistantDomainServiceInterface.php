@@ -68,5 +68,5 @@ interface AiAssistantDomainServiceInterface
      *
      * @return array{success: bool, provider: string, model: string, message: string, latency_ms: int}
      */
-    public function testProviderConnection(string $provider): array;
+    public function testProviderConnection(string $provider, string $modality = 'text'): array;
 }

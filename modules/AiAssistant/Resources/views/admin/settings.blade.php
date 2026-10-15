@@ -16,6 +16,8 @@
         $initialShowKey[$id] = false;
         $initialForms[$id] = [
             'api_key' => '',
+            'api_key_id'=>'',
+            'api_key_secret'=>'',
             'base_url' => ! empty($prov['base_url']) ? $prov['base_url'] : ($prov['default_base_url'] ?? ''),
             'model' => $prov['current_model'] ?? '',
             'image_model' => $prov['image_model'] ?? '',
@@ -67,10 +69,10 @@
         <div class="flex items-center gap-3">
             <button type="button"
                     @click="testProvider(activeProvider)"
-                    :disabled="testingProvider === activeProvider"
+                    :disabled="testingProvider === activeProvider + ':text'"
                     class="btn-neon">
-                <i class="fa-solid" :class="testingProvider === activeProvider ? 'fa-spinner fa-spin' : 'fa-bolt'"></i>
-                <span x-text="testingProvider === activeProvider ? 'Verificando latencia...' : 'Probar Proveedor Activo'"></span>
+                <i class="fa-solid" :class="testingProvider === activeProvider + ':text' ? 'fa-spinner fa-spin' : 'fa-bolt'"></i>
+                <span x-text="testingProvider === activeProvider + ':text' ? 'Comprobando catálogo...' : 'Comprobar proveedor activo'"></span>
             </button>
         </div>
     </div>
@@ -209,10 +211,16 @@
                     </div>
                 </div>
 
+                <x-admin.button :href="route('admin.modules.guides.show', ['identifier'=>'ai_assistant','guide'=>$pId])" size="sm" icon="fa-solid fa-book-open">Cómo configurar {{ $prov['name'] }}</x-admin.button>
+
                 <!-- Provider Specific Form Fields -->
                 <div class="space-y-3 pt-2 border-t border-gray-800/80">
                     <!-- API Key Field (only for providers that require one) -->
-                    @if($prov['requires_api_key'])
+                    @if($pId === 'higgsfield')
+                        <x-admin.input id="higgsfield-api-key-id" name="higgsfield_api_key_id" label="Higgsfield API Key ID" type="password" x-model="forms['higgsfield'].api_key_id" :placeholder="$prov['has_api_key_id'] ? 'ID guardado; vacío lo conserva' : 'Introduce APIKEY_ID'" />
+                        <x-admin.input id="higgsfield-api-key-secret" name="higgsfield_api_key_secret" label="Higgsfield API Key Secret" type="password" x-model="forms['higgsfield'].api_key_secret" :placeholder="$prov['has_api_key_secret'] ? 'Secreto guardado; vacío lo conserva' : 'Introduce APIKEY_SECRET'" />
+                        <p class="admin-field-hint">Los dos campos pertenecen al mismo par. Las credenciales anteriores siguen disponibles mientras no las sustituyas.</p>
+                    @elseif($prov['requires_api_key'])
                     <div>
                         <div class="flex items-center justify-between mb-1">
                             <label class="text-[10px] uppercase font-bold text-gray-400">{{ __('admin.ai.api_key') }}</label>
@@ -306,16 +314,14 @@
                 </div>
 
                 <!-- Test Connection Feedback for this card -->
-                <template x-if="testResults['{{ $pId }}']">
-                    <div class="p-2.5 rounded-lg text-[11px] border"
-                         :class="testResults['{{ $pId }}'].status === 'connected' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-rose-500/10 border-rose-500/30 text-rose-300'">
-                        <div class="flex items-center justify-between">
-                            <span class="font-bold" x-text="testResults['{{ $pId }}'].status === 'connected' ? '✓ Conexión Correcta' : '✗ Falló la conexión'"></span>
-                            <span x-text="testResults['{{ $pId }}'].latency_ms + ' ms'" class="font-mono text-[10px]"></span>
+                @foreach(['text'=>'Texto', 'image'=>'Imagen', 'video'=>'Vídeo'] as $probeModality=>$probeLabel)
+                    <template x-if="testResults['{{ $pId }}:{{ $probeModality }}']">
+                        <div class="admin-field-hint" role="status">
+                            <strong>{{ $probeLabel }}:</strong>
+                            <span x-text="testResults['{{ $pId }}:{{ $probeModality }}'].message"></span>
                         </div>
-                        <p class="text-[10px] opacity-80 mt-1" x-text="testResults['{{ $pId }}'].message || testResults['{{ $pId }}'].error"></p>
-                    </div>
-                </template>
+                    </template>
+                @endforeach
 
                 <!-- Card Actions -->
                 <div class="space-y-2 pt-3 border-t border-gray-800">
@@ -328,13 +334,11 @@
                             <span x-text="savingProvider === '{{ $pId }}' ? 'Guardando...' : 'Guardar'"></span>
                         </button>
 
-                        <button type="button"
-                                @click="testProvider('{{ $pId }}')"
-                                :disabled="testingProvider === '{{ $pId }}'"
-                                title="{{ __('admin.ai.test_connection') }}"
-                                class="px-3 py-2 rounded-lg bg-[#1A1A1A] hover:bg-gray-800 border border-gray-700 hover:border-[#00FF99] text-gray-300 hover:text-[#00FF99] text-xs font-bold transition-all">
-                            <i class="fa-solid" :class="testingProvider === '{{ $pId }}' ? 'fa-spinner fa-spin' : 'fa-plug'"></i>
-                        </button>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach(['text'=>'Texto', 'image'=>'Imagen', 'video'=>'Vídeo'] as $probeModality=>$probeLabel)
+                            <x-admin.button size="sm" x-on:click="testProvider('{{ $pId }}', '{{ $probeModality }}')" x-bind:disabled="testingProvider === '{{ $pId }}:{{ $probeModality }}'" title="Consulta de autenticación o catálogo sin generación">Comprobar {{ $probeLabel }}</x-admin.button>
+                        @endforeach
                     </div>
 
                     <div>
@@ -368,6 +372,7 @@ function aiProviderHub() {
         savingProvider: null,
         settingDefault: null,
         testResults: {},
+        connectionEpochs: {},
         toastMessage: null,
         toastType: 'success',
 
@@ -464,6 +469,8 @@ function aiProviderHub() {
                     body: JSON.stringify({
                         provider: provider,
                         api_key: form.api_key,
+                        api_key_id: provider === 'higgsfield' ? form.api_key_id : null,
+                        api_key_secret: provider === 'higgsfield' ? form.api_key_secret : null,
                         model: chosenModel,
                         image_model: form.image_model || null,
                         video_model: form.video_model || null,
@@ -473,6 +480,11 @@ function aiProviderHub() {
 
                 const data = await res.json();
                 if (data.success) {
+                    this.connectionEpochs[provider] = (this.connectionEpochs[provider] || 0) + 1;
+                    for (const modality of ['text', 'image', 'video']) delete this.testResults[provider + ':' + modality];
+                    this.forms[provider].api_key = '';
+                    this.forms[provider].api_key_id = '';
+                    this.forms[provider].api_key_secret = '';
                     this.showToast(data.message || 'Configuración guardada correctamente.', 'success');
                     if (this.catalog[provider]) {
                         this.catalog[provider].current_model = data.model;
@@ -490,8 +502,10 @@ function aiProviderHub() {
             }
         },
 
-        async testProvider(provider) {
-            this.testingProvider = provider;
+        async testProvider(provider, modality = 'text') {
+            const resultKey = provider + ':' + modality;
+            const epoch = this.connectionEpochs[provider] || 0;
+            this.testingProvider = resultKey;
             try {
                 const res = await fetch('{{ route('admin.ai_assistant.test_connection') }}', {
                     method: 'POST',
@@ -500,15 +514,16 @@ function aiProviderHub() {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
                         'Accept': 'application/json'
                     },
-                    body: JSON.stringify({ provider: provider })
+                    body: JSON.stringify({ provider: provider, modality: modality })
                 });
 
                 const data = await res.json();
-                this.testResults[provider] = data;
+                if (epoch !== (this.connectionEpochs[provider] || 0)) return;
+                this.testResults[resultKey] = data;
                 if (data.status === 'connected') {
-                    this.showToast(`Conexión con ${provider.toUpperCase()} exitosa (${data.latency_ms} ms).`, 'success');
+                    this.showToast(data.message, 'success');
                 } else {
-                    this.showToast(`Error al conectar con ${provider}: ${data.error || data.message}`, 'error');
+                    this.showToast(data.error || data.message, 'error');
                 }
             } catch (err) {
                 this.showToast('Error de red al ejecutar test.', 'error');

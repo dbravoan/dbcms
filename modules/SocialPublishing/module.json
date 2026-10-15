@@ -1,0 +1,69 @@
+{
+    "identifier": "social-publishing",
+    "name": "Publicaciones sociales",
+    "version": "1.0.0",
+    "description": "Módulo SocialPublishing desacoplado para dbCMS",
+    "provider": "Modules\\SocialPublishing\\SocialPublishingModuleServiceProvider",
+    "is_pageable": false,
+    "has_dedicated_panel": false,
+    "widgets": {},
+    "permissions": [
+        "read:social-publishing",
+        "manage:social-publishing",
+        "approve:social-publishing",
+        "manage:social-accounts"
+    ],
+    "settings": {
+        "facebook_client_id": {
+            "type": "text",
+            "label": "Facebook · ID del cliente OAuth",
+            "description": "Configura este cliente siguiendo el tutorial local."
+        },
+        "facebook_client_secret": {
+            "type": "password",
+            "label": "Facebook · Secreto del cliente OAuth",
+            "secret": true,
+            "description": "Se guarda cifrado; un cambio obliga a autorizar las cuentas otra vez."
+        },
+        "instagram_client_id": {
+            "type": "text",
+            "label": "Instagram · ID del cliente OAuth",
+            "description": "Configura este cliente siguiendo el tutorial local."
+        },
+        "instagram_client_secret": {
+            "type": "password",
+            "label": "Instagram · Secreto del cliente OAuth",
+            "secret": true,
+            "description": "Se guarda cifrado; un cambio obliga a autorizar las cuentas otra vez."
+        },
+        "linkedin_client_id": {
+            "type": "text",
+            "label": "Linkedin · ID del cliente OAuth",
+            "description": "Configura este cliente siguiendo el tutorial local."
+        },
+        "linkedin_client_secret": {
+            "type": "password",
+            "label": "Linkedin · Secreto del cliente OAuth",
+            "secret": true,
+            "description": "Se guarda cifrado; un cambio obliga a autorizar las cuentas otra vez."
+        },
+        "youtube_client_id": {
+            "type": "text",
+            "label": "Youtube · ID del cliente OAuth",
+            "description": "Configura este cliente siguiendo el tutorial local."
+        },
+        "youtube_client_secret": {
+            "type": "password",
+            "label": "Youtube · Secreto del cliente OAuth",
+            "secret": true,
+            "description": "Se guarda cifrado; un cambio obliga a autorizar las cuentas otra vez."
+        },
+        "timezone": {
+            "type": "text",
+            "label": "Zona horaria de programación",
+            "default": "UTC",
+            "description": "Identificador IANA, por ejemplo Europe/Madrid. La programación siempre conserva UTC."
+        }
+    },
+    "default_active": false
+}

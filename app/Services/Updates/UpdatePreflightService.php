@@ -6,10 +6,11 @@ namespace App\Services\Updates;
 
 use App\Contracts\Services\UpdateDeploymentServiceInterface;
 use App\Contracts\Services\UpdatePreflightServiceInterface;
+use App\Core\Modules\ModuleManager;
 
 final class UpdatePreflightService implements UpdatePreflightServiceInterface
 {
-    public function __construct(private readonly UpdateDeploymentServiceInterface $deployment) {}
+    public function __construct(private readonly UpdateDeploymentServiceInterface $deployment, private readonly ModuleManager $modules) {}
 
     /** @param array<string, mixed> $run
      * @param  array<string, mixed>  $hosting
@@ -31,6 +32,15 @@ final class UpdatePreflightService implements UpdatePreflightServiceInterface
         }
         if (! in_array(config('queue.default'), ['sync', 'database'], true)) {
             $issues[] = 'Los workers deben detenerse mediante el despliegue gestionado antes de actualizar.';
+        }
+        foreach (config('queue.connections', []) as $name => $connection) {
+            if (($connection['requires_managed_updates'] ?? false) !== true) {
+                continue;
+            }
+            $owners = $connection['update_owner_modules'] ?? [];
+            if ($owners === [] || array_filter($owners, fn (string $identifier): bool => $this->modules->isModuleEnabled($identifier)) !== []) {
+                $issues[] = 'Los workers de '.$name.' requieren detenerse mediante un despliegue gestionado antes de actualizar.';
+            }
         }
         if (filter_var(ini_get('opcache.enable'), FILTER_VALIDATE_BOOLEAN) && (! filter_var(ini_get('opcache.validate_timestamps'), FILTER_VALIDATE_BOOLEAN) || (int) ini_get('opcache.revalidate_freq') !== 0)) {
             $issues[] = 'El alojamiento debe permitir refrescar OPcache en todas las peticiones.';

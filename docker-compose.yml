@@ -1,3 +1,24 @@
+x-marketing-worker: &marketing-worker
+    image: sail-8.3/app
+    restart: unless-stopped
+    stop_grace_period: 1500s
+    extra_hosts:
+        - 'host.docker.internal:host-gateway'
+    environment:
+        WWWUSER: '${WWWUSER:-1000}'
+        SUPERVISOR_PHP_USER: sail
+        LARAVEL_SAIL: 1
+        INSIDE_CONTAINER: "true"
+    volumes:
+        - '.:/var/www/html'
+    networks:
+        - sail
+    depends_on:
+        mysql:
+            condition: service_healthy
+        redis:
+            condition: service_healthy
+
 services:
     laravel.test:
         build:
@@ -86,6 +107,26 @@ services:
         depends_on:
             mysql:
                 condition: service_healthy
+
+    creative-generation:
+        <<: *marketing-worker
+        command: php artisan queue:work marketing --queue=creative-generation --sleep=2 --tries=1 --timeout=720
+
+    creative-render:
+        <<: *marketing-worker
+        command: php artisan queue:work marketing --queue=creative-render --sleep=2 --tries=1 --timeout=300
+
+    social-delivery:
+        <<: *marketing-worker
+        command: php artisan queue:work marketing --queue=social-delivery --sleep=2 --tries=1 --timeout=600
+
+    social-reconciliation:
+        <<: *marketing-worker
+        command: php artisan queue:work marketing --queue=social-reconciliation --sleep=3 --tries=1 --timeout=180
+
+    scheduler:
+        <<: *marketing-worker
+        command: php artisan schedule:work
 
     queue:
         image: sail-8.3/app

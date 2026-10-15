@@ -213,6 +213,16 @@
 .fa-solid.fa-utensils { --fa: "\f2e7"; }
 .fa-solid.fa-lightbulb::before { content: "\f0eb"; }
 .fa-solid.fa-lightbulb { --fa: "\f0eb"; }
+.fa-solid.fa-coins::before { content: "\f51e"; }
+.fa-solid.fa-coins { --fa: "\f51e"; }
+.fa-solid.fa-palette::before { content: "\f53f"; }
+.fa-solid.fa-palette { --fa: "\f53f"; }
+.fa-solid.fa-book::before { content: "\f02d"; }
+.fa-solid.fa-book { --fa: "\f02d"; }
+.fa-solid.fa-swatchbook::before { content: "\f5c3"; }
+.fa-solid.fa-swatchbook { --fa: "\f5c3"; }
+.fa-solid.fa-download::before { content: "\f019"; }
+.fa-solid.fa-download { --fa: "\f019"; }
 .fa-solid.fa-key::before { content: "\f084"; }
 .fa-solid.fa-key { --fa: "\f084"; }
 .fa-solid.fa-terminal::before { content: "\f120"; }
@@ -309,8 +319,6 @@
 .fa-solid.fa-gem { --fa: "\f3a5"; }
 .fa-solid.fa-briefcase::before { content: "\f0b1"; }
 .fa-solid.fa-briefcase { --fa: "\f0b1"; }
-.fa-solid.fa-coins::before { content: "\f51e"; }
-.fa-solid.fa-coins { --fa: "\f51e"; }
 .fa-solid.fa-wallet::before { content: "\f555"; }
 .fa-solid.fa-wallet { --fa: "\f555"; }
 .fa-solid.fa-credit-card::before { content: "\f09d"; }
@@ -347,8 +355,6 @@
 .fa-solid.fa-angles-down { --fa: "\f103"; }
 .fa-solid.fa-expand::before { content: "\f065"; }
 .fa-solid.fa-expand { --fa: "\f065"; }
-.fa-solid.fa-palette::before { content: "\f53f"; }
-.fa-solid.fa-palette { --fa: "\f53f"; }
 .fa-solid.fa-file::before { content: "\f15b"; }
 .fa-solid.fa-file { --fa: "\f15b"; }
 .fa-solid.fa-water::before { content: "\f773"; }
@@ -357,6 +363,8 @@
 .fa-solid.fa-font-awesome { --fa: "\f2b4"; }
 .fa-regular.fa-face-smile::before { content: "\f118"; }
 .fa-regular.fa-face-smile { --fa: "\f118"; }
+.fa-solid.fa-arrow-left::before { content: "\f060"; }
+.fa-solid.fa-arrow-left { --fa: "\f060"; }
 .fa-solid.fa-filter::before { content: "\f0b0"; }
 .fa-solid.fa-filter { --fa: "\f0b0"; }
 .fa-solid.fa-puzzle-piece::before { content: "\f12e"; }

@@ -128,7 +128,7 @@ final class GeminiProvider implements AiImageProviderInterface, AiProviderInterf
                 continue;
             }
 
-            return new ImageGenerationResult(url: 'data:'.$mime.';base64,'.$inline['data'], provider: 'gemini', model: $model, binaryData: $binary, mimeType: $mime, prompt: $request->prompt);
+            return new ImageGenerationResult(url: 'data:'.$mime.';base64,'.$inline['data'], provider: 'gemini', model: $model, binaryData: $binary, mimeType: $mime, prompt: $request->prompt, metadata: ['usage' => (array) $response->json('usageMetadata', [])]);
         }
         throw new AiProviderException('Gemini completed without a generated image.');
     }

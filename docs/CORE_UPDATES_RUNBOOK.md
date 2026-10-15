@@ -66,8 +66,8 @@ En desarrollo, usar el wrapper Docker del proyecto; en el servidor gestionado, s
 
 ```sh
 ./bin/sail-run php artisan cms:updates check --force
-./bin/sail-run php artisan cms:updates adopt 1.0.1 --distribution=source --actor=ID
-./bin/sail-run php artisan cms:updates prepare 1.1.0 --actor=ID
+./bin/sail-run php artisan cms:updates adopt 1.1.0 --distribution=source --actor=ID
+./bin/sail-run php artisan cms:updates prepare 1.2.0 --actor=ID
 ./bin/sail-run php artisan cms:updates status UUID --actor=ID
 ./bin/sail-run php artisan cms:updates proposal UUID --actor=ID --output=/ruta/privada/propuesta.zip
 ```
@@ -93,3 +93,10 @@ Al preparar una versión nueva del **núcleo**, alinear `VERSION`, los manifiest
 Los proyectos derivados no reciben la clave privada de dbCMS. Conservan el origen de actualización del núcleo aunque cambien el nombre o versión de su propio proyecto. Para publicar su web usarán su CI/despliegue y desactivarán o sustituirán el workflow de publicación del núcleo que copia la plantilla. Una versión comercial de la web no cambia la identidad firmada del CMS.
 
 Antes de publicar: pruebas de firma/manipulación, conflictos, adopción, backup/restauración, interrupción/concurrencia, denegaciones y HTTP raíz/public; Pest, navegador, PHPStan, Pint, auditorías y build en Docker. Comprobar artefactos de instalación y actualización sobre el mismo SHA. Un test local no demuestra despliegue ni entrega de correo externa.
+
+
+## Compatibilidad 1.2.0
+
+La entrega 1.2.0 reconoce inventarios oficiales firmados de 1.0.0, 1.0.1 y 1.1.0. La política también conserva 1.2.0 como origen reconocido; no habilita reinstalar ni bajar de versión. Las bases se adjuntan como manifiestos firmados a la nueva release; no se reemplazan etiquetas ni archivos históricos. La base runtime de 1.1.0 usa el ZIP publicado `dbcms-installer-v1.1.0.zip`, con SHA-256 `be47c7f236a73b78aa89e7d8b6cddd214fbe308c66717e38699a010777c1de48`, y el origen fija `25e1a5671726659c6fde149ef218715b7d07aadf`.
+
+La revisión explícita de las cinco migraciones de marketing y guías confirma que crean tablas o añaden columnas a tablas nuevas de los módulos, sin modificar contratos leídos por core 1.1.0; los módulos parten inactivos. Por ello `rollback_compatible=true` habilita el recorrido standalone. Este indicador no revierte DB ni permite rollback automático tras `migration_started`: los fallos posteriores o inciertos exigen recuperación guiada. El arranque de core 1.1.0 con la DB migrada se validará en el ensayo E2E. Preparar y comprobar una copia conjunta de DB, archivos y claves antes de aplicar; restaurar el respaldo correspondiente cuando proceda. El ensayo standalone 1.1.0 → 1.2.0 sobre el paquete publicado y las pruebas de la integración final siguen pendientes en [la matriz](RELEASE_1.2.0_INTEGRATION.md).

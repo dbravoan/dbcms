@@ -42,5 +42,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // Domain exceptions are rendered as standardized JSON responses
+        $exceptions->dontFlash([
+            'current_password', 'password', 'password_confirmation',
+            'api_key', 'api_secret', 'api_key_secret', 'client_secret', 'access_token', 'refresh_token',
+            'ga4_service_account_json', 'private_key',
+            'credentials', 'secrets', 'settings', 'clientSecret', 'apiKey', 'apiKeySecret',
+        ]);
     })->create();

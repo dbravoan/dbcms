@@ -134,6 +134,7 @@ class AiConfigBridge implements AiConfigBridgeInterface
     public function saveProviderConfig(string $provider, array $data): bool
     {
         $this->registry->resolve($provider);
+        $this->catalog->forget($provider);
         $this->settings->save($provider, $data);
         $this->catalog->forget($provider);
 
@@ -285,6 +286,9 @@ class AiConfigBridge implements AiConfigBridgeInterface
             'icon' => $definition->icon,
             'doc_url' => $definition->docUrl,
             'api_key' => $hasApiKey ? AiProviderSettings::MASKED_KEY : '',
+            'credential_fields' => $definition->id === 'higgsfield' ? ['api_key_id', 'api_key_secret'] : ['api_key'],
+            'has_api_key_id' => $definition->id === 'higgsfield' && $this->settings->higgsfieldCredentials()['id'] !== null,
+            'has_api_key_secret' => $definition->id === 'higgsfield' && $this->settings->higgsfieldCredentials()['secret'] !== null,
             'has_key' => $isConfigured,
             'is_configured' => $isConfigured,
             'current_model' => $this->getModelForProvider($definition->id),

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-10-15
+
+### Added
+- CreativeStudio and SocialPublishing modules, integration guides, GA4 reporting and consent-aware conversion instrumentation.
+- Marketing workers, scheduler recovery and media composition support with explicit review and approval boundaries.
+
+### Changed
+- Integrated marketing with the signed core updater and aligned browser installer, npm and release metadata at 1.2.0.
+- Added a signed recognition baseline for immutable 1.1.0 source and published runtime ZIP, alongside 1.0.0 and 1.0.1.
+- Release policy explicitly reviews additive marketing migrations for standalone update compatibility; automatic code rollback remains forbidden once migrations start, and database recovery requires verified backups.
+
+Validation of the final integrated SHA and external provider pilots remains pending; see [the integration matrix](docs/RELEASE_1.2.0_INTEGRATION.md). Historical validation is not evidence for this release.
+
 ## [1.1.0] - 2026-10-14
 
 ### Added
@@ -80,3 +93,6 @@ Local and remote release evidence is tracked separately in [the publication vali
 [1.0.2]: https://github.com/dbravoan/dbcms/releases/tag/v1.0.2
 [1.0.1]: https://github.com/dbravoan/dbcms/releases/tag/v1.0.1
 [1.0.0]: https://github.com/dbravoan/dbcms/releases/tag/v1.0.0
+
+[1.2.0]: https://github.com/dbravoan/dbcms/releases/tag/v1.2.0
+[1.1.0]: https://github.com/dbravoan/dbcms/releases/tag/v1.1.0

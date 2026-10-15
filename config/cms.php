@@ -48,7 +48,8 @@ return [
     'name' => env('APP_NAME', 'CMS'),
     'tagline' => env('CMS_TAGLINE'),
     'admin_path' => env('ADMIN_PATH', 'admin'),
-    'version' => env('APP_VERSION', '1.1.0'),
+    'version' => env('APP_VERSION', '1.2.0'),
+    'installation_id' => env('CMS_INSTALLATION_ID') ?: substr(hash('sha256', (string) env('APP_KEY', '')), 0, 32),
 
     /*
     |--------------------------------------------------------------------------

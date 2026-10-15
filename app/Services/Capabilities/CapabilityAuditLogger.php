@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Capabilities;
 
+use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Models\CapabilityAuditLog;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -31,6 +32,9 @@ class CapabilityAuditLogger
         'private_key',
         'api_key',
         'authorization',
+        'service_account_json',
+        'credential',
+        'apikey',
     ];
 
     /**
@@ -62,6 +66,9 @@ class CapabilityAuditLogger
      */
     public function redact(array $args): array
     {
+        if (is_string($args['identifier'] ?? null) && is_array($args['settings'] ?? null)) {
+            $args['settings'] = $this->maskModuleSettings($args['identifier'], $args['settings']);
+        }
         $clean = [];
 
         foreach ($args as $key => $value) {
@@ -82,6 +89,23 @@ class CapabilityAuditLogger
             }
 
             $clean[$key] = is_scalar($value) || $value === null ? $value : '[complex]';
+        }
+
+        return $clean;
+    }
+
+    /** @param array<string, mixed> $settings
+     * @return array<string, mixed>
+     */
+    public function maskModuleSettings(string $identifier, array $settings, string $mask = '***'): array
+    {
+        $schema = app(ModuleSettingsServiceInterface::class)->getSchema($identifier);
+        $clean = $this->redact($settings);
+        foreach ($settings as $key => $value) {
+            if (((bool) ($schema[$key]['secret'] ?? false) || ($schema[$key]['type'] ?? '') === 'password')
+                && $value !== null && $value !== '') {
+                $clean[$key] = $mask;
+            }
         }
 
         return $clean;

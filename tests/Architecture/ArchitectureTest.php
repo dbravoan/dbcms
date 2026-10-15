@@ -30,6 +30,7 @@ test('controllers depend only on declared application and framework layers', fun
             'Symfony\Component\HttpFoundation',
 
             'PDO',
+            '__',
             'view',
             'back',
             'request',

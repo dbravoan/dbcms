@@ -28,6 +28,8 @@ afterEach(function (): void {
 it('checks only published stable releases and caches failures without claiming a successful check', function (): void {
     Queue::fake();
     Cache::flush();
+    $store = app(UpdateRunStore::class);
+    $store->atomic($store->root().'/identity.json', json_encode(['version' => '1.1.0', 'source_sha' => str_repeat('a', 40), 'distribution' => 'runtime'], JSON_THROW_ON_ERROR));
     Http::fake(['api.github.com/*' => Http::response([['tag_name' => 'v1.2.0', 'draft' => false, 'prerelease' => false, 'name' => 'dbCMS 1.2.0', 'body' => 'Changes', 'published_at' => '2026-10-14T10:00:00Z', 'assets' => []], ['tag_name' => 'v9.0.0', 'draft' => false, 'prerelease' => true]], 200)]);
     $catalog = app(UpdateCatalogServiceInterface::class);
     $state = $catalog->check();

@@ -42,7 +42,7 @@ it('builds and verifies signed source and runtime artifacts without private stat
     mkdir($tmp.'/source/resources/updates/trusted-keys', 0700, true);
     file_put_contents($tmp.'/source/resources/updates/trusted-keys/test.pub', openssl_pkey_get_details($key)['key']);
     try {
-        $process = new Process([PHP_BINARY, dirname(__DIR__, 2).'/bin/build-update-release.php', '--source-root='.$tmp.'/source', '--runtime-root='.$tmp.'/runtime', '--version=1.1.0', '--sha='.str_repeat('a', 40), '--output='.$tmp.'/dist', '--key-file='.$tmp.'/key.pem', '--key-id=test']);
+        $process = new Process([PHP_BINARY, dirname(__DIR__, 2).'/bin/build-update-release.php', '--source-root='.$tmp.'/source', '--runtime-root='.$tmp.'/runtime', '--version=1.2.0', '--sha='.str_repeat('a', 40), '--output='.$tmp.'/dist', '--key-file='.$tmp.'/key.pem', '--key-id=test']);
         $process->mustRun();
         $raw = file_get_contents($tmp.'/dist/manifest.json');
         $signature = file_get_contents($tmp.'/dist/manifest.sig');

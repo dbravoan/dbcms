@@ -41,6 +41,28 @@ it('blocks ordinary commands and new approvals before loading framework code', f
 })->with([
     'migration' => [['migrate']],
     'worker' => [['queue:work']],
+    'scheduler tick' => [['schedule:run']],
+    'scheduler supervisor' => [['schedule:work']],
     'new approval' => [['cms:updates', 'approve']],
     'obsolete command name' => [['cms:updates:advance']],
 ]);
+
+it('lets the scheduler supervisor start without a lifetime admission lease', function (): void {
+    unlink($this->cliFixture.'/storage/app/private/core-updates/active.json');
+    $process = proc_open([PHP_BINARY, $this->cliFixture.'/artisan', 'schedule:work'], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    $output = stream_get_contents($pipes[1]);
+    $errors = stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    expect(proc_close($process))->toBe(0)->and($output)->toBe('RECOVERY_ENTRYPOINT_OK')->and($errors)->toBe('');
+});
+
+it('keeps scheduler execution children subject to admission before Laravel bootstrap', function (): void {
+    unlink($this->cliFixture.'/storage/app/private/core-updates/active.json');
+    $process = proc_open([PHP_BINARY, $this->cliFixture.'/artisan', 'schedule:run'], [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+    $output = stream_get_contents($pipes[1]);
+    $errors = stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    expect(proc_close($process))->not->toBe(0)->and($output.$errors)->toContain('Recovery must not wait on its own barrier');
+});

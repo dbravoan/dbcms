@@ -37,6 +37,7 @@ final class UpdateMigrationService implements UpdateMigrationServiceInterface
                 if (in_array(pathinfo($path, PATHINFO_FILENAME), $ran, true)) {
                     continue;
                 }
+                $this->verifyModuleOwner($root, $path, (string) $identifier, $manifest);
                 $paths[] = $this->validatedPath($root, $path, 'modules/', $manifest);
             }
         }
@@ -62,9 +63,22 @@ final class UpdateMigrationService implements UpdateMigrationServiceInterface
     }
 
     /** @param array<string,mixed> $manifest */
-    private function validatedPath(string $root, string $path, string $prefix, array $manifest): string
+    private function verifyModuleOwner(string $root, string $path, string $identifier, array $manifest): void
     {
-        if (! str_starts_with($path, $prefix) || str_contains($path, '..') || str_contains($path, '\\') || ! str_ends_with($path, '.php')) {
+        if (! preg_match('~^modules/([a-zA-Z][a-zA-Z0-9_-]*)/Database/Migrations/[a-zA-Z0-9_]+\.php$~D', $path, $matches)) {
+            throw new RuntimeException('Ruta de migración de módulo no permitida.');
+        }
+        $metadata = $this->validatedPath($root, 'modules/'.$matches[1].'/module.json', 'modules/', $manifest, '.json');
+        $module = json_decode((string) file_get_contents($metadata), true, 32, JSON_THROW_ON_ERROR);
+        if (! is_array($module) || ($module['identifier'] ?? null) !== $identifier) {
+            throw new RuntimeException('La migración no pertenece al módulo instalado indicado en el manifiesto.');
+        }
+    }
+
+    /** @param array<string,mixed> $manifest */
+    private function validatedPath(string $root, string $path, string $prefix, array $manifest, string $extension = '.php'): string
+    {
+        if (! str_starts_with($path, $prefix) || str_contains($path, '..') || str_contains($path, '\\') || ! str_ends_with($path, $extension)) {
             throw new RuntimeException('Ruta de migración no permitida.');
         }
         $real = realpath($root.'/'.$path);

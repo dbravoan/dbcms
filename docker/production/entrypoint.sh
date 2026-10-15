@@ -8,6 +8,10 @@ chown -R dbcms:dbcms storage bootstrap/cache public/uploads
 find storage bootstrap/cache public/uploads -type d -exec chmod 775 {} +
 find storage bootstrap/cache public/uploads -type f ! -name '*.key' ! -name '*.pem' ! -name '.env*' -exec chmod 664 {} +
 find storage bootstrap/cache -type f \( -name '*.key' -o -name '*.pem' -o -name '.env*' \) -exec chmod 600 {} +
+if [ -d storage/app/private ]; then
+    find storage/app/private -type d -exec chmod 700 {} +
+    find storage/app/private -type f -exec chmod 600 {} +
+fi
 if [ ! -f storage/oauth-private.key ] || [ ! -f storage/oauth-public.key ]; then
     su-exec dbcms php artisan passport:keys --no-interaction
 fi

@@ -33,6 +33,17 @@ return [
 
     'connections' => [
 
+        'marketing' => [
+            'requires_managed_updates' => true,
+            'update_owner_modules' => ['creative-studio', 'social-publishing'],
+            'driver' => env('MARKETING_QUEUE_DRIVER', 'redis'),
+            'connection' => 'marketing',
+            'queue' => 'default',
+            'retry_after' => (int) env('MARKETING_QUEUE_RETRY_AFTER', 1500),
+            'block_for' => null,
+            'after_commit' => true,
+        ],
+
         'sync' => [
             'driver' => 'sync',
         ],

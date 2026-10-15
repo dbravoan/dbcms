@@ -22,9 +22,10 @@ final class PostController extends Controller
     {
         $validated = $request->validate([
             'provider' => ['required', 'string', Rule::in($this->configBridge->getProviderIds())],
+            'modality' => ['sometimes', 'string', Rule::in(['text', 'image', 'video'])],
         ]);
 
-        $result = $this->aiService->testProviderConnection((string) $validated['provider']);
+        $result = $this->aiService->testProviderConnection((string) $validated['provider'], (string) ($validated['modality'] ?? 'text'));
 
         return response()->json($result);
     }

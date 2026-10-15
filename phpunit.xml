@@ -41,6 +41,7 @@
         <env name="DB_PASSWORD" value="secret"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="MARKETING_QUEUE_DRIVER" value="sync"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="GEO_SITE_NAME" value="dbCMS Platform"/>

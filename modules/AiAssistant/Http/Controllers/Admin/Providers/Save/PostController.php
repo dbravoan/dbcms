@@ -21,6 +21,8 @@ final class PostController extends Controller
         $validated = $request->validate([
             'provider' => ['required', 'string', Rule::in($this->configBridge->getProviderIds())],
             'api_key' => 'nullable|string',
+            'api_key_id' => 'nullable|string|max:200',
+            'api_key_secret' => 'nullable|string|max:1024',
             'model' => 'nullable|string',
             'text_model' => 'nullable|string|max:200',
             'image_model' => 'nullable|string|max:200',

@@ -18,6 +18,9 @@ use App\Http\Controllers\Admin\Connections\ConnectionsMigrationStatusGetControll
 use App\Http\Controllers\Admin\Connections\ConnectionsPutController;
 use App\Http\Controllers\Admin\Connections\ConnectionsTestPostController;
 use App\Http\Controllers\Admin\Dashboard\DashboardGetController;
+use App\Http\Controllers\Admin\IntegrationGuides\IntegrationGuideGetController;
+use App\Http\Controllers\Admin\IntegrationGuides\IntegrationGuideProgressPostController;
+use App\Http\Controllers\Admin\IntegrationGuides\IntegrationGuidesGetController;
 use App\Http\Controllers\Admin\Markets\LanguageDeleteController;
 use App\Http\Controllers\Admin\Markets\LanguagePostController;
 use App\Http\Controllers\Admin\Markets\LanguagePutController;
@@ -238,6 +241,11 @@ Route::prefix($adminPath)->name('admin.')->middleware([SetBackofficeLocale::clas
     Route::middleware([EnsureAdminAuthenticated::class])->group(function (): void {
         Route::get('/', DashboardGetController::class)->name('dashboard');
         Route::get('/dashboard', fn () => redirect()->route('admin.dashboard'));
+
+        // Local setup guides remain readable while their integration is disabled.
+        Route::get('/modules/{identifier}/guides', IntegrationGuidesGetController::class)->name('modules.guides.index');
+        Route::get('/modules/{identifier}/guides/{guide}', IntegrationGuideGetController::class)->name('modules.guides.show');
+        Route::post('/modules/{identifier}/guides/{guide}/progress', IntegrationGuideProgressPostController::class)->name('modules.guides.progress');
 
         // Generic AJAX search for the reusable searchable select component
         Route::get('/api/entity-search', EntitySearchGetController::class)->name('api.entity-search');

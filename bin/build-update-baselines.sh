@@ -13,7 +13,7 @@ baseline_output="${1:-${release_root}/dist}"
 mkdir -p "$baseline_output"
 baseline_tmp="$(mktemp -d /tmp/core-update-baselines-XXXXXX)"
 trap 'rm -rf "$baseline_tmp"' EXIT
-for baseline_version in 1.0.0 1.0.1; do
+for baseline_version in 1.0.0 1.0.1 1.1.0; do
     baseline_source="$baseline_tmp/source-$baseline_version"
     mkdir -p "$baseline_source"
     baseline_sha="$(git -C "$release_root" rev-parse "v${baseline_version}^{commit}")"
@@ -21,24 +21,33 @@ for baseline_version in 1.0.0 1.0.1; do
     case "$baseline_version" in
         1.0.0) baseline_expected_sha=3c8619b05b253f4ac609e54ff9ec73a6d59d42d3 ;;
         1.0.1) baseline_expected_sha=f90131bb7dc745210443ab37d8bc76fa83a46736 ;;
+        1.1.0) baseline_expected_sha=25e1a5671726659c6fde149ef218715b7d07aadf ;;
     esac
     test "$baseline_sha" = "$baseline_expected_sha" || { echo "Historical tag changed: v${baseline_version}" >&2; exit 1; }
     git -C "$release_root" archive "$baseline_sha" | tar -xf - -C "$baseline_source"
     baseline_runtime_args=()
-    if [ "$baseline_version" = 1.0.1 ]; then
+    if [ "$baseline_version" != 1.0.0 ]; then
         baseline_runtime="$baseline_tmp/runtime-$baseline_version"
         mkdir -p "$baseline_runtime" "$baseline_tmp/download"
         # This immutable release is public. Downloads are build inputs only;
         # deployed installations consume our signed baseline, never this script.
-        for baseline_asset in dbcms-v1.0.1.zip checksums.txt; do
+        case "$baseline_version" in
+            1.0.1) baseline_archive="dbcms-v${baseline_version}.zip" ;;
+            1.1.0) baseline_archive="dbcms-installer-v${baseline_version}.zip" ;;
+        esac
+        for baseline_asset in "$baseline_archive" checksums.txt; do
             curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
                 --connect-timeout 10 --max-time 180 --max-filesize 536870912 \
-                "https://github.com/dbravoan/dbcms/releases/download/v1.0.1/${baseline_asset}" \
+                "https://github.com/dbravoan/dbcms/releases/download/v${baseline_version}/${baseline_asset}" \
                 --output "$baseline_tmp/download/$baseline_asset"
         done
-        (cd "$baseline_tmp/download" && awk '$2 == "dbcms-v1.0.1.zip" { print }' checksums.txt > selected-checksum.txt && test -s selected-checksum.txt && sha256sum -c selected-checksum.txt)
-        printf '%s  %s\n' 7cb9b8eeb65cbfdd2144047ac5ead6a40f4e3eff94b50b3be02db8b5744f44a1 "$baseline_tmp/download/dbcms-v1.0.1.zip" | sha256sum -c -
-        unzip -q "$baseline_tmp/download/dbcms-v1.0.1.zip" -d "$baseline_runtime"
+        (cd "$baseline_tmp/download" && awk -v asset="$baseline_archive" '{ name = $2; sub(/^\.\//, "", name); if (name == asset) print $1 "  " asset }' checksums.txt > selected-checksum.txt && test -s selected-checksum.txt && sha256sum -c selected-checksum.txt)
+        case "$baseline_version" in
+            1.0.1) baseline_expected_zip=7cb9b8eeb65cbfdd2144047ac5ead6a40f4e3eff94b50b3be02db8b5744f44a1 ;;
+            1.1.0) baseline_expected_zip=be47c7f236a73b78aa89e7d8b6cddd214fbe308c66717e38699a010777c1de48 ;;
+        esac
+        printf '%s  %s\n' "$baseline_expected_zip" "$baseline_tmp/download/$baseline_archive" | sha256sum -c -
+        unzip -q "$baseline_tmp/download/$baseline_archive" -d "$baseline_runtime"
         baseline_runtime_args=(--runtime-root="$baseline_runtime")
     fi
     php "$release_root/bin/build-update-release.php" \

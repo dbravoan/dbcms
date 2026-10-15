@@ -10,7 +10,6 @@ use App\Services\Ai\AntiAiEditorialService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Modules\AiAssistant\Contracts\AiAssistantDomainServiceInterface;
-use Modules\AiAssistant\DTOs\ConnectionResult;
 use Modules\AiAssistant\Models\AiGenerationLog;
 
 class AiAssistantDomainService implements AiAssistantDomainServiceInterface
@@ -742,43 +741,9 @@ class AiAssistantDomainService implements AiAssistantDomainServiceInterface
     /**
      * Tests connectivity to a configured AI provider.
      */
-    public function testProviderConnection(string $provider): array
+    public function testProviderConnection(string $provider, string $modality = 'text'): array
     {
-        $startTime = microtime(true);
-        $model = $this->configBridge->getModelForProvider($provider);
-
-        if (! $this->configBridge->isConfigured($provider) && ! app()->environment('testing')) {
-            return (new ConnectionResult(
-                success: false,
-                provider: $provider,
-                model: $model,
-                message: "El proveedor [{$provider}] no está configurado (falta la API Key o el endpoint).",
-            ))->toArray();
-        }
-
-        try {
-            $completion = $this->configBridge->generateCompletion(
-                'Eres un evaluador de conectividad. Responde con un JSON simple.',
-                'Responde: {"status":"connected","echo":"dbCMS"}',
-                $provider
-            );
-
-            return (new ConnectionResult(
-                success: true,
-                provider: $provider,
-                model: $completion['model'],
-                message: "Conexión exitosa con {$provider} ({$completion['model']}).",
-                latencyMs: $completion['latency_ms'],
-            ))->toArray();
-        } catch (\Throwable $e) {
-            return (new ConnectionResult(
-                success: false,
-                provider: $provider,
-                model: $model,
-                message: "Error al conectar con {$provider}: {$e->getMessage()}",
-                latencyMs: (int) round((microtime(true) - $startTime) * 1000),
-            ))->toArray();
-        }
+        return app(AiConnectionProbeService::class)->probe($provider, $modality);
     }
 
     /**

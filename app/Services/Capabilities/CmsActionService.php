@@ -159,7 +159,7 @@ class CmsActionService
 
         return [
             'identifier' => $identifier,
-            'settings' => $this->moduleSettings->getAll($identifier),
+            'settings' => $this->auditLogger->maskModuleSettings($identifier, $this->moduleSettings->getAll($identifier), '••••••••'),
         ];
     }
 
