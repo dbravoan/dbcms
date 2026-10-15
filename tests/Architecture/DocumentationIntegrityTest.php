@@ -20,18 +20,38 @@ function documentedFiles(): array
     return $files;
 }
 
+/** @return list<string> */
+function documentedArtisanCommands(string $content): array
+{
+    preg_match_all(
+        '~(?<![\w/.\-])(?:php\h+artisan|(?:(?:\./)?vendor/bin/sail|sail)\h+(?:php\h+)?artisan)\h+([a-z][a-z0-9:._-]*)~i',
+        $content,
+        $matches,
+    );
+
+    return array_values(array_unique($matches[1]));
+}
+
+test('artisan documentation extraction recognizes command entry points and ignores unrelated text', function (string $content, array $expected): void {
+    expect(documentedArtisanCommands($content))->toBe($expected);
+})->with([
+    'official Sail' => ['./vendor/bin/sail artisan migrate --force', ['migrate']],
+    'Sail without dot prefix' => ['vendor/bin/sail artisan cms:project:init example', ['cms:project:init']],
+    'Sail php passthrough' => ['./vendor/bin/sail php artisan config:cache', ['config:cache']],
+    'Sail alias' => ['sail artisan list', ['list']],
+    'container or production PHP' => ['php artisan queue:restart', ['queue:restart']],
+    'unknown official command remains detectable' => ['./vendor/bin/sail artisan cms:missing-doc-command', ['cms:missing-doc-command']],
+    'flags and other Sail commands' => ['./vendor/bin/sail test; ./vendor/bin/sail artisan --help', []],
+    'prose and filenames' => ['Artisan::call("migrate"); docs/vendor/bin/sail; artisan command reference', []],
+    'repeated command' => ["./vendor/bin/sail artisan migrate\nphp artisan migrate", ['migrate']],
+]);
+
 test('every artisan command referenced in the docs exists', function (): void {
     $available = array_keys(Artisan::all());
     $missing = [];
 
     foreach (documentedFiles() as $file) {
-        preg_match_all(
-            '/(?:php\s+artisan|sail-run\s+php\s+artisan)\s+([a-z][a-z0-9:._-]+)/i',
-            (string) file_get_contents($file),
-            $matches,
-        );
-
-        foreach (array_unique($matches[1]) as $command) {
+        foreach (documentedArtisanCommands((string) file_get_contents($file)) as $command) {
             if (! in_array($command, $available, true)) {
                 $missing[] = "{$command} (".basename($file).')';
             }

@@ -140,7 +140,7 @@ html.theme-acme {
 ## 7. Generating a new theme
 
 ```bash
-./bin/sail-run php artisan make:admin-theme acme
+./vendor/bin/sail artisan make:admin-theme acme
 ```
 
 Creates `theme.json`, `admin/layout.blade.php`, `admin/dashboard.blade.php`,
@@ -160,4 +160,4 @@ Activate it with `CMS_BRAND=acme` in `.env`.
 - [ ] `theme.json` present, with a complete `brand` block.
 - [ ] `assets/admin-bar.css` declares the `--admin-bar-*` tokens for the theme palette.
 - [ ] No brand literal or theme `if` added to `config/*.php`.
-- [ ] `./bin/sail-run php vendor/bin/pest` (incl. `BrandIsolationTest`) and `view:cache` pass.
+- [ ] `./vendor/bin/sail pest` (incl. `BrandIsolationTest`) and `view:cache` pass.

@@ -2,7 +2,7 @@
 
 > **Framework**: Laravel 13 / Enterprise Modular Architecture  
 > **Patrón Arquitectónico**: Clean Architecture + Domain-Driven Design (DDD) Bounded Contexts  
-> **Regla de Ejecución**: Zero-Host Containerization (`./bin/sail-run`)  
+> **Regla de Ejecución**: Zero-Host Containerization (`./vendor/bin/sail`)\
 > **Calidad Estática**: PHPStan Nivel 8 (0 errores) + Laravel Pint (Strict) + Pest PHP  
 
 ---
@@ -29,12 +29,12 @@ La arquitectura vigente y sus recorridos están en [Arquitectura](01_ARCHITECTUR
      - **Eventos DOM Desacoplados** en JavaScript (ej. `window.dispatchEvent(new CustomEvent('cms-insert-block', { detail: { ... } }))`).
 3. **Zero-Host Execution**:
    - **Jamás** ejecutar `php`, `composer`, `artisan`, `pest` o `pint` directamente en el sistema operativo anfitrión.
-   - Toda invocación de herramientas CLI se ejecuta a través del puente containerizado:
+   - En desarrollo, arranca `./vendor/bin/sail up -d` (`--build` la primera vez) y usa Laravel Sail oficial:
      ```bash
-     ./bin/sail-run php artisan <comando>
-     ./bin/sail-run ./vendor/bin/pest
-     ./bin/sail-run ./vendor/bin/phpstan
-     ./bin/sail-run ./vendor/bin/pint
+     ./vendor/bin/sail artisan <comando>
+     ./vendor/bin/sail pest
+     ./vendor/bin/sail bin phpstan analyse
+     ./vendor/bin/sail pint
      ```
 4. **Respeto a la Configuración y Cacheo**:
    - **Prohibido usar `env()` fuera del directorio `config/`**. Siempre emplear `config('cms.propiedad', 'default')`. De lo contrario, `php artisan config:cache` romperá la aplicación en producción devolviendo `null`.
@@ -272,10 +272,10 @@ Los componentes leen internamente `config('cms.brand')` y adaptan sus clases CSS
 
 ```bash
 # Ejecutar la suite completa dentro del contenedor
-./bin/sail-run ./vendor/bin/pest
+./vendor/bin/sail pest
 
 # Ejecutar una prueba específica
-./bin/sail-run ./vendor/bin/pest tests/Feature/Cms/CorePagesModuleTest.php
+./vendor/bin/sail pest tests/Feature/Cms/CorePagesModuleTest.php
 ```
 
 ---
@@ -286,19 +286,19 @@ Antes de dar por concluida cualquier tarea o realizar un commit:
 
 1. **PHPStan Nivel 8**:
    ```bash
-   ./bin/sail-run ./vendor/bin/phpstan --memory-limit=2G
+   ./vendor/bin/sail bin phpstan analyse --memory-limit=2G
    ```
    *Criterio de salida*: `[OK] No errors`. 0 errores permitidos.
 
 2. **Laravel Pint**:
    ```bash
-   ./bin/sail-run ./vendor/bin/pint --test
+   ./vendor/bin/sail pint --test
    ```
    *Criterio de salida*: `PASS` en todos los archivos del repositorio.
 
 3. **Pest Tests**:
    ```bash
-   ./bin/sail-run ./vendor/bin/pest
+   ./vendor/bin/sail pest
    ```
    *Criterio de salida*: 100% de tests en estado verde.
 
@@ -313,8 +313,8 @@ El proyecto implementa SemVer estricto a través del comando integrado `app:vers
 
 ```bash
 # Consultar versión actual
-./bin/sail-run php artisan app:version
+./vendor/bin/sail artisan app:version
 
 # Incrementar versión de parche
-./bin/sail-run php artisan app:version patch
+./vendor/bin/sail artisan app:version patch
 ```

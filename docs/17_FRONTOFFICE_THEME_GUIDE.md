@@ -218,7 +218,7 @@ tokens) and `$theme`.
 ## 9. Generating a new theme
 
 ```bash
-./bin/sail-run php artisan make:front-theme acme
+./vendor/bin/sail artisan make:front-theme acme
 ```
 
 Creates a complete, renderable skeleton (16 files) under `themes/acme`. Activate it from the
@@ -236,4 +236,4 @@ backoffice **Themes** page or with `CMS_THEME=acme`.
 - [ ] `theme.json` present with `name`/`identifier`.
 - [ ] The filter panel is included in `blog/index`, `blog/category` and `shop/index`.
 - [ ] The panel renders in the theme's own look (`data-filter-panel="{id}"`) and its tokens are in the compiled CSS (`npm run build`).
-- [ ] `./bin/sail-run php vendor/bin/pest` and `view:cache` pass.
+- [ ] `./vendor/bin/sail pest` and `view:cache` pass.

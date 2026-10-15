@@ -5,4 +5,9 @@
 Apply, do not restate:
 
 - Never run `php`, `composer`, `artisan`, `pest`, `phpstan` or `pint` on the host.
-- Always go through `./bin/sail-run <command>` (or `./vendor/bin/sail`).
+- Always go through `./vendor/bin/sail <command>`.
+
+- Start with `./vendor/bin/sail up -d` (`--build` on first launch); stop with `down`.
+- Missing vendor requires the canonical Docker bootstrap, not host Composer.
+- Within an existing CI/bootstrap container run PHP/Composer directly; never nest Sail.
+- Use `sail bin phpstan analyse` for PHPStan and `sail run <program>` for arbitrary tools.

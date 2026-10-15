@@ -129,8 +129,8 @@ network calls (`frame-src` / `connect-src`) only while that driver is active.
 ## 6. Verification
 
 ```bash
-./bin/sail-run php vendor/bin/pest tests/Unit/Core/Forms tests/Feature/Cms/FormFieldFrameworkTest.php
-./bin/sail-run php vendor/bin/pest tests/Feature/Cms/CaptchaDriversTest.php tests/Feature/Blog
+./vendor/bin/sail pest tests/Unit/Core/Forms tests/Feature/Cms/FormFieldFrameworkTest.php
+./vendor/bin/sail pest tests/Feature/Cms/CaptchaDriversTest.php tests/Feature/Blog
 ```
 
 - `tests/Unit/Core/Forms` — registry, catalog resolution, schema factory (models/array/JSON), rule splitting.

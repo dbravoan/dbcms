@@ -17,6 +17,6 @@ Scopes are strictly typed via the `App\Enums\OAuthScope` enum:
 ## Key Management in Docker Sail
 Encryption keys (`oauth-private.key` and `oauth-public.key`) must be generated inside the Sail container and mounted to `storage/`:
 ```bash
-./bin/sail-run php artisan passport:keys --force
+./vendor/bin/sail artisan passport:keys --force
 ```
 In production CI/CD pipelines, keys are passed securely via environment variables (`PASSPORT_PRIVATE_KEY` and `PASSPORT_PUBLIC_KEY`).

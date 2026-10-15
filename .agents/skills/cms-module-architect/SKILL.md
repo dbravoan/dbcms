@@ -13,11 +13,11 @@ Guide AI coding agents and engineers in designing, scaffolding, implementing, an
 ## 1. Automated Scaffolding
 Always initiate module generation using the canonical Artisan command inside Docker Sail:
 ```bash
-./bin/sail-run php artisan make:cms-module <ModuleName> [--pageable]
+./vendor/bin/sail artisan make:cms-module <ModuleName> [--pageable]
 ```
 Example:
 ```bash
-./bin/sail-run php artisan make:cms-module Events --pageable
+./vendor/bin/sail artisan make:cms-module Events --pageable
 ```
 This scaffolds:
 - `modules/Events/module.json`
@@ -111,17 +111,17 @@ Every module's admin views MUST strictly consume the canonical Blade UI kit to g
 After creating or modifying a module:
 1. Run migrations in Sail:
    ```bash
-   ./bin/sail-run php artisan migrate
+   ./vendor/bin/sail artisan migrate
    ```
 2. Verify module discovery in ModuleManager:
    ```bash
-   ./bin/sail-run php artisan test --filter=ModuleManagerTest
+   ./vendor/bin/sail artisan test --filter=ModuleManagerTest
    ```
 3. Run strict static analysis:
    ```bash
-   ./bin/sail-run ./vendor/bin/phpstan
+   ./vendor/bin/sail bin phpstan analyse
    ```
 4. Run Pint code formatting:
    ```bash
-   ./bin/sail-run ./vendor/bin/pint
+   ./vendor/bin/sail pint
    ```

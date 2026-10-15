@@ -40,8 +40,8 @@ jobs:
           docker compose -f docker/ci/compose.yml run --rm \
             --volume "$PWD:/var/www/html" app bash -c '
             set -euo pipefail
-            ./bin/sail-run composer install --no-interaction --prefer-dist
-            ./bin/sail-run php artisan cms:project:update "$1"
+            composer install --no-interaction --prefer-dist
+            php artisan cms:project:update "$1"
           ' -- "$UPDATE_VERSION" && status=0 || status=$?
           # Exit 2 means a verified proposal with conflicts, rather than a failed verification.
           case "$status" in
@@ -57,7 +57,7 @@ jobs:
           docker compose -f docker/ci/compose.yml run --rm \
             --volume "$PWD:/var/www/html" app bash -c '
             set -euo pipefail
-            ./bin/sail-run composer update --with-all-dependencies --no-scripts --no-interaction
+            composer update --with-all-dependencies --no-scripts --no-interaction
             npm install --package-lock-only --ignore-scripts
           '
           # Build a new context so the quality gate sees precisely the proposed source and locks.

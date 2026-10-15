@@ -17,7 +17,7 @@ Coordinate end-to-end feature delivery through hierarchical subagent delegation,
 1. DISAMBIGUATE & BOUND SCOPE
       |
       v
-2. CHECK LTS HEALTH & RUNTIME (./bin/sail-run php artisan system:check-lts)
+2. CHECK LTS HEALTH & RUNTIME (./vendor/bin/sail artisan system:check-lts)
       |
       v
 3. DELEGATE SPEC TO SpecArchitect (specs/<feature>.md + DTOs)
@@ -26,7 +26,7 @@ Coordinate end-to-end feature delivery through hierarchical subagent delegation,
 4. DELEGATE TDD TO TddCraftsman (tests/Unit/* + tests/Feature/*)
       |
       v
-5. VERIFY RED STATE (./bin/sail-run pest)
+5. VERIFY RED STATE (./vendor/bin/sail pest)
       |
       v
 6. DELEGATE IMPLEMENTATION TO DomainEngineer (app/Services/*)
@@ -45,7 +45,7 @@ Coordinate end-to-end feature delivery through hierarchical subagent delegation,
 ```
 
 ## Error Recovery (Reflexion Trigger)
-If `./bin/sail-run pest` or `./bin/sail-run phpstan` fails:
+If `./vendor/bin/sail pest` or `./vendor/bin/sail bin phpstan analyse` fails:
 1. Extract exact stack trace and failing line numbers.
 2. Formulate a targeted diff request to `DomainEngineer`.
 3. Re-run tests in Sail container.

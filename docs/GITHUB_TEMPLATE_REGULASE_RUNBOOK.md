@@ -94,13 +94,15 @@ cp .env.example .env
 docker build --target ci -f docker/production/Dockerfile -t regulase-bootstrap .
 docker run --rm --user "$(id -u):$(id -g)" \
   --env COMPOSER_HOME=/tmp/composer \
-  --volume "$PWD:/var/www/html" regulase-bootstrap \
-  composer install --prefer-dist --no-interaction
+  --volume "$PWD:/var/www/html" --workdir /var/www/html regulase-bootstrap \
+  bash -c 'mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs && composer install --prefer-dist --no-interaction'
 ```
 
 La imagen bootstrap tiene las extensiones PHP y Composer del proyecto; instala
 `vendor` antes de invocar Sail. No se usa `--ignore-platform-reqs`. El build inicial
-es un paso de instalación; no supone que la instancia ya esté configurada.
+es un paso de instalación; no supone que la instancia ya esté configurada. Después
+usa únicamente Sail oficial para las herramientas locales; requiere `up -d`
+explícito y se detiene con `./vendor/bin/sail down`, sin arranque efímero automático.
 
 Editar el `.env` **nuevo** antes de levantar servicios. Valores locales ilustrativos
 para evitar colisiones con dbCMS, sujetos a que esos puertos estén disponibles:
@@ -134,16 +136,16 @@ Añadir credenciales propias de la base y un prefijo de caché exclusivo. Los va
 locales no son la configuración de producción ni autorizan reutilizar secretos.
 
 ```bash
-docker compose up -d --build
-./bin/sail-run php artisan key:generate
-./bin/sail-run php artisan passport:keys
-./bin/sail-run npm ci
-./bin/sail-run npm run build
+./vendor/bin/sail up -d --build
+./vendor/bin/sail artisan key:generate
+./vendor/bin/sail artisan passport:keys
+./vendor/bin/sail npm ci
+./vendor/bin/sail npm run build
 ```
 
 Abrir `http://localhost:8081/install` y completar el instalador **sin demo**, con
 administrador y contraseña propios. Alternativamente, usar el instalador CLI
-interactivo `./bin/sail-run php artisan cms:install --without-demo` y revisar sus
+interactivo `./vendor/bin/sail artisan cms:install --without-demo` y revisar sus
 opciones con `--help`; introducir la contraseña en su pregunta oculta, no como
 argumento de terminal. No ejecutar ambos caminos sobre una instalación terminada.
 No usar `migrate:fresh`, importar la base actual ni copiar `storage/installed`.

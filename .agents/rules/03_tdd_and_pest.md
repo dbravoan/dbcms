@@ -6,4 +6,4 @@ Apply, do not restate:
 
 - Red → Green → Refactor: write the failing Pest test first.
 - Unit tests in `tests/Unit/Services/`, feature tests in `tests/Feature/`, boundaries in `tests/Architecture/`.
-- Run everything inside Sail (serial): `./bin/sail-run php artisan test`.
+- Run everything inside Sail (serial): `./vendor/bin/sail artisan test`.

@@ -76,10 +76,10 @@ market and module availability. Result URLs are resolved for the requested conte
 Rebuild it with:
 
 ```bash
-./bin/sail-run php artisan search:reindex                 # everything (fresh)
-./bin/sail-run php artisan search:reindex --keep          # upsert only
-./bin/sail-run php artisan search:reindex --type=post --locale=es
-./bin/sail-run php artisan search:reindex --stats         # coverage report
+./vendor/bin/sail artisan search:reindex                 # everything (fresh)
+./vendor/bin/sail artisan search:reindex --keep          # upsert only
+./vendor/bin/sail artisan search:reindex --type=post --locale=es
+./vendor/bin/sail artisan search:reindex --stats         # coverage report
 ```
 
 The targeted `--type` command upserts the selected source/locale; it does not purge obsolete contexts. Use the full command without `--keep` to replace the complete derived index. Internal lifecycle handlers request `indexSource(..., replace: true)` when replacing one source.

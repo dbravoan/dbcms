@@ -75,11 +75,11 @@ La propuesta incluye el manifiesto y firma en `files/resources/updates/installed
 En desarrollo, usar el wrapper Docker del proyecto; en el servidor gestionado, su contenedor o entorno operativo habitual. No ejecutar Composer para actualizar el propio proyecto dbCMS.
 
 ```sh
-./bin/sail-run php artisan cms:updates check --force
-./bin/sail-run php artisan cms:updates adopt 1.1.0 --distribution=source --actor=ID
-./bin/sail-run php artisan cms:updates prepare 1.2.0 --actor=ID
-./bin/sail-run php artisan cms:updates status UUID --actor=ID
-./bin/sail-run php artisan cms:updates proposal UUID --actor=ID --output=/ruta/privada/propuesta.zip
+./vendor/bin/sail artisan cms:updates check --force
+./vendor/bin/sail artisan cms:updates adopt 1.1.0 --distribution=source --actor=ID
+./vendor/bin/sail artisan cms:updates prepare 1.2.0 --actor=ID
+./vendor/bin/sail artisan cms:updates status UUID --actor=ID
+./vendor/bin/sail artisan cms:updates proposal UUID --actor=ID --output=/ruta/privada/propuesta.zip
 ```
 
 `ID` identifica una cuenta humana con `access:admin` y `manage:updates`; `UUID` es el identificador devuelto al preparar. Los servicios vuelven a comprobar permisos y propiedad. `adopt` incorpora una base oficial inicial; no borra diferencias locales ni sustituye una identidad ya registrada.

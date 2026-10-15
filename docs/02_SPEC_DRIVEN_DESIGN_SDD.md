@@ -23,7 +23,7 @@ Spec-Driven Design (SDD) adapts formal software methods (Bjorner, 2006; Meyer, 1
             +------------------+------------------+
                                |
                                v
-               ./bin/sail-run pest (100% Green)
+               ./vendor/bin/sail pest (100% Green)
 ```
 
 ## Mathematical Formalism of Hoare Triples in SDD

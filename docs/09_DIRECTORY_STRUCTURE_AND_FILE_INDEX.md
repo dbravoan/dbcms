@@ -60,7 +60,6 @@ dbcms/
 │
 ├── bin/                              # Operational Tooling and Zero-Host Guard Scripts
 │   ├── guard-host-php.sh             # Hard firewall preventing execution on host PHP
-│   ├── sail-run                      # Safe bridge wrapper into the Docker Sail container
 │   ├── ci-check                     # Container-only quality gate
 │   ├── ci-derived-tests             # Selected-profile, domain and security verification
 │   ├── project-init                 # Prepare brand/themes and one deployment profile
@@ -196,3 +195,7 @@ dbcms/
 ├── VERSION                           # Canonical SemVer version string (e.g. 1.0.0)
 └── composer.json                     # Locked dependencies (PHP 8.3, Laravel 13.x, Passport, Pest)
 ```
+
+Local tooling uses official `vendor/bin/sail`, installed by the Composer development
+dependency `laravel/sail`; its implementation lives in `vendor/laravel/sail/bin/sail`
+and is not a repository-owned executable. Start it explicitly before local commands.

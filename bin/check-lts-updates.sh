@@ -5,13 +5,21 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "$ROOT_DIR"
 
 echo "=== [LTS Watchdog Agent] Checking Laravel LTS Status & CVE Advisories ==="
 
-# Execute check inside container
-"${ROOT_DIR}/bin/sail-run" php artisan system:check-lts || {
-    echo "Artisan command failed. Falling back to composer audit..."
-    "${ROOT_DIR}/bin/sail-run" composer audit
-}
+# Sail dispatches from the host; existing containers execute their own tools.
+if [[ -f /.dockerenv ]]; then
+    php artisan system:check-lts || {
+        echo "Artisan command failed. Falling back to composer audit..."
+        composer audit
+    }
+else
+    ./vendor/bin/sail artisan system:check-lts || {
+        echo "Artisan command failed. Falling back to composer audit..."
+        ./vendor/bin/sail composer audit
+    }
+fi
 
 echo "=== LTS Audit Complete ==="

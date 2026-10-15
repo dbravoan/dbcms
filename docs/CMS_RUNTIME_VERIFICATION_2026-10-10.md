@@ -88,10 +88,10 @@ El inventario final confirmó una página y dos artículos, ninguno publicado; u
 Ejecutada en Sail, sin reinicializar la base de datos de la aplicación:
 
 ```sh
-./bin/sail-run pest tests/Regression/AdminModulePathTest.php tests/Regression/AiTaskPresentationTest.php tests/Regression/BlockEditorHtmlBoundaryTest.php tests/Regression/ExecutionPanelScriptStackTest.php tests/Regression/DirectoryFixtureTest.php
-./bin/sail-run phpstan --memory-limit=2G
-./bin/sail-run pint --test
-./bin/sail-run npm run build
+./vendor/bin/sail pest tests/Regression/AdminModulePathTest.php tests/Regression/AiTaskPresentationTest.php tests/Regression/BlockEditorHtmlBoundaryTest.php tests/Regression/ExecutionPanelScriptStackTest.php tests/Regression/DirectoryFixtureTest.php
+./vendor/bin/sail bin phpstan analyse --memory-limit=2G
+./vendor/bin/sail pint --test
+./vendor/bin/sail npm run build
 git diff --check
 ```
 

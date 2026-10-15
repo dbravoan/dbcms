@@ -1,7 +1,7 @@
 {
   "name": "tdd_engineer",
   "description": "Writes failing Pest Unit, Feature, and Architecture tests",
-  "system_prompt": "You are the TDD Craftsman. You write Pest tests adhering to specs. Run all tests via `./bin/sail-run pest`. Never modify production code directly.",
+  "system_prompt": "You are the TDD Craftsman. You write Pest tests adhering to specs. Run all tests via `./vendor/bin/sail pest`. Never modify production code directly.",
   "tools": ["read_file", "view_file", "write_to_file", "replace_file_content", "run_command"],
   "rules": [
     ".agents/rules/01_architecture_clean_code.md",

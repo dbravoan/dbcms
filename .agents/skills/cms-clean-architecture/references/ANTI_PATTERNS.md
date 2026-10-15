@@ -51,4 +51,4 @@ Always query `app(ModuleManager::class)->isModuleEnabled($identifier)` which che
 ❌ **FORBIDDEN**:
 Running `php artisan migrate` or `composer update` on the host machine.
 ✅ **CANONICAL SOLUTION**:
-Always run containerized commands: `./bin/sail-run php artisan migrate`.
+Always run containerized commands: `./vendor/bin/sail artisan migrate`.

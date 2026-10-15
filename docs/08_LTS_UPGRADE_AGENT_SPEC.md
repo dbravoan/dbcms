@@ -10,15 +10,15 @@ The LTS Watchdog agent continuously monitors framework versions, security adviso
                       |
                       v
    [Step 1: Check Packagist Security Advisories]
-        `./bin/sail-run composer audit`
+        `./vendor/bin/sail composer audit`
                       |
                       v
    [Step 2: Check Laravel LTS Minor/Patch Release]
-        `./bin/sail-run composer outdated laravel/framework`
+        `./vendor/bin/sail composer outdated laravel/framework`
                       |
                       v
    [Step 3: Isolated Regression Testing in Docker]
-        `./bin/sail-run pest`
+        `./vendor/bin/sail pest`
                       |
                       v
    [Step 4: Generate Structured Upgrade Proposal]

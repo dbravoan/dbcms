@@ -210,4 +210,4 @@ Every front layout must include:
 - [ ] No brand literal or theme `if` added to `config/*.php`.
 - [ ] `assets/admin-bar.css` added if the palette differs from dbCMS.
 - [ ] Brand read via `brand()` / `$cmsBrand`, never from a hardcoded string.
-- [ ] `./bin/sail-run php vendor/bin/pest` (incl. `BrandIsolationTest`) and `view:cache` pass.
+- [ ] `./vendor/bin/sail pest` (incl. `BrandIsolationTest`) and `view:cache` pass.

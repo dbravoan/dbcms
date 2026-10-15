@@ -15,18 +15,26 @@ Antes de comenzar a desarrollar o proponer cambios, **es obligatorio leer la gu�
 
 ### 1. Requisito Fundamental: Docker Sail
 **Nunca ejecutes `php`, `composer`, `artisan` o `pest` directamente en tu máquina anfitrión.**  
-Utiliza siempre el script wrapper containerizado:
+Utiliza Laravel Sail oficial desde el equipo anfitrión. Si aún no existe
+`vendor/`, sigue el [bootstrap Docker compatible del README](README.md#inicio-rápido-local)
+antes de invocar Sail. No instales dependencias con PHP/Composer del host.
+Después, arranca explícitamente los servicios:
 
 ```bash
-# Levantar el entorno Docker
-./vendor/bin/sail up -d
+# Construir y levantar el entorno la primera vez
+./vendor/bin/sail up -d --build
 
 # Ejecutar comandos Artisan
-./bin/sail-run php artisan <comando>
+./vendor/bin/sail artisan <comando>
 
 # Ejecutar suite de pruebas
-./bin/sail-run ./vendor/bin/pest
+./vendor/bin/sail pest
 ```
+
+Para detenerlos, ejecuta `./vendor/bin/sail down`. Sail no inicia contenedores
+transitorios cuando pides Artisan o una prueba con el entorno parado. Dentro de
+CI/bootstrap, que ya se ejecuta en Docker, se usan directamente PHP y Composer;
+no se llama a Sail ni se anida Docker.
 
 ### 2. Ciclo de Desarrollo
 1. **Spec-Driven Design (SDD)**: Define los contratos (`app/Contracts/`) y DTOs inmutables (`app/DTOs/`) antes de codificar la lógica.
@@ -45,11 +53,11 @@ Cualquier Pull Request o aportación debe superar con éxito:
 
 ```bash
 # 1. Análisis estático riguroso (0 errores)
-./bin/sail-run ./vendor/bin/phpstan --memory-limit=2G
+./vendor/bin/sail bin phpstan analyse --memory-limit=2G
 
 # 2. Formato de código PSR-12 / Pint estricto
-./bin/sail-run ./vendor/bin/pint --test
+./vendor/bin/sail pint --test
 
 # 3. Suite completa de pruebas Pest (100% verde)
-./bin/sail-run ./vendor/bin/pest
+./vendor/bin/sail pest
 ```

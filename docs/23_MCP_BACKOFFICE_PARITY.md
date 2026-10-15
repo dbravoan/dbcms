@@ -178,8 +178,8 @@ contract end to end.
 
 ```bash
 # tokens
-./bin/sail-run php artisan cms:issue-mcp-token --user=1 --scopes=mcp:access,mcp:read,mcp:write,mcp:destructive
-./bin/sail-run php artisan cms:create-m2m-client --role=editor --scopes=mcp:access,mcp:read,mcp:write,mcp:destructive,m2m:service
+./vendor/bin/sail artisan cms:issue-mcp-token --user=1 --scopes=mcp:access,mcp:read,mcp:write,mcp:destructive
+./vendor/bin/sail artisan cms:create-m2m-client --role=editor --scopes=mcp:access,mcp:read,mcp:write,mcp:destructive,m2m:service
 
 # agentes
 curl -X POST https://cms/api/mcp -H "Authorization: Bearer <token>" \

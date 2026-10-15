@@ -42,20 +42,20 @@ El sistema incluye un comando Artisan nativo para consultar e incrementar la ver
 
 ### 2.1. Inspeccionar Versión Activa
 ```bash
-./bin/sail-run php artisan app:version
+./vendor/bin/sail artisan app:version
 ```
 Muestra en consola la versión SemVer actual leída del archivo `VERSION`, el entorno y el commit de Git.
 
 ### 2.2. Incrementar Versión Localmente
 ```bash
 # Para un parche (bugfix):
-./bin/sail-run php artisan app:version --bump=patch
+./vendor/bin/sail artisan app:version --bump=patch
 
 # Para una nueva funcionalidad retrocompatible:
-./bin/sail-run php artisan app:version --bump=minor
+./vendor/bin/sail artisan app:version --bump=minor
 
 # Para un cambio grande / hito arquitectónico:
-./bin/sail-run php artisan app:version --bump=major
+./vendor/bin/sail artisan app:version --bump=major
 ```
 
 ### 2.3. Sincronizar y confirmar antes de etiquetar
@@ -98,7 +98,7 @@ Para publicar una versión ya preparada:
 
 ```bash
 git status --short
-./bin/sail-run php artisan app:version
+./vendor/bin/sail artisan app:version
 # Confirmar los archivos revisados y pasar el gate local antes de publicar main.
 git push -u origin main
 # Esperar los checks de GitHub del mismo commit antes de crear la etiqueta.

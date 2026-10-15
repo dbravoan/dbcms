@@ -20,10 +20,10 @@ Usar una release que haya superado el gate para su SHA exacto; seguir [DEPLOYMEN
 
 ```bash
 git rev-parse HEAD
-./bin/sail-run php artisan app:version
-./bin/sail-run php artisan migrate --force
-./bin/sail-run php artisan migrate:status
-./bin/sail-run php artisan schedule:list
+./vendor/bin/sail artisan app:version
+./vendor/bin/sail artisan migrate --force
+./vendor/bin/sail artisan migrate:status
+./vendor/bin/sail artisan schedule:list
 ```
 
 Estos comandos son para Sail local. En VPS/Plesk, desde la release y con la imagen CLI fijada por SHA, usar `bash bin/vps-artisan.sh <comando-artisan>`; por ejemplo, `bash bin/vps-artisan.sh migrate --force`. El despliegue existente ya ejecuta una migración: no añadir una segunda ejecución concurrente. Conservar `.env`, claves Passport, archivos y DB persistentes. Un rollback de código no revierte estas migraciones.
@@ -31,9 +31,9 @@ Estos comandos son para Sail local. En VPS/Plesk, desde la release y con la imag
 En Sail los procesos nuevos se levantan como servicios separados:
 
 ```bash
-docker compose up -d creative-generation creative-render social-delivery social-reconciliation scheduler
-docker compose ps creative-generation creative-render social-delivery social-reconciliation scheduler
-docker compose logs --tail=100 creative-generation creative-render social-delivery social-reconciliation scheduler
+./vendor/bin/sail up -d creative-generation creative-render social-delivery social-reconciliation scheduler
+./vendor/bin/sail ps creative-generation creative-render social-delivery social-reconciliation scheduler
+./vendor/bin/sail logs --tail=100 creative-generation creative-render social-delivery social-reconciliation scheduler
 ```
 
 La imagen de producción incorpora los mismos programas en `docker/production/supervisord.conf` como usuario `dbcms`; Sail los ejecuta como `sail`. En VPS/Plesk se deben supervisar estos comandos mediante la CLI PHP nativa y `bin/vps-artisan.sh` de la release, con cierre ordenado y margen de 1500 segundos para los workers. El alojamiento web existente no arranca por sí solo estos procesos.
@@ -53,10 +53,10 @@ Ejecutar un scheduler por instalación o usar réplicas con el mismo cache compa
 Antes de activar, comprobar GD con soporte de Freetype, FFmpeg, FFprobe, una fuente TTF legible y espacio temporal/privado suficiente en **la imagen utilizada por los workers**. La imagen de producción incluye estas dependencias; una imagen Sail ya creada debe actualizarse si le faltan.
 
 ```bash
-./bin/sail-run php -r 'var_export(["gd" => extension_loaded("gd"), "freetype" => function_exists("imagettfbbox")]);'
-./bin/sail-run ffmpeg -version
-./bin/sail-run ffprobe -version
-./bin/sail-run sh -lc 'test -r /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
+./vendor/bin/sail php -r 'var_export(["gd" => extension_loaded("gd"), "freetype" => function_exists("imagettfbbox")]);'
+./vendor/bin/sail run ffmpeg -version
+./vendor/bin/sail run ffprobe -version
+./vendor/bin/sail run sh -lc 'test -r /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'
 ```
 
 El vídeo compuesto es silencioso: no conserva el audio de los clips ni incorpora voz o música. La fuente predeterminada es DejaVu Sans. Las variables efectivas son `MARKETING_FONT_PATH`, `MARKETING_FFMPEG_BINARY` y `MARKETING_FFPROBE_BINARY`; conservar la licencia y versión de las fuentes. `MARKETING_MAX_ARTIFACT_BYTES` limita cada artefacto a 536870912 bytes por defecto. Verificar tamaño, MIME, dimensiones y codec de una composición local, además de su ZIP/manifest. Un archivo aceptado por el CMS puede no cumplir las restricciones de una red: revisar la vista previa de destino antes de aprobar.

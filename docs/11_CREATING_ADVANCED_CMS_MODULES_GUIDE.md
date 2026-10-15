@@ -2,7 +2,7 @@
 
 > **Versión**: 1.0 (LTS Architecture)  
 > **Ámbito**: Módulos Desacoplados, Multi-CRUD, Arquitectura Limpia, Conexiones Externas y Reutilización de UI Components  
-> **Runtimes**: Docker Sail Containerizado (`./bin/sail-run`)
+> **Runtimes**: Docker Sail Containerizado (`./vendor/bin/sail`)
 
 ---
 
@@ -17,7 +17,7 @@ En **dbCMS / termoCMS**, un módulo no es un simple plugin o una colección deso
 2. **Clean Architecture (Thin Controllers, Fat Services)**: Los controladores son de acción única (`__invoke`) con un máximo de 10 líneas de código, limitándose a deserializar peticiones en DTOs inmutables, llamar al Servicio de Dominio y responder con una vista o redirección.
 3. **Persistencia Dual (Local y Remota)**: Soporte nativo para esquemas relacionales locales multi-tabla, multi-idioma (mercados del CMS) y conexiones dinámicas o estáticas a bases de datos externas (ERPs, CRMs, bases legadas).
 4. **Reutilización del Sistema de UI (`<x-admin.*>`)**: Todo el backoffice utiliza el kit de componentes Blade corporativos reutilizables, que se adaptan automáticamente a la marca activa en el archivo `.env` (**dbCMS** ciberpunk o **termoCMS** clínico/corporativo) sin alterar la lógica de plantillas.
-5. **Zero-Host Containerization**: Todas las operaciones de creación de código, migraciones y tests se ejecutan dentro del contenedor Sail (`./bin/sail-run`).
+5. **Zero-Host Containerization**: Todas las operaciones de creación de código, migraciones y tests se ejecutan dentro del contenedor Sail (`./vendor/bin/sail`).
 
 ---
 
@@ -825,13 +825,13 @@ Siguiendo el protocolo **Zero-Host**, nunca ejecutes `pest` o `artisan` en el ho
 
 ```bash
 # 1. Ejecutar las migraciones del módulo
-./bin/sail-run php artisan migrate --path=modules/Clinics/Database/Migrations
+./vendor/bin/sail artisan migrate --path=modules/Clinics/Database/Migrations
 
 # 2. Ejecutar los tests de la entidad
-./bin/sail-run ./vendor/bin/pest modules/Clinics/Tests
+./vendor/bin/sail pest modules/Clinics/Tests
 
 # 3. Validar tipado estricto con PHPStan Nivel 8/9
-./bin/sail-run ./vendor/bin/phpstan analyse modules/Clinics --level=8
+./vendor/bin/sail bin phpstan analyse modules/Clinics --level=8
 ```
 
 ### Ejemplo de Test de Integración con Pest (`ClinicsCrudTest.php`):
@@ -980,7 +980,7 @@ window.dispatchEvent(new CustomEvent('cms-insert-block', {
                                                   v
 +---------------------------------------------------------------------------------------------------+
 | 7. VERIFICACIÓN Y TESTING DENTRO DE SAIL                                                          |
-|    - ./bin/sail-run ./vendor/bin/pest y PHPStan Nivel 8/9                                         |
+|    - ./vendor/bin/sail pest y PHPStan Nivel 8/9                                         |
 +---------------------------------------------------------------------------------------------------+
 ```
 
@@ -1004,7 +1004,7 @@ Todo módulo debe construir su backoffice con el **Admin UI Framework**
 ### Andamiaje
 
 ```bash
-./bin/sail-run php artisan make:cms-module Portfolio --crud --pageable
+./vendor/bin/sail artisan make:cms-module Portfolio --crud --pageable
 ```
 
 Genera el módulo con `index` (tabla + kit) y `create` / `edit` / `_form` ya maquetados con los componentes.

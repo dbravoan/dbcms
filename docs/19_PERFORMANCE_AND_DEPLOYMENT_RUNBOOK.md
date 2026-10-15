@@ -78,9 +78,9 @@ Reproduce it in an isolated quality container/database/filesystem using the
 repository's Docker CI setup, running:
 
 ```bash
-./bin/sail-run pest tests/Feature/Search/PageGallerySourcesTest.php --filter='batch imports'
-./bin/sail-run pest tests/Feature/Search/PageGallerySourcesTest.php --filter='failed source replacement'
-./bin/sail-run pest tests/Feature/Seo/DiscoveryPendingClosureTest.php
+./vendor/bin/pest tests/Feature/Search/PageGallerySourcesTest.php --filter='batch imports'
+./vendor/bin/pest tests/Feature/Search/PageGallerySourcesTest.php --filter='failed source replacement'
+./vendor/bin/pest tests/Feature/Seo/DiscoveryPendingClosureTest.php
 ```
 
 These commands must run in the disposable quality runtime, never against the
@@ -98,8 +98,8 @@ public availability, including future publication deadlines, before serving resu
 Manual purge:
 
 ```bash
-./bin/sail-run php artisan cms:cache:purge          # bump namespace version
-./bin/sail-run php artisan optimize:clear           # config/route/view/event caches
+./vendor/bin/sail artisan cms:cache:purge          # bump namespace version
+./vendor/bin/sail artisan optimize:clear           # config/route/view/event caches
 ```
 
 ## 4. Security headers & CSP
@@ -153,7 +153,7 @@ Local development may keep `SESSION_SECURE_COOKIE=false`. Tests pin
 
 ## 6. Permissions and secrets
 
-VPS/Plesk retains `.env`, storage and uploads under `shared`, adopting legacy locations through links. Its CLI runs with the SSH user's UID/GID, compatible with the existing PHP-FPM owner. The optional Docker production entrypoint sets runtime permissions and persists storage in a volume. Both modes keep APP_KEY stable and Passport private/public keys at 0600/0644. `bin/sail-run` only executes commands and does not change permissions.
+VPS/Plesk retains `.env`, storage and uploads under `shared`, adopting legacy locations through links. Its CLI runs with the SSH user's UID/GID, compatible with the existing PHP-FPM owner. The optional Docker production entrypoint sets runtime permissions and persists storage in a volume. Both modes keep APP_KEY stable and Passport private/public keys at 0600/0644. Local development uses official `./vendor/bin/sail`; its container lifecycle is separate from these VPS permission rules.
 
 ## 7. Rate limiting
 
@@ -205,7 +205,7 @@ To run separately after the test schema has been migrated, with exclusive access
 to the testing database:
 
 ```bash
-./bin/sail-run pest tests/Concurrency
+./vendor/bin/sail pest tests/Concurrency
 ```
 
 Do not run it alongside another suite that migrates or resets the same database.

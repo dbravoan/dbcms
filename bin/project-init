@@ -13,7 +13,7 @@ if [[ -f /.dockerenv ]]; then
     # discovers providers for exactly the installed dependency lock. It does not
     # run create-project hooks or generate environment/application/OAuth keys.
     composer dump-autoload --no-interaction
-    exec ./bin/sail-run php artisan cms:project:init "$@"
+    exec php artisan cms:project:init "$@"
 fi
 command -v docker >/dev/null || { echo 'Docker is required.' >&2; exit 1; }
 # The CI target has the project PHP/extensions, Composer and Git. Bootstrap mounts

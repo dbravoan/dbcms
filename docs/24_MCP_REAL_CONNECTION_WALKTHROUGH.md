@@ -15,7 +15,7 @@ sobre producción. Web, API, MCP y jobs comparten ExecutorCore (`CapabilityExecu
 ## Paso 0 · Comprobar que el módulo MCP está activo
 
 ```bash
-./bin/sail-run php artisan tinker --execute="
+./vendor/bin/sail artisan tinker --execute="
 echo app(\App\Core\Modules\ModuleManager::class)->isModuleEnabled('mcp') ? 'mcp: ON' : 'mcp: OFF';
 "
 ```
@@ -23,7 +23,7 @@ echo app(\App\Core\Modules\ModuleManager::class)->isModuleEnabled('mcp') ? 'mcp:
 Si está apagado, actívalo desde el panel (**Módulos**) o por consola:
 
 ```bash
-./bin/sail-run php artisan tinker --execute="
+./vendor/bin/sail artisan tinker --execute="
 app(\App\Core\Modules\ModuleManager::class)->activate('mcp');
 "
 ```
@@ -48,7 +48,7 @@ curl -s http://localhost:8080/api/mcp/tools -H "Authorization: Bearer $TOKEN" | 
 ## Paso 1 · Emitir un token
 
 ```bash
-./bin/sail-run php artisan cms:issue-mcp-token --user=1 --name="MCP Docu Test"
+./vendor/bin/sail artisan cms:issue-mcp-token --user=1 --name="MCP Docu Test"
 ```
 
 ```
@@ -331,7 +331,7 @@ Los secretos se guardan como `***` (cualquier argumento cuya clave contenga
 ## Paso 12 · Revocar y verificar
 
 ```bash
-./bin/sail-run php artisan tinker --execute="
+./vendor/bin/sail artisan tinker --execute="
 \$tokens = \Laravel\Passport\Token::query()->whereIn('name', ['MCP Docu Test','MCP Demo Practica'])->with('refreshToken')->get();
 foreach (\$tokens as \$token) { \$token->revoke(); optional(\$token->refreshToken)->revoke(); }
 echo 'activos restantes: '.\Laravel\Passport\Token::query()->where('revoked', false)->count();
@@ -371,7 +371,7 @@ Un token revocado deja de autorizar al instante:
 
 ```bash
 BASE=http://localhost:8080
-TOKEN=$(./bin/sail-run php artisan cms:issue-mcp-token --user=1 --name="Smoke $(date +%s)" \
+TOKEN=$(./vendor/bin/sail artisan cms:issue-mcp-token --user=1 --name="Smoke $(date +%s)" \
         | sed -n '/Bearer Access Token/,/^$/p' | sed -n '2p')
 
 call() { curl -s -X POST "$BASE/api/mcp" -H "Authorization: Bearer $TOKEN" \

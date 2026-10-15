@@ -84,6 +84,16 @@ $$\mathcal{M}_{\text{super}} = \langle S, \Sigma, \delta, s_0, F \rangle$$
    [S8: Clean Atomic Commit & Handoff]
 ```
 
+### Local runtime entry point
+
+Start official Sail explicitly with `./vendor/bin/sail up -d` before local PHP,
+Composer, Artisan or tests; use `up -d --build` on the first launch and `down` to
+stop it. Without `vendor/`, follow the compatible Docker bootstrap in
+`docs/06_ZERO_HOST_PHP_SAIL_RUNBOOK.md` or use `bin/project-init`. There is no
+automatic one-off fallback. Inside CI/bootstrap containers execute PHP/Composer
+directly; never invoke Sail inside another container. Native VPS commands follow
+the remote deployment procedure.
+
 ### State Definitions & Operational Invariants
 
 | State | Name | Active Agent | Precondition | Deterministic Exit Gate |
@@ -92,7 +102,7 @@ $$\mathcal{M}_{\text{super}} = \langle S, \Sigma, \delta, s_0, F \rangle$$
 | **`S1`** | `LTS_HEALTH_AUDIT` | `LtsWatchdog` | Repository loaded | Laravel LTS version verified; no critical CVEs. |
 | **`S2`** | `SPEC_SYNTHESIS` | `SpecArchitect` | Requirements clear | `specs/*.md` valid against `feature_spec.schema.json`. |
 | **`S3`** | `TDD_HARNESS` | `TddCraftsman` | Spec approved | Pest tests fail with descriptive domain errors (**Red**). |
-| **`S4`** | `DOMAIN_SYNTHESIS` | `DomainEngineer` | Failing tests exist | Fat Services created; `./bin/sail-run pest` is **Green**. |
+| **`S4`** | `DOMAIN_SYNTHESIS` | `DomainEngineer` | Failing tests exist | Fat Services created; `./vendor/bin/sail pest` is **Green**. |
 | **`S5`** | `STATIC_VERIFICATION` | Superagent | Tests green | PHPStan Level 8 passes ($0$ errors); Pint compliant. |
 | **`S6`** | `SECURITY_AUDIT` | `SecurityAuditor` | Service complete | Passport OAuth2 scopes mapped and verified. |
 | **`S7`** | `GEO_SEO_SYNC` | `GeoSeoSpecialist`| Route functional | `/llms.txt` and Schema.org JSON-LD updated. |
@@ -108,7 +118,7 @@ Every AI agent operating in this repository MUST execute strictly according to t
 +---------------------------------------------------------------------------------------------------+
 | STEP 1: VERIFY ENVIRONMENT ISOLATION (ZERO-HOST ENFORCEMENT)                                     |
 | -> Never run `php`, `composer`, or `artisan` on the host operating system.                       |
-| -> All commands MUST use `./bin/sail-run <command>` or `./vendor/bin/sail <command>`.             |
+| -> Local tools MUST use official `./vendor/bin/sail <command>`.                                  |
 +---------------------------------------------------------------------------------------------------+
                                                   |
                                                   v
@@ -122,7 +132,7 @@ Every AI agent operating in this repository MUST execute strictly according to t
 +---------------------------------------------------------------------------------------------------+
 | STEP 3: TDD RED-GREEN-REFACTOR HARNESS                                                            |
 | -> Author unit tests in `tests/Unit/Services/` and feature tests in `tests/Feature/`.             |
-| -> Verify test fails inside Sail: `./bin/sail-run pest --filter <TestName>`                      |
+| -> Verify test fails inside Sail: `./vendor/bin/sail pest --filter <TestName>`                      |
 +---------------------------------------------------------------------------------------------------+
                                                   |
                                                   v
@@ -136,7 +146,7 @@ Every AI agent operating in this repository MUST execute strictly according to t
                                                   v
 +---------------------------------------------------------------------------------------------------+
 | STEP 5: VERIFY RIGID STATIC ANALYSIS (PHPSTAN LEVEL 8)                                            |
-| -> Execute: `./bin/sail-run phpstan`                                                             |
+| -> Execute: `./vendor/bin/sail bin phpstan analyse`                                                             |
 | -> Zero errors allowed. No baseline ignores. Strict types: `declare(strict_types=1);`.           |
 +---------------------------------------------------------------------------------------------------+
                                                   |
@@ -194,13 +204,14 @@ To maximize KV-cache reuse in Large Language Model backends (Gemini, Claude, GPT
 
 Whenever initializing a session in this repository:
 ```bash
-# 1. Verify container runtime health
-./bin/sail-run php artisan --version
+# 1. Start the local runtime explicitly, then verify its health
+./vendor/bin/sail up -d
+./vendor/bin/sail artisan --version
 
 # 2. Run proactive LTS & CVE Watchdog scan
-./bin/sail-run php artisan system:check-lts
+./vendor/bin/sail artisan system:check-lts
 
 # 3. Verify clean baseline state
-./bin/sail-run pest tests/Architecture
+./vendor/bin/sail pest tests/Architecture
 ```
 If an LTS patch or security advisory is detected, the Superagent immediately presents the upgrade report from [`docs/LTS_UPGRADE_PROPOSAL.md`](file:///home/david/Proyectos/webs/dbcms/docs/LTS_UPGRADE_PROPOSAL.md) before accepting new feature work.

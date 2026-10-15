@@ -161,7 +161,7 @@ class MakeCmsModuleCommand extends Command
         File::put($basePath."/Widgets/Latest{$studlyName}Widget.php", $this->getWidgetContent($studlyName, $identifier));
 
         $this->info("¡Módulo [{$studlyName}] creado exitosamente en modules/{$studlyName}!");
-        $this->line('Para activarlo, ejecuta: <comment>./bin/sail-run php artisan migrate</comment>');
+        $this->line('Para activarlo, ejecuta: <comment>./vendor/bin/sail artisan migrate</comment>');
 
         return self::SUCCESS;
     }

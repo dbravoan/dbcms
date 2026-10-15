@@ -15,10 +15,10 @@ echo " Direct execution of PHP, Composer, or Artisan on your host machine is" >&
 echo " strictly prohibited to prevent version skew, environment pollution, and" >&2
 echo " security escapes." >&2
 echo "" >&2
-echo " Please use Laravel Sail or the safe wrapper script:" >&2
-echo "   ./bin/sail-run <command>" >&2
-echo "   e.g. ./bin/sail-run php artisan migrate" >&2
-echo "   e.g. ./bin/sail-run pest" >&2
+echo " Please start Laravel Sail and use its official commands:" >&2
+echo "   ./vendor/bin/sail up -d" >&2
+echo "   e.g. ./vendor/bin/sail artisan migrate" >&2
+echo "   e.g. ./vendor/bin/sail pest" >&2
 echo "   e.g. make test" >&2
 echo "======================================================================" >&2
 exit 1

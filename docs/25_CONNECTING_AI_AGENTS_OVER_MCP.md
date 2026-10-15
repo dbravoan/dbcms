@@ -34,12 +34,12 @@ módulos activos. Web, API, MCP y jobs comparten ExecutorCore (`CapabilityExecut
 
 ```bash
 # Token personal (para tu IA de escritorio)
-./bin/sail-run php artisan cms:issue-mcp-token \
+./vendor/bin/sail artisan cms:issue-mcp-token \
   --user=1 --name="Asistente editorial" \
   --scopes=mcp:access,mcp:read,mcp:write,mcp:destructive
 
 # Cliente máquina-a-máquina (para un servicio)
-./bin/sail-run php artisan cms:create-m2m-client --name="Automatizacion" --role=editor \
+./vendor/bin/sail artisan cms:create-m2m-client --name="Automatizacion" --role=editor \
   --scopes=mcp:access,mcp:read,mcp:write,mcp:destructive,m2m:service
 ```
 

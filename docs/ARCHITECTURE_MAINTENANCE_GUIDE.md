@@ -106,9 +106,9 @@ Después de actualizar código/assets en el entorno local existente, ejecutar en
 contenedor:
 
 ```bash
-./bin/sail-run php artisan search:reindex
-./bin/sail-run php artisan cms:cache:purge --force
-./bin/sail-run php artisan queue:restart
+./vendor/bin/sail artisan search:reindex
+./vendor/bin/sail artisan cms:cache:purge --force
+./vendor/bin/sail artisan queue:restart
 ```
 
 El primer comando sustituye el índice derivado completo; el segundo cambia sólo
@@ -151,7 +151,7 @@ Guías específicas: [editorial](CONTENT_AUDIT_WORKFLOW.md),
 - PHP/Composer/Node se ejecutan en contenedor. Una base QA separada no aísla `.env`,
   claves, uploads o mantenimiento: CLI y tests destructivos necesitan filesystem propio.
 - Las variables de pruebas se pasan **dentro** de Sail, mediante `env`; prefijar
-  `./bin/sail-run` con variables del host no las transmite al proceso del contenedor.
+  `./vendor/bin/sail` con variables del host no las transmite al proceso del contenedor.
 - Ejecutar pruebas focales, Pint y PHPStan; después gate global sobre la misma
   instantánea. No introducir baseline, exclusiones generales ni fixtures que anulen
   autenticación o políticas para conseguir verde.

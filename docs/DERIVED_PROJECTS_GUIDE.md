@@ -123,12 +123,30 @@ claves únicamente para esa instalación nueva y compila los assets:
 
 ```bash
 cp .env.example .env
-docker compose up -d --build
-./bin/sail-run php artisan key:generate
-./bin/sail-run php artisan passport:keys
-./bin/sail-run npm ci
-./bin/sail-run npm run build
+./vendor/bin/sail up -d --build
+./vendor/bin/sail artisan key:generate
+./vendor/bin/sail artisan passport:keys
+./vendor/bin/sail npm ci
+./vendor/bin/sail npm run build
 ```
+
+`bin/project-init` ya instaló `vendor/` dentro del contenedor compatible antes de
+estos pasos. Sail oficial necesita que `laravel.test` esté activo: ejecuta
+`./vendor/bin/sail up -d` antes de usar sus comandos; no hay un arranque automático
+de contenedores efímeros para Artisan o pruebas. Para detener el entorno local,
+usa `./vendor/bin/sail down`. No llames a Sail desde CI ni desde un contenedor ya
+iniciado: allí PHP/Composer se ejecutan directamente. El PHP nativo del VPS sigue
+el procedimiento remoto de los apartados de despliegue.
+
+En un derivado existente, sustituye la entrada local anterior por Sail oficial
+sin reiniciar su configuración: conserva `.env`, APP_KEY, claves y volúmenes.
+Reconstruye una vez con `./vendor/bin/sail up -d --build` para ajustar el runtime
+a tu UID/GID; después basta `up -d`. Usa `./vendor/bin/sail bin phpstan analyse` para PHPStan y
+`./vendor/bin/sail run <programa>` para otras herramientas del contenedor. No
+repitas la instalación ni copies de nuevo el entorno para hacer esta transición.
+Si tus dependencias proceden de ejecuciones como root, sigue el ajuste limitado
+de propietario del [runbook de Sail](06_ZERO_HOST_PHP_SAIL_RUNBOOK.md#existing-checkouts-and-dependency-ownership)
+antes de actualizarlas con Composer/npm.
 
 Completa `/install` sin demo. No copies el `.env`, los volúmenes ni las claves de
 otra web. Si conviven varios proyectos en tu equipo, usa nombres de Compose y
@@ -295,7 +313,7 @@ desarrollo del ordenador no se transfiere durante el despliegue.
 Para una instalación nueva, puedes obtener su APP_KEY dentro del contenedor local:
 
 ```bash
-./bin/sail-run php artisan key:generate --show
+./vendor/bin/sail artisan key:generate --show
 ```
 
 Guárdala en un archivo privado de producción fuera del proyecto. En GitHub
@@ -770,7 +788,7 @@ permite activar un tema que el proyecto no conserva. La activación invalida la
 caché pública y funciona con configuración cacheada.
 
 Para incorporar un tema propio después de la preparación, genera sus fuentes con
-`./bin/sail-run php artisan make:front-theme mi-tema`, añade `mi-tema` a `themes` en
+`./vendor/bin/sail artisan make:front-theme mi-tema`, añade `mi-tema` a `themes` en
 `cms-project.json` y despliega ese cambio con el método elegido para construir su CSS.
 Después podrás activarlo desde el panel. El actualizador conserva los temas propios
 y detecta una colisión si una futura release utiliza el mismo identificador/ruta.

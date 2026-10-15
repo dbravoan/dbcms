@@ -168,21 +168,24 @@ Tienes 3 formas de comenzar con dbCMS:
 ### Requisitos locales (Desarrollo)
 
 - **Docker** con Docker Compose. Todo lo demás (PHP 8.3, MySQL 8, Redis, Node) corre dentro de los contenedores.
-- La política **Zero-Host** (aislamiento total del equipo anfitrión) prohíbe ejecutar `php`, `composer` o `artisan` fuera del contenedor. Usa siempre `./vendor/bin/sail` o el envoltorio `./bin/sail-run`.
+- La política **Zero-Host** (aislamiento total del equipo anfitrión) prohíbe ejecutar `php`, `composer` o `artisan` fuera del contenedor. Usa siempre el comando oficial `./vendor/bin/sail`.
 
 ### Inicio rápido local
 
 ```bash
-# 1. Si acabas de clonar el repositorio y no existe vendor/, instala las
-#    dependencias de PHP dentro de un contenedor desechable (política Zero-Host)
-docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd):/var/www/html" \
-  -w /var/www/html laravelsail/php83-composer:latest composer install
+# 1. Solo si falta vendor/: Sail todavía no existe. Construye el contenedor
+#    compatible con todas las extensiones del proyecto y ejecuta Composer en él.
+docker build --target ci -f docker/production/Dockerfile -t dbcms-bootstrap .
+docker run --rm --user "$(id -u):$(id -g)" \
+  --env COMPOSER_HOME=/tmp/composer \
+  --volume "$PWD:/var/www/html" --workdir /var/www/html \
+  dbcms-bootstrap bash -c 'mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs && composer install --prefer-dist --no-interaction'
 
-# 2. Copia el entorno base
-cp .env.example .env
+# 2. Prepara el entorno base solo si no existe
+test -f .env || cp .env.example .env
 
-# 3. Levanta los contenedores (aplicación, MySQL, Redis, Mailpit, Adminer, cola)
-./vendor/bin/sail up -d
+# 3. Construye y levanta Sail con el UID/GID de tu equipo
+./vendor/bin/sail up -d --build
 
 # 4. Genera la clave de la aplicación y las claves de Passport
 ./vendor/bin/sail artisan key:generate
@@ -200,7 +203,11 @@ La plantilla y Composer distribuyen fuentes: antes de abrir el sitio, compila lo
 ./vendor/bin/sail npm run build
 ```
 
-Durante el desarrollo puedes usar `./vendor/bin/sail npm run dev` en lugar del build estático. Composer prepara `.env` y la clave inicial; conserva esa clave al configurar la instalación.
+Durante el desarrollo puedes usar `./vendor/bin/sail npm run dev` en lugar del build estático. El bootstrap de dependencias no genera ni renueva las claves: los comandos anteriores las preparan para esta instalación nueva. Conserva la APP_KEY al configurar una instalación existente.
+
+Arranca explícitamente con `./vendor/bin/sail up -d` antes de Artisan, Composer o las pruebas. Sail oficial necesita el servicio activo y no crea un contenedor efímero automáticamente para esos comandos. Para detener el entorno, usa `./vendor/bin/sail down`.
+
+El contenedor inicial sin `vendor/` y `bin/project-init` son el bootstrap previo a Sail. Dentro de los contenedores de CI/bootstrap se ejecutan PHP y Composer directamente; no se invoca Sail dentro de otro contenedor. Los comandos PHP remotos del VPS conservan su procedimiento nativo.
 
 ### Accesos tras la instalación
 
@@ -234,7 +241,7 @@ En desarrollo, abre **http://localhost/install** para usar el mismo asistente.
 Para servidores de producción existe el instalador de línea de comandos:
 
 ```bash
-./bin/sail-run php artisan cms:install --with-demo
+./vendor/bin/sail artisan cms:install --with-demo
 ```
 
 Admite `--db-*` para la conexión, `--admin-*` para el administrador, `--brand` y `--theme` para la identidad visual, y `--without-demo` para una instalación mínima. La guía completa está en [`docs/DEPLOYMENT_AND_VERSIONING.md`](docs/DEPLOYMENT_AND_VERSIONING.md).
@@ -284,7 +291,7 @@ Así, una entrada traducida a dos idiomas y visible en tres mercados no multipli
 ### Crear un módulo nuevo
 
 ```bash
-./bin/sail-run php artisan make:cms-module Events --pageable
+./vendor/bin/sail artisan make:cms-module Events --pageable
 ```
 
 El comando genera el manifiesto, el proveedor de servicios, los modelos normalizados, los objetos DTO, los servicios transaccionales, los controladores delgados y las migraciones. Admite `--with-auth` (usuarios propios aislados), `--dedicated-panel` (portal administrativo propio) y `--crud` (pantallas de mantenimiento con el kit de UI del backoffice). La guía avanzada está en [`docs/11_CREATING_ADVANCED_CMS_MODULES_GUIDE.md`](docs/11_CREATING_ADVANCED_CMS_MODULES_GUIDE.md).
@@ -307,10 +314,10 @@ Si se ejecuta una instalación sin módulos activos, el núcleo responde con HTT
 
 Los agentes que operen sobre este repositorio deben seguir las reglas de [`AGENTS.md`](AGENTS.md). Resumen:
 
-1. **Aislamiento Zero-Host**: todo comando mediante `./bin/sail-run <comando>`.
+1. **Aislamiento Zero-Host**: todo comando mediante `./vendor/bin/sail <comando>`.
 2. **Especificaciones formales**: contratos en `specs/*.md` y objetos DTO inmutables antes del código.
 3. **TDD**: tests de Pest en rojo antes de implementar la lógica en servicios de dominio.
-4. **Análisis estático**: `./bin/sail-run ./vendor/bin/phpstan` con cero errores (nivel 8, sin baseline).
+4. **Análisis estático**: `./vendor/bin/sail bin phpstan analyse` con cero errores (nivel 8, sin baseline).
 5. **Mutaciones quirúrgicas**: cambios acotados a fragmentos contiguos pequeños; no se reescriben archivos enteros para tocar un método.
 
 ## Servidor MCP
@@ -332,7 +339,7 @@ Todas las operaciones requieren un token Bearer de **Laravel Passport** con el s
 Para emitir un token de agente:
 
 ```bash
-./bin/sail-run php artisan cms:issue-mcp-token
+./vendor/bin/sail artisan cms:issue-mcp-token
 ```
 
 El comando acepta `--user`, `--name` y `--scopes`. También puedes gestionar tokens personales y clientes de máquina a máquina desde el backoffice (`/admin/tokens`).
@@ -425,7 +432,7 @@ Las superficies públicas son dinámicas e invalidan su caché con los cambios d
 contenido. Para exportar una copia privada destinada a revisión fuera de línea:
 
 ```bash
-./bin/sail-run php artisan geo:generate-llms-txt
+./vendor/bin/sail artisan geo:generate-llms-txt
 ```
 
 El destino predeterminado es `storage/app/private/geo-export`, con permisos 0600.
@@ -443,13 +450,13 @@ docker compose -p dbcms-quality -f docker/ci/compose.yml run --build --rm app ba
 docker compose -p dbcms-quality -f docker/ci/compose.yml down --volumes --remove-orphans
 
 # Análisis estático (PHPStan, nivel 8, sin baseline)
-./bin/sail-run ./vendor/bin/phpstan
+./vendor/bin/sail bin phpstan analyse
 
 # Formateador de estilo (Laravel Pint)
-./bin/sail-run ./vendor/bin/pint
+./vendor/bin/sail pint
 
 # Exportar snapshots privados (no sustituye los documentos públicos dinámicos)
-./bin/sail-run php artisan geo:generate-llms-txt
+./vendor/bin/sail artisan geo:generate-llms-txt
 ```
 
 El `Makefile` ofrece los mismos accesos abreviados: `make up`, `make down`, `make test`, `make phpstan`, `make pint`, `make migrate`, `make seed`, `make passport-keys`, `make lts-check`, `make geo-generate` y `make shell`.
@@ -471,10 +478,10 @@ El proyecto sigue **SemVer 2.0.0** (`MAYOR.MENOR.PARCHE`) y mantiene su versión
 
 ```bash
 # Consultar la versión activa y el estado del repositorio
-./bin/sail-run php artisan app:version
+./vendor/bin/sail artisan app:version
 
 # Incrementar la versión (major, minor, patch)
-./bin/sail-run php artisan app:version --bump=minor
+./vendor/bin/sail artisan app:version --bump=minor
 
 # Comprobar la diferencia antes de preparar el commit de versión
 git diff -- VERSION package.json package-lock.json

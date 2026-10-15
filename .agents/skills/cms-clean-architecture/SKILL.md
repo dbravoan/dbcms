@@ -14,7 +14,7 @@ description: Official architecture and clean code guidelines for the CMS project
 ## 1. The 10 Architectural Commandments
 
 1. **Zero-Host Runtime Containment**:
-   Never run `php`, `composer`, or `artisan` on the host OS. All commands MUST execute via `./bin/sail-run <command>`.
+   Never run `php`, `composer`, or `artisan` on the host OS. Local tools MUST execute via official `./vendor/bin/sail <command>` after explicit `up -d` (`--build` on first launch). Bootstrap missing vendor through the compatible Docker CI target. Within CI/bootstrap containers run PHP/Composer directly; do not nest Sail.
 2. **Descriptive Invokable Verb Controllers**:
    Controllers MUST be single-action invokable classes (`__invoke`) named descriptively with the entity prefix and HTTP verb suffix (e.g., `PagesGetController`, `PageCreateGetController`, `PagePostController`, `PageEditGetController`, `PagePutController`, `PageDeleteController`). Group all actions for an entity directly in a single domain directory without deep nested action folders.
 3. **Thin Controllers ($\le 30$ lines)**:

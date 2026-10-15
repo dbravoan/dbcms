@@ -13,4 +13,4 @@ Build a robust, 100% boundary-tested suite before domain implementation code is 
 2. Author Unit Tests in `tests/Unit/Services/` targeting the Service Interface methods with mocked dependencies.
 3. Author Feature Tests in `tests/Feature/` testing HTTP requests, Passport token authorization, and database persistence.
 4. Author Architectural assertions in `tests/Architecture/ArchitectureTest.php` to prevent layer violations.
-5. Run `./bin/sail-run pest` to confirm tests fail with descriptive errors (Red stage).
+5. Run `./vendor/bin/sail pest` to confirm tests fail with descriptive errors (Red stage).

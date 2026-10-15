@@ -68,12 +68,12 @@ class LaravelLtsMonitorService
         $content .= '- **Support Active**: '.($status['support_active'] ? '✅ Active' : '❌ Expired')."\n";
         $content .= "- **Assessment**: {$status['recommendation']}\n\n";
         $content .= "Source: https://laravel.com/docs/13.x/releases (13.x bug fixes: Q3 2027; 2027-09-17 calculated from the 18-month policy).\n\n";
-        $content .= "No vulnerability audit was performed by this command. Run `./bin/sail-run composer audit --locked` separately; lifecycle support does not prove absence of advisories.\n\n";
+        $content .= "No vulnerability audit was performed by this command. Run `./vendor/bin/sail composer audit --locked` separately; lifecycle support does not prove absence of advisories.\n\n";
         $content .= "## Safe Upgrade Protocol (Zero-Host)\n";
         $content .= "```bash\n";
-        $content .= "./bin/sail-run composer update laravel/framework --with-dependencies\n";
-        $content .= "./bin/sail-run pest\n";
-        $content .= "./bin/sail-run phpstan\n";
+        $content .= "./vendor/bin/sail composer update laravel/framework --with-dependencies\n";
+        $content .= "./vendor/bin/sail pest\n";
+        $content .= "./vendor/bin/sail bin phpstan analyse --memory-limit=2G\n";
         $content .= "```\n";
 
         File::put($targetFile, $content);

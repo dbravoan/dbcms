@@ -3,13 +3,13 @@
 SAIL = ./vendor/bin/sail
 
 up:
-	docker compose up -d
+	$(SAIL) up -d
 
 down:
-	docker compose down
+	$(SAIL) down
 
 restart:
-	docker compose restart
+	$(SAIL) restart
 
 test:
 	$(SAIL) test
@@ -18,13 +18,13 @@ test-filter:
 	$(SAIL) test --filter $(FILTER)
 
 phpstan:
-	$(SAIL) exec laravel.test vendor/bin/phpstan analyse --memory-limit=2G
+	$(SAIL) bin phpstan analyse --memory-limit=2G
 
 pint:
-	$(SAIL) exec laravel.test vendor/bin/pint
+	$(SAIL) pint
 
 pint-test:
-	$(SAIL) exec laravel.test vendor/bin/pint --test
+	$(SAIL) pint --test
 
 migrate:
 	$(SAIL) artisan migrate
@@ -42,4 +42,4 @@ geo-generate:
 	bash ./bin/generate-llms-txt.sh
 
 shell:
-	docker compose exec -it laravel.test bash
+	$(SAIL) shell

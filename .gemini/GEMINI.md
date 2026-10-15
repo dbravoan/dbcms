@@ -4,7 +4,7 @@ This project is configured for autonomous, token-efficient pair programming usin
 
 ## Primary Directives
 
-1. **Strictly Containerized PHP**: Never run `php`, `artisan`, or `composer` directly on the host machine. All commands must use `./bin/sail-run <command>` or `./vendor/bin/sail <command>`.
+1. **Strictly Containerized PHP**: Never run `php`, `artisan`, or `composer` directly on the host machine. Use official `./vendor/bin/sail <command>` for local tools after explicit `up -d` (`--build` initially); stop with `down`. For missing vendor follow the canonical Docker bootstrap. Inside existing CI/bootstrap containers execute PHP/Composer directly, without nested Sail.
 2. **Architecture**: Clean Architecture with strict separation:
    - Thin Controllers (validation, DTO mapping, service invocation, API Resource output).
    - Thin Models (relational schema, casts, fillable; zero business algorithms).
