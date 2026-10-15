@@ -151,13 +151,88 @@ otros procesos conservan los requisitos de sus módulos.
 Provisiona dominio, HTTPS y servicios antes de desplegar. Para alojamiento nativo,
 el document root apunta a `VPS_DIR/current/public`. Para Docker, configura el
 proxy HTTPS hacia el puerto publicado. Usa directorio, usuario y datos propios
-por proyecto. El usuario de despliegue debe poder escribir sus datos y recargar
-el servicio FPM configurado mediante un permiso sudo limitado. El pool PHP-FPM
+por proyecto. El usuario de despliegue debe tener acceso SSH con shell habilitada, poder escribir
+sus datos y recargar el servicio FPM mediante un permiso sudo limitado. El pool PHP-FPM
 del dominio debe ejecutar con el **mismo usuario que `VPS_USER`**: `.env` y la
 clave privada OAuth tienen permisos `0600`. En Plesk usa el propietario de la
 suscripción como usuario SSH. Con Nginx/Apache configura un pool dedicado, por
 ejemplo `user=deploy` y `group=deploy` si `VPS_USER=deploy`; no uses el pool genérico
 `www-data` con otro propietario ni amplíes los permisos de los secretos.
+
+### 4.1. Preparar tu clave SSH en el ordenador local
+
+Los ejemplos de este apartado se ejecutan en tu equipo Linux, desde Bash. Usa
+una clave de despliegue propia de esta web y un nombre de archivo que no exista.
+La privada queda fuera de la carpeta del proyecto y debe ser un archivo normal,
+sin enlace simbólico:
+
+```bash
+# EN TU EQUIPO: crear una clave nueva, sin sustituir otras claves existentes.
+install -d -m 700 "$HOME/.ssh"
+ssh-keygen -t ed25519 -C "deploy mi-web" -f "$HOME/.ssh/mi-web-deploy" -N ""
+chmod 600 "$HOME/.ssh/mi-web-deploy"
+chmod 644 "$HOME/.ssh/mi-web-deploy.pub"
+```
+
+Se crean dos archivos:
+
+| Archivo | Dónde se utiliza |
+|---|---|
+| `~/.ssh/mi-web-deploy` | Clave privada: permanece en tu equipo; `VPS_SSH_KEY_FILE` apunta aquí. |
+| `~/.ssh/mi-web-deploy.pub` | Clave pública: se autoriza para el usuario `deploy` del VPS. |
+
+Este recorrido usa una clave dedicada **sin passphrase** porque el controlador
+Docker de Ansistrano y el workflow no implementan desbloqueo interactivo ni
+montan tu `ssh-agent`. No elimina ni modifica la passphrase de tus otras claves.
+La cuenta `deploy` debe tener únicamente los permisos necesarios para esta web.
+Las opciones de generación y autenticación están descritas en los manuales de
+[ssh-keygen](https://man.openbsd.org/ssh-keygen) y
+[ssh](https://man.openbsd.org/ssh).
+
+### 4.2. Autorizar la pública y comprobar la identidad del servidor
+
+Obtén primero la huella del servidor por su consola del proveedor, Plesk o un
+administrador que ya tenga acceso verificado. Este comando se ejecuta **en el
+VPS**, no sobre la clave de tu portátil:
+
+```bash
+# EN LA CONSOLA DEL VPS: huella de la clave pública del servidor SSH.
+ssh-keygen -l -E sha256 -f /etc/ssh/ssh_host_ed25519_key.pub
+```
+
+Guarda el valor `SHA256:...` como `VPS_SSH_FINGERPRINT`. Esta huella identifica al
+**servidor**; la pública `mi-web-deploy.pub` identifica a tu usuario. Son claves
+distintas.
+
+Autoriza tu pública para el usuario que desplegará. Si dispones de acceso inicial
+por contraseña y tienes `ssh-copy-id` instalado, desde tu equipo:
+
+```bash
+# EN TU EQUIPO: ajusta usuario, host y puerto; confirma solo la huella verificada.
+ssh-copy-id -i "$HOME/.ssh/mi-web-deploy.pub" -p 22 \
+  -o HostKeyAlgorithms=ssh-ed25519 deploy@web.example.com
+```
+
+También puedes añadir el contenido completo de `.pub` como una línea en
+`/home/deploy/.ssh/authorized_keys` desde el panel o la consola. Conserva las
+claves que ya existan. En el VPS, el directorio `.ssh` y `authorized_keys` deben
+pertenecer a `deploy`, con permisos `700` y `600`, respectivamente. Nunca subas
+la clave privada al servidor para autorizar el acceso.
+
+Comprueba desde tu equipo que autentica sin pedir contraseña ni passphrase:
+
+```bash
+ssh -i "$HOME/.ssh/mi-web-deploy" -p 22 \
+  -o IdentitiesOnly=yes -o BatchMode=yes -o HostKeyAlgorithms=ssh-ed25519 \
+  deploy@web.example.com 'id -un'
+```
+
+Debe responder `deploy`. Si falla, corrige usuario, puerto, pública autorizada y
+permisos antes de construir una entrega. No necesitas un alias en `~/.ssh/config`:
+los desplegadores reciben explícitamente estos datos y crean un `known_hosts`
+temporal con verificación estricta contra `VPS_SSH_FINGERPRINT`.
+
+### 4.3. Exportar la configuración local de despliegue
 
 Para los perfiles locales exporta las variables en tu terminal. No uses `source`
 sobre el `.env` de Laravel ni guardes claves en el repositorio:
@@ -177,22 +252,47 @@ export VPS_FPM_SERVICE=php8.3-fpm
 Comprueba la huella con el administrador del servidor. La conexión verifica esa
 huella y no acepta automáticamente una clave desconocida.
 
+Las variables de la terminal duran esa sesión. Puedes conservar sus `export` en
+un archivo privado fuera del repositorio y cargar **ese archivo de configuración
+de despliegue**, no el `.env` de Laravel. En Plesk, `VPS_PHP_BINARY` puede ser
+`/opt/plesk/php/8.3/bin/php`; confirma que corresponde al PHP-FPM del dominio.
+
+El usuario de despliegue necesita permiso para la recarga no interactiva del
+servicio elegido. Comprueba en el VPS, con ese usuario y el nombre real del
+servicio:
+
+```bash
+# EN EL VPS: requiere un permiso sudo limitado configurado por su administrador.
+sudo -n systemctl reload php8.3-fpm
+```
+
+El desplegador no crea ese permiso ni configura el pool FPM.
+
+### 4.4. Credenciales cuando despliega GitHub Actions
+
 En el perfil `github-actions`, crea **Settings → Environments → production** y
 configura allí estos secretos:
 
 | Secreto | Contenido |
 |---|---|
 | `VPS_HOST`, `VPS_USER`, `VPS_PORT`, `VPS_DIR` | Destino del proyecto; puerto predeterminado 22. |
-| `VPS_SSH_KEY` | Contenido de la clave privada del usuario de despliegue. |
+| `VPS_SSH_KEY` | Contenido completo del archivo privado, incluyendo cabecera y cierre; no la ruta ni el archivo `.pub`. |
 | `VPS_SSH_FINGERPRINT` | Huella ED25519 SHA256 verificada. |
 | `VPS_HEALTH_URL` | URL HTTPS pública que se comprobará. |
-| `VPS_ENV_FILE` | `.env` completo de producción, solo para bootstrap explícito. |
+| `VPS_ENV_FILE` | Opcional: contenido del `.env` de producción cuando eliges crearlo mediante bootstrap. Si ya existe en el VPS, omítelo y desactiva `bootstrap`. |
 
 Configura `DEPLOY_ENABLED=true` en las variables del repositorio cuando esté
 preparado. `VPS_PHP_BINARY` y `VPS_FPM_SERVICE` son variables de configuración del
 perfil nativo. Los perfiles locales no utilizan secretos ni variables de GitHub.
 
-Genera una APP_KEY nueva y estable para producción dentro del contenedor local:
+### 4.5. Elegir dónde crear el `.env` de producción
+
+Puedes prepararlo en tu equipo para el bootstrap opcional o crearlo directamente
+en el VPS. En ambos casos debe contener una APP_KEY propia, válida y estable,
+`APP_URL`, los datos de la base y la configuración del proyecto. El `.env` de
+desarrollo del ordenador no se transfiere durante el despliegue.
+
+Para una instalación nueva, puedes obtener su APP_KEY dentro del contenedor local:
 
 ```bash
 ./bin/sail-run php artisan key:generate --show
@@ -207,6 +307,73 @@ MySQL/Redis. No reutilices las credenciales de ejemplo.
 
 El bootstrap escribe `shared/.env` una sola vez; una repetición no lo sustituye.
 Cambiar el secreto posteriormente no rota automáticamente el entorno instalado.
+
+**Si prefieres crear el archivo directamente en el VPS**, no necesitas una copia
+local de las credenciales de producción. Provisiona el directorio con su
+administrador y edita el archivo como el usuario de despliegue. Ejemplo para
+`VPS_DIR=/srv/www/mi-web` y `VPS_USER=deploy`, con grupo `deploy`.
+El administrador debe haber creado esa cuenta y su grupo; en Plesk utiliza la
+cuenta real de la suscripción en todos los ejemplos:
+
+```bash
+# EN EL VPS: preparar directorios; no reemplaza ningún archivo de configuración.
+sudo install -d -o deploy -g deploy -m 755 /srv/www/mi-web
+sudo install -d -o deploy -g deploy -m 755 /srv/www/mi-web/shared
+sudo -u deploy sh -c 'umask 077; touch /srv/www/mi-web/shared/.env'
+sudo chmod 600 /srv/www/mi-web/shared/.env
+sudo -u deploy nano /srv/www/mi-web/shared/.env
+```
+
+Usa el editor o el panel del servidor que tengas disponible. El archivo debe
+pertenecer a `deploy` y ser legible por el proceso correspondiente; en alojamiento
+nativo, ese es también el usuario del pool FPM. Si ya contiene una APP_KEY de una
+instalación existente, consérvala. No ejecutes `key:generate` para actualizarla.
+
+Para generar **una clave nueva** sin pasarla por tu ordenador, en un VPS nativo:
+
+```bash
+# EN EL VPS NATIVO: pega la salida en APP_KEY del archivo privado.
+/usr/bin/php -r 'echo "base64:".base64_encode(random_bytes(32)).PHP_EOL;'
+```
+
+En un VPS que solo tiene Docker, puedes obtenerla dentro de un contenedor:
+
+```bash
+# EN EL VPS DOCKER: tampoco requiere PHP instalado en el host.
+docker run --rm --entrypoint php php:8.3-cli-alpine \
+  -r 'echo "base64:".base64_encode(random_bytes(32)).PHP_EOL;'
+```
+
+Sustituye `/usr/bin/php` por la CLI real si corresponde. Ejecuta únicamente la
+alternativa de tu perfil, una sola vez al crear la instalación. No forma parte
+de las actualizaciones.
+
+| Perfil | `.env` preparado en el destino | Cómo desplegar sin enviarlo |
+|---|---|---|
+| `rsync` | `VPS_DIR/shared/.env` | En tu equipo, `unset VPS_ENV_FILE_PATH` y ejecuta `./bin/deploy-rsync`. |
+| `ansistrano` | `VPS_DIR/shared/.env` | En tu equipo, `unset VPS_ENV_FILE_PATH` y ejecuta `./bin/deploy-ansistrano`. |
+| `docker` | `VPS_DIR/shared/.env`, como entrada de Compose | En tu equipo, `unset VPS_ENV_FILE_PATH` y ejecuta `./bin/deploy-docker`. |
+| `github-actions` | `VPS_DIR/shared/.env` | Ejecuta el workflow con `bootstrap` desactivado; no necesitas el secreto `VPS_ENV_FILE`. |
+| `none` | Según tu procedimiento | No hay scripts que creen o adopten configuración. |
+
+Con archivo remoto ya preparado, no dejes `VPS_ENV_FILE_PATH` apuntando a un
+archivo local inexistente: el desplegador valida esa ruta si está definida.
+Los perfiles nativos también admiten un `.env` heredado en `VPS_DIR/.env`;
+crean el enlace `shared/.env` hacia él si todavía no existe. Docker exige la
+ubicación `shared/.env`; usa esa ruta común para los proyectos nuevos.
+
+No prepares el entorno dentro de una release, por ejemplo
+`releases/release-.../.env`: los perfiles nativos sustituyen esa ubicación por
+un enlace al archivo persistente. Si falta `shared/.env` y no has solicitado
+bootstrap ni existe la ubicación heredada nativa, la entrega no se completa.
+
+En Docker hay dos archivos con funciones diferentes. `VPS_DIR/shared/.env`
+permanece en el host y aporta las variables declaradas en Compose. Dentro del
+volumen persistente, el contenedor prepara `storage/app/runtime/.env`, al que
+apunta `/var/www/html/.env`; no monta el archivo del host directamente. La APP_KEY
+debe coincidir en ambos. Una variable propia adicional del archivo del host
+necesita su correspondiente entrada en `environment` de `docker-compose.prod.yml`
+si quieres que llegue al contenedor.
 
 ## 5. Ejecutar el método elegido
 
@@ -239,6 +406,7 @@ lectura al registro en el VPS. No guardes contraseñas en scripts ni en Git.
 
 ```bash
 export CMS_IMAGE_REPOSITORY=registry.example.com/equipo/mi-web
+export VPS_COMPOSE_PROJECT=mi-web
 ./bin/deploy-docker
 ```
 
@@ -252,8 +420,9 @@ configuración y volúmenes propios. No requiere GitHub Actions ni `.git` local.
 
 Tras superar CI en `main`, el workflow de despliegue de GitHub Actions publica por SSH/rsync.
 Para la primera entrega, ejecútalo manualmente indicando el SHA completo de un
-CI satisfactorio y activando `bootstrap`. Después, cada CI satisfactorio de
-`main` despliega si `DEPLOY_ENABLED=true`.
+CI satisfactorio. Activa `bootstrap` únicamente si quieres crear el `.env` desde
+el secreto; si ya lo preparaste en el VPS, déjalo desactivado. Después, cada CI
+satisfactorio de `main` despliega si `DEPLOY_ENABLED=true`.
 
 ### Sin despliegue incluido
 
@@ -265,8 +434,25 @@ GitHub Releases. El perfil Docker publica imágenes OCI en el registro elegido.
 
 ## 6. Primer despliegue y siguientes entregas
 
-En perfiles locales, prepara primero el archivo privado de producción fuera del
-proyecto e indica su ruta al ejecutar la primera entrega:
+### 6.1. Si el `.env` ya existe en el VPS
+
+Comprueba que está en `VPS_DIR/shared/.env`, con clave válida, propietario y
+permisos correctos según el apartado 4.5. En tu equipo:
+
+```bash
+unset VPS_ENV_FILE_PATH
+# Ejecuta únicamente el comando del perfil de tu proyecto:
+./bin/deploy-rsync
+# Alternativas: ./bin/deploy-ansistrano o ./bin/deploy-docker.
+```
+
+No se descarga ese archivo a tu equipo ni se sustituye por el `.env` de desarrollo.
+En GitHub Actions, selecciona el SHA aprobado y deja `bootstrap` desactivado.
+
+### 6.2. Si quieres crear el `.env` mediante el bootstrap opcional
+
+En perfiles locales, prepara el archivo privado de producción fuera del proyecto
+e indica su ruta al ejecutar la primera entrega:
 
 ```bash
 export VPS_ENV_FILE_PATH="$HOME/.config/mi-web/production.env"
@@ -276,6 +462,8 @@ unset VPS_ENV_FILE_PATH
 
 El bootstrap lo crea en el VPS solo si aún no existe. En GitHub Actions se utiliza `bootstrap` y `VPS_ENV_FILE`.
 
+### 6.3. Completar la instalación inicial
+
 Abre `https://TU_DOMINIO/install` y completa base de datos y administrador, sin
 demo. Las siguientes entregas conservan claves, entorno, archivos y base;
 ejecutan únicamente las migraciones pendientes y comprueban procesos y HTTP.
@@ -284,6 +472,144 @@ El bootstrap nunca sustituye una configuración existente ni rota su APP_KEY.
 `cms:project:migrate --force` limita las migraciones al núcleo, Passport y módulos
 instalados, incluidos los propios e inactivos. No instala módulos opcionales ni
 activa funciones nuevas. En actualizaciones firmadas comprueba antes sus hashes.
+
+### 6.4. Qué carpetas crea Ansistrano y qué queda compartido
+
+En el primer despliegue, el rol de Ansistrano crea su estructura dentro de
+`VPS_DIR`; no necesitas crear las carpetas de cada release a mano. El usuario SSH
+sí debe poder escribir en ese directorio. El hook común prepara los datos
+persistentes y los enlaces. La estructura resultante para los perfiles nativos
+es:
+
+```text
+/srv/www/mi-web/
+├── current -> releases/release-<fecha>-<id>
+├── releases/
+│   └── release-<fecha>-<id>/
+│       ├── .env -> /srv/www/mi-web/shared/.env
+│       ├── .php-binary
+│       ├── storage -> /srv/www/mi-web/shared/storage
+│       ├── public/
+│       │   ├── uploads -> /srv/www/mi-web/shared/uploads
+│       │   └── storage -> /srv/www/mi-web/shared/storage/app/public
+│       └── bootstrap/cache/                 # cachés propias de esta release
+└── shared/
+    ├── .env                                 # configuración que preparaste
+    ├── storage/
+    │   ├── installed                        # aparece al completar /install
+    │   ├── oauth-private.key
+    │   ├── oauth-public.key
+    │   ├── app/public/
+    │   ├── framework/
+    │   └── logs/
+    └── uploads/
+```
+
+Durante una entrega pueden aparecer `shared/.deployment-lock/owner`, el marcador
+`shared/deployment-recovery-required` y `.deployment-state` dentro de la nueva
+release. Se conservan ante determinados fallos para poder recuperar. Ansistrano
+utiliza además `.ansistrano-next` como enlace provisional; el hook final lo
+promueve a `current` y retira ese nombre provisional.
+
+El orden del playbook es:
+
+1. `hooks/preflight.yml` comprueba que no haya recuperación pendiente ni un
+   `current` que sea un directorio normal.
+2. Ansistrano crea una release única y envía el directorio construido mediante
+   `rsync_direct`, sin clonar el repositorio del proyecto.
+3. `hooks/bootstrap.yml` crea el `.env` solo si lo solicitaste y falta. Si ya está
+   en el servidor, este hook no necesita recibir nada de tu ordenador.
+4. `hooks/prepare.yml` llama a `bin/deploy-vps-release.sh ... prepare`: valida PHP,
+   adquiere el bloqueo, crea `shared/storage` y `shared/uploads` si faltan, enlaza
+   los datos y ejecuta las migraciones y cachés cuando el sitio está instalado.
+5. El rol crea `.ansistrano-next`; `hooks/finalize.yml` llama a la fase `finalize`
+   del mismo script para promover, recargar FPM, comprobar HTTP y reabrir.
+
+`ansistrano_shared_paths` y `ansistrano_shared_files` están vacíos porque esos
+enlaces los prepara el script común. No añadas otra configuración paralela para
+reemplazar `.env` o `storage`. Las entregas posteriores reutilizan `shared` y
+crean una carpeta nueva de código. Actualmente no se eliminan releases antiguas
+automáticamente (`ansistrano_keep_releases: 0`); establece una política revisada de
+retención sin borrar datos compartidos ni una release necesaria para recuperar.
+
+Rsync y GitHub Actions obtienen el mismo árbol persistente. Rsync crea la carpeta
+de release con una llamada SSH; después, el script remoto crea o reutiliza
+`shared` y realiza los enlaces. No es necesario crear `storage:link` manualmente:
+el enlace público ya lo prepara el despliegue.
+
+Docker utiliza otra estructura: `VPS_DIR/control/release-.../` contiene Compose y
+los scripts de control; `VPS_DIR/shared/.env` configura Compose y
+`shared/current-image` registra el digest satisfactorio. Los datos de aplicación,
+uploads, MySQL y Redis viven en los volúmenes de ese proyecto Compose. No utiliza
+un `current` nativo ni coloca todos esos datos en carpetas del host bajo `shared`.
+
+### 6.5. Cómo rsync ejecuta Artisan después de enviar los archivos
+
+`rsync` como programa solo copia. El comando del proyecto `./bin/deploy-rsync`
+encadena construcción, validación, transferencia y una llamada SSH al script
+que acaba de subir:
+
+```text
+Tu equipo: ./bin/deploy-rsync
+  → Docker construye y valida el proyecto
+  → rsync envía vendor, assets y fuentes a releases/release-...
+  → SSH ejecuta bin/deploy-vps-release.sh sobre esa carpeta
+  → el script remoto ejecuta Artisan con la CLI PHP del VPS
+  → promoción, recarga FPM y comprobación HTTP
+```
+
+Por tanto, basta con lanzar `./bin/deploy-rsync`; no tienes que conectarte después
+para ejecutar migraciones a mano. Copiar una carpeta con un `rsync` escrito por
+tu cuenta no ejecuta esos pasos automáticamente. Ansistrano llega al mismo script
+mediante sus hooks y GitHub Actions mediante su paso SSH final.
+
+En un sitio **ya instalado**, la secuencia nativa es la siguiente. Los comandos
+se ejecutan mediante `bin/vps-artisan.sh`, con `VPS_PHP_BINARY`; mantenimiento se
+activa sobre la release anterior y la preparación utiliza la nueva:
+
+| Orden | Acción automática | Motivo o condición |
+|---|---|---|
+| 1 | Preflight PHP/perfil, bloqueo y enlaces compartidos | Rechazar un entorno incompatible o un despliegue concurrente. |
+| 2 | `down --retry=15 --quiet` | Mantener cerrado el sitio durante la actualización. |
+| 3 | `cms:project:migrate --force --no-interaction` | Ejecutar solo migraciones pendientes del núcleo, Passport y módulos instalados. |
+| 4 | `passport:keys --no-interaction` | Solo si falta la clave privada; no rota las claves existentes. |
+| 5 | `config:cache`, `route:cache`, `view:cache` | Preparar las cachés con el código y entorno de la nueva release. |
+| 6 | `cms:cache:purge` | Invalidar páginas públicas cacheadas cuando esa caché está habilitada. |
+| 7 | Promover `current`, recargar FPM y exigir `/up` HTTP 200 | Comprobar la release publicada antes de reabrir. |
+| 8 | `cms:project:reconcile --no-interaction` | Solo si existe un informe firmado `resources/updates/project-update.json`. |
+| 9 | `queue:restart` | Indicar a los workers que terminen su trabajo y salgan. |
+| 10 | `up --quiet` y liberar los controles de la entrega | Reabrir únicamente tras completar las comprobaciones. |
+
+`queue:restart` necesita que Supervisor u otro gestor vuelva a arrancar los
+workers. Configura sus comandos contra `VPS_DIR/current`, para que el reinicio
+use la nueva release. El despliegue nativo no instala Supervisor ni configura
+cron. Su servidor debe tener preparados esos procesos si la aplicación los usa.
+
+**En la primera entrega**, al no existir `shared/storage/installed`, se publica
+el asistente y se comprueba HTTP; se omite la secuencia de actualización. El
+asistente realiza el aprovisionamiento inicial. En una actualización no se usa
+`cms:install`, `migrate:fresh`, `key:generate` ni `composer update` en producción.
+
+### 6.6. Qué ejecuta el perfil Docker
+
+El script `bin/deploy-container.sh` comprueba el digest y el perfil, toma el
+bloqueo y levanta MySQL/Redis del proyecto Compose. Si existe `storage/installed`
+en el volumen, activa mantenimiento y ejecuta una sola vez
+`cms:project:migrate --force --no-interaction` en un contenedor de esa imagen.
+
+El entrypoint prepara las claves ausentes y las cachés `config:cache`,
+`route:cache` y `view:cache`. Se levanta la aplicación, se comprueban su healthcheck
+y `/up`, se reconcilia cuando hay informe de actualización, se ejecutan
+`queue:restart` y `up --quiet`, y se registra `shared/current-image`.
+Las migraciones no se ejecutan de nuevo en cada réplica; `RUN_MIGRATIONS=false`
+permanece como configuración del despliegue.
+
+En la primera entrega tampoco se instala la base automáticamente: se publica
+`/install`. El script Docker actual no invoca `cms:cache:purge`; si necesitas
+invalidar las páginas públicas tras un cambio de presentación, usa el comando
+manual del apartado 6.8. El perfil `none` no ejecuta ninguna de estas secuencias.
+
+### 6.7. Si una actualización falla
 
 Un error posterior al inicio de migraciones deja mantenimiento y el marcador
 `shared/deployment-recovery-required`. El siguiente intento se bloquea. El bloqueo exclusivo
@@ -296,6 +622,68 @@ y base son compatibles, recupera de forma supervisada y comprueba su estado.
 Solo después retira `shared/deployment-recovery-required`, el archivo `owner` y
 el directorio vacío `.deployment-lock` para permitir otra entrega. No borres esos
 controles para forzar un reintento. No hay rollback automático de base de datos.
+
+### 6.8. Lanzar Artisan manualmente sin confundirte de servidor o release
+
+Los despliegues anteriores ya ejecutan su secuencia automática. Para diagnóstico
+y operaciones puntuales sobre un alojamiento nativo, entra en el VPS y usa
+`current`. El wrapper recupera la ruta PHP registrada en `.php-binary`:
+
+```bash
+# EN TU EQUIPO: conectar al servidor verificado.
+ssh -i "$VPS_SSH_KEY_FILE" -p "$VPS_PORT" "$VPS_USER@$VPS_HOST"
+```
+
+```bash
+# YA EN EL VPS NATIVO: diagnóstico de la release publicada.
+cd /srv/www/mi-web/current
+bash bin/vps-artisan.sh about
+bash bin/vps-artisan.sh migrate:status
+```
+
+Si has editado deliberadamente `shared/.env` en una instalación sana, reconstruye
+la configuración y renueva los procesos que la mantienen cargada:
+
+```bash
+# EN EL VPS NATIVO: ajusta el nombre del servicio FPM al del dominio.
+bash bin/vps-artisan.sh config:cache
+bash bin/vps-artisan.sh cms:cache:purge
+bash bin/vps-artisan.sh queue:restart
+sudo -n systemctl reload php8.3-fpm
+```
+
+Para Docker, utiliza el mismo nombre de proyecto Compose y el archivo de control
+del contenedor publicado. Después de un despliegue satisfactorio, en Bash dentro
+del VPS puedes obtener esa ruta de las etiquetas de Compose:
+
+```bash
+# EN EL VPS DOCKER: usa el nombre elegido al desplegar, no crees otro proyecto.
+export VPS_DIR=/srv/www/mi-web
+export VPS_COMPOSE_PROJECT=mi-web
+APP_ID="$(docker ps -q --filter "label=com.docker.compose.project=$VPS_COMPOSE_PROJECT" --filter label=com.docker.compose.service=app)"
+CONTROL_FILE="$(docker inspect --format '{{ index .Config.Labels "com.docker.compose.project.config_files" }}' "$APP_ID")"
+export CMS_IMAGE="$(cat "$VPS_DIR/shared/current-image")"
+export RUN_MIGRATIONS=false
+compose=(docker compose --project-name "$VPS_COMPOSE_PROJECT" \
+  --env-file "$VPS_DIR/shared/.env" -f "$CONTROL_FILE")
+
+"${compose[@]}" exec -T --user dbcms app php artisan about
+"${compose[@]}" exec -T --user dbcms app php artisan migrate:status
+"${compose[@]}" exec -T --user dbcms app php artisan cms:cache:purge
+"${compose[@]}" exec -T --user dbcms app php artisan queue:restart
+```
+
+Estos comandos ejecutan Artisan como `dbcms`, el usuario de la aplicación.
+El contenedor debe estar arrancado y sano. El digest identifica la imagen, pero
+no el directorio `control`; evita escoger un directorio solo porque sea el más
+reciente, pues podría pertenecer a un despliegue fallido. Si cambias el `.env` del
+host Docker, un `config:cache` dentro del contenedor existente no actualiza las
+variables que Compose ya le inyectó: vuelve a desplegar con el procedimiento
+normal para recrear la aplicación con la configuración revisada y la misma APP_KEY.
+
+Estos comandos manuales no sustituyen la recuperación de una migración fallida.
+Si hay marcadores de recuperación o bloqueo, revisa su estado antes de reabrir;
+no uses `up` para saltarte ese control.
 
 ## 7. Actualizar dbCMS en una web derivada
 
