@@ -6,6 +6,12 @@
 !.env.production.example
 **/*.pem
 **/*.key
+auth.json
+**/auth.json
+.npmrc
+**/.npmrc
+.netrc
+**/.netrc
 storage/*.key
 storage/*
 bootstrap/cache/*.php

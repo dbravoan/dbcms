@@ -43,6 +43,33 @@ test('bootstrap preserves an existing valid environment byte for byte', function
         ->and(fileperms($this->root.'/.env') & 0777)->toBe(0640);
 });
 
+test('first deployment accepts a provisioned shared environment without replacing its link', function (): void {
+    File::ensureDirectoryExists($this->root.'/shared');
+    $existing = 'APP_KEY=base64:'.base64_encode(str_repeat('k', 32))."\nAPP_URL=https://configured.example\n";
+    File::put($this->root.'/shared/.env', $existing);
+    symlink($this->root.'/shared/.env', $this->root.'/.env');
+
+    expect((new InstallerBootstrap($this->root, []))->prepare())->toBeNull()
+        ->and(is_link($this->root.'/.env'))->toBeTrue()
+        ->and(File::get($this->root.'/shared/.env'))->toBe($existing)
+        ->and(file_exists($this->root.'/storage/install-bootstrap.lock'))->toBeFalse();
+});
+
+test('first deployment never generates a key through an invalid or dangling environment link', function (bool $exists): void {
+    File::ensureDirectoryExists($this->root.'/shared');
+    if ($exists) {
+        File::put($this->root.'/shared/.env', "APP_KEY=\n");
+    }
+    symlink($this->root.'/shared/.env', $this->root.'/.env');
+
+    expect((new InstallerBootstrap($this->root, []))->prepare())->not->toBeNull()
+        ->and(is_link($this->root.'/.env'))->toBeTrue()
+        ->and(is_file($this->root.'/shared/.env'))->toBe($exists);
+    if ($exists) {
+        expect(File::get($this->root.'/shared/.env'))->toBe("APP_KEY=\n");
+    }
+})->with([true, false]);
+
 test('concurrent first requests persist one complete application key', function (): void {
     $gate = $this->root.'/start-concurrent-bootstrap';
     $runner = $this->root.'/run-bootstrap.php';

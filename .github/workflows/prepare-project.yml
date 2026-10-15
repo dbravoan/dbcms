@@ -1,0 +1,75 @@
+name: Preparar proyecto
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: "Project identifier (lowercase letters, numbers and hyphens)"
+        required: true
+      brand:
+        description: "Backoffice brand"
+        type: choice
+        options: [dbcms, termocms]
+        required: true
+      themes:
+        description: "One front theme, a comma-separated list, or all"
+        default: db-cyber
+        required: true
+      deployment:
+        description: "github-actions: GitHub CI/deploy; ansistrano/rsync/docker: local machine; none: no deploy tooling"
+        type: choice
+        options: [github-actions, ansistrano, rsync, docker, none]
+        required: true
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: prepare-project
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.repository != 'dbravoan/dbcms'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      PROJECT_NAME: ${{ inputs.name }}
+      PROJECT_BRAND: ${{ inputs.brand }}
+      PROJECT_THEMES: ${{ inputs.themes }}
+      PROJECT_DEPLOYMENT: ${{ inputs.deployment }}
+      GH_TOKEN: ${{ secrets.PROJECT_BOT_TOKEN }}
+    steps:
+      - name: Require project-scoped workflow editing credentials
+        run: test -n "$GH_TOKEN" || { echo 'Set PROJECT_BOT_TOKEN with Contents, Pull requests and Workflows write access to this repository.'; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.PROJECT_BOT_TOKEN }}
+          persist-credentials: false
+      - name: Initialise the project on a review branch
+        run: |
+          test ! -f cms-project.json || { echo 'This project is already initialized.'; exit 1; }
+          [[ "$PROJECT_NAME" =~ ^[a-z][a-z0-9-]*$ ]]
+          git switch -c "codex/prepare-$PROJECT_NAME"
+          ./bin/project-init "$PROJECT_NAME" --brand="$PROJECT_BRAND" --theme="$PROJECT_THEMES" --deploy="$PROJECT_DEPLOYMENT"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A -- . ':!bootstrap/cache'
+          git commit -m "Initialize $PROJECT_NAME project"
+      # Validate the exact prepared tree as part of this initialization run.
+      - name: Validate the prepared project in Docker
+        run: |
+          docker compose -f docker/ci/compose.yml run --build --rm app bash bin/ci-check
+          docker build -f docker/production/Dockerfile -t project:prepared .
+      - name: Open the reviewed initialization proposal
+        run: |
+          gh auth setup-git --hostname github.com
+          git push -u origin "codex/prepare-$PROJECT_NAME"
+          cat > "$RUNNER_TEMP/project-pr.md" <<'BODY'
+          Initializes the project with the selected brand, front themes and deployment profile and records its core provenance in `cms-project.json`.
+
+          Validation: the complete Docker quality gate and production image build ran against this prepared tree. Merge this PR to retain only the selected deployment controls. The github-actions profile retains CI and reviewed updates; local profiles deploy from your machine and remove the official GitHub workflows.
+          BODY
+          gh pr create --base main --head "codex/prepare-$PROJECT_NAME" --title "Initialize $PROJECT_NAME" --body-file "$RUNNER_TEMP/project-pr.md"
+      - name: Stop disposable validation services
+        if: always()
+        run: docker compose -f docker/ci/compose.yml down --volumes --remove-orphans

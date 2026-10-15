@@ -1,0 +1,19 @@
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities) source(none);
+@source "./";
+
+html.theme-dbcms {
+    --admin-control-bg: #1a1a1a;
+    --admin-control-border: #45454d;
+    --admin-control-text: #f4f4f5;
+    --admin-control-placeholder: #9ca3af;
+    --admin-control-focus: #00ff99;
+    --admin-control-ring: rgba(0, 255, 153, 0.16);
+    --admin-surface: #141414;
+    --admin-text: #f4f4f5;
+    --admin-muted: #a1a1aa;
+    --admin-border: #3f3f46;
+    --admin-danger: #fda4af;
+    --admin-warning: #fcd34d;
+    --admin-message-bg: rgba(255, 255, 255, 0.04);
+}

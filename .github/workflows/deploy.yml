@@ -1,4 +1,4 @@
-name: Deploy VPS / Plesk Release
+name: Deploy GitHub Actions (rsync)
 on:
   workflow_run:
     workflows: ["Continuous Integration"]
@@ -8,6 +8,10 @@ on:
       sha:
         description: "Exact 40-character main commit SHA already validated by CI"
         required: true
+      bootstrap:
+        description: "Create the persistent environment from VPS_ENV_FILE only if absent"
+        type: boolean
+        default: false
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: false
@@ -76,10 +80,9 @@ jobs:
 
   deploy:
     needs: verify-ci
-    # Explicit repository opt-in replaces unsupported secrets in job conditions.
-    if: vars.VPS_DEPLOY_ENABLED == 'true'
+    if: vars.DEPLOY_ENABLED == 'true'
     environment: production
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
       TARGET_SHA: ${{ needs.verify-ci.outputs.target_sha }}
@@ -91,43 +94,61 @@ jobs:
       VPS_SSH_FINGERPRINT: ${{ secrets.VPS_SSH_FINGERPRINT }}
       VPS_HEALTH_URL: ${{ secrets.VPS_HEALTH_URL }}
       VPS_FPM_SERVICE: ${{ vars.VPS_FPM_SERVICE }}
+      VPS_PHP_BINARY: ${{ vars.VPS_PHP_BINARY || '/usr/bin/php' }}
+      VPS_ENV_FILE: ${{ secrets.VPS_ENV_FILE }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.verify-ci.outputs.target_sha }}
+          persist-credentials: false
+      - name: Require the GitHub Actions deployment profile
+        run: jq -e '.deployment == "github-actions"' cms-project.json
       - name: Validate destination and pin SSH host
         run: |
           [[ "$VPS_HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
           [[ "$VPS_USER" =~ ^[a-zA-Z0-9_-]+$ ]]
-          [[ "$VPS_PORT" =~ ^[0-9]+$ ]]
-          [[ "$VPS_DIR" =~ ^/[a-zA-Z0-9_./-]+$ ]]
-          test -n "$VPS_SSH_KEY"
-          test -n "$VPS_SSH_FINGERPRINT"
+          [[ "$VPS_PORT" =~ ^[0-9]{1,5}$ ]] && ((10#$VPS_PORT > 0 && 10#$VPS_PORT <= 65535))
+          [[ "$VPS_DIR" =~ ^/[a-zA-Z0-9_./-]+$ ]] && [ "$VPS_DIR" != / ] && [[ "$VPS_DIR/" != */../* ]]
+          [[ "$VPS_PHP_BINARY" =~ ^/[a-zA-Z0-9_./-]+$ ]]
+          test -n "$VPS_SSH_KEY" && test -n "$VPS_SSH_FINGERPRINT"
           mkdir -p ~/.ssh
           printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -T 10 -t ed25519 -p "$VPS_PORT" "$VPS_HOST" > ~/.ssh/known_hosts
-          test "$(ssh-keygen -lf ~/.ssh/known_hosts | awk '{print $2}' | head -1)" = "$VPS_SSH_FINGERPRINT"
-      - name: Build verified package and CLI runtime in Docker
+          test "$(ssh-keygen -lf ~/.ssh/known_hosts | awk '{print $2}' | sort -u)" = "$VPS_SSH_FINGERPRINT"
+          echo "RELEASE_NAME=release-$(date -u +%Y%m%d%H%M%S)-${TARGET_SHA}" >> "$GITHUB_ENV"
+      - uses: docker/setup-buildx-action@v3
+      - name: Build the application locally in the runner
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/production/Dockerfile
+          push: false
+          load: true
+          tags: dbcms-project:deploy
+          cache-from: type=gha,scope=project-rsync
+          cache-to: type=gha,mode=max,scope=project-rsync
+      - name: Extract the built application directory
         run: |
-          RELEASE_NAME="release-$(date -u +%Y%m%d%H%M%S)-${TARGET_SHA}"
-          VERSION="$(tr -d '[:space:]' < VERSION)"
-          echo "RELEASE_NAME=$RELEASE_NAME" >> "$GITHUB_ENV"
-          bash bin/build-release-zip.sh --version="$VERSION"
-          cp "dist/dbcms-v$VERSION.tar.gz" "$RELEASE_NAME.tar.gz"
-          docker build --target php-base -f docker/production/Dockerfile -t "dbcms-cli:${TARGET_SHA}" .
-          docker save "dbcms-cli:${TARGET_SHA}" | gzip > "$RELEASE_NAME-cli.tar.gz"
-          sha256sum "$RELEASE_NAME.tar.gz" "$RELEASE_NAME-cli.tar.gz" > "$RELEASE_NAME.sha256"
-      - name: Transfer package and preserve existing hosting
+          container="$(docker create dbcms-project:deploy)"
+          trap 'docker rm "$container" >/dev/null' EXIT
+          mkdir -p "$RUNNER_TEMP/project-runtime"
+          docker cp "$container:/var/www/html/." "$RUNNER_TEMP/project-runtime/"
+          rm -f "$RUNNER_TEMP/project-runtime/.env"
+          test -f "$RUNNER_TEMP/project-runtime/vendor/autoload.php"
+          test -f "$RUNNER_TEMP/project-runtime/public/build/manifest.json"
+      - name: Transfer the directory through rsync
         run: |
-          scp -P "$VPS_PORT" -o StrictHostKeyChecking=yes "$RELEASE_NAME.tar.gz" "$RELEASE_NAME-cli.tar.gz" "$RELEASE_NAME.sha256" "$VPS_USER@$VPS_HOST:/tmp/"
-          scp -P "$VPS_PORT" -o StrictHostKeyChecking=yes bin/deploy-vps-release.sh "$VPS_USER@$VPS_HOST:/tmp/$RELEASE_NAME-deploy.sh"
-          printf -v remote 'env VPS_DIR=%q RELEASE_NAME=%q VPS_CLI_IMAGE=%q VPS_HEALTH_URL=%q VPS_FPM_SERVICE=%q bash -s' "$VPS_DIR" "$RELEASE_NAME" "dbcms-cli:$TARGET_SHA" "$VPS_HEALTH_URL" "$VPS_FPM_SERVICE"
-          ssh -p "$VPS_PORT" -o StrictHostKeyChecking=yes "$VPS_USER@$VPS_HOST" "$remote" <<'REMOTE'
-          set -euo pipefail
-          cd /tmp
-          sha256sum -c "$RELEASE_NAME.sha256"
-          docker load -i "$RELEASE_NAME-cli.tar.gz"
-          bash "$RELEASE_NAME-deploy.sh" "$RELEASE_NAME.tar.gz"
-          rm -f "$RELEASE_NAME.tar.gz" "$RELEASE_NAME-cli.tar.gz" "$RELEASE_NAME.sha256" "$RELEASE_NAME-deploy.sh"
-          REMOTE
+          printf -v prepare 'mkdir -p %q/releases; test ! -e %q/releases/%q; mkdir %q/releases/%q' "$VPS_DIR" "$VPS_DIR" "$RELEASE_NAME" "$VPS_DIR" "$RELEASE_NAME"
+          ssh -p "$VPS_PORT" -o StrictHostKeyChecking=yes "$VPS_USER@$VPS_HOST" "$prepare"
+          rsync -rlptz --delete --chmod=Du=rwx,Dgo=rx,Fu=rwX,Fgo=rX -e "ssh -p $VPS_PORT -o StrictHostKeyChecking=yes" "$RUNNER_TEMP/project-runtime/" "$VPS_USER@$VPS_HOST:$VPS_DIR/releases/$RELEASE_NAME/"
+      - name: Bootstrap persistent configuration when explicitly requested
+        if: inputs.bootstrap == true
+        run: |
+          test -n "$VPS_ENV_FILE"
+          printf -v bootstrap 'env VPS_DIR=%q bash %q' "$VPS_DIR" "$VPS_DIR/releases/$RELEASE_NAME/bin/vps-bootstrap.sh"
+          printf '%s' "$VPS_ENV_FILE" | ssh -p "$VPS_PORT" -o StrictHostKeyChecking=yes "$VPS_USER@$VPS_HOST" "$bootstrap"
+      - name: Promote using the VPS PHP CLI
+        run: |
+          printf -v remote 'env VPS_DIR=%q RELEASE_NAME=%q VPS_DEPLOYMENT_PROFILE=github-actions VPS_PHP_BINARY=%q VPS_HEALTH_URL=%q VPS_FPM_SERVICE=%q bash %q %q' "$VPS_DIR" "$RELEASE_NAME" "$VPS_PHP_BINARY" "$VPS_HEALTH_URL" "$VPS_FPM_SERVICE" "$VPS_DIR/releases/$RELEASE_NAME/bin/deploy-vps-release.sh" "$VPS_DIR/releases/$RELEASE_NAME"
+          ssh -p "$VPS_PORT" -o StrictHostKeyChecking=yes "$VPS_USER@$VPS_HOST" "$remote"

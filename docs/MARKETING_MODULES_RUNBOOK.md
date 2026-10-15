@@ -36,7 +36,7 @@ docker compose ps creative-generation creative-render social-delivery social-rec
 docker compose logs --tail=100 creative-generation creative-render social-delivery social-reconciliation scheduler
 ```
 
-La imagen de producción incorpora los mismos programas en `docker/production/supervisord.conf` como usuario `dbcms`; Sail los ejecuta como `sail`. En VPS/Plesk se deben supervisar estos comandos mediante la CLI Docker de la release, con cierre ordenado y margen de 1500 segundos para los workers. El alojamiento web existente no arranca por sí solo estos procesos.
+La imagen de producción incorpora los mismos programas en `docker/production/supervisord.conf` como usuario `dbcms`; Sail los ejecuta como `sail`. En VPS/Plesk se deben supervisar estos comandos mediante la CLI PHP nativa y `bin/vps-artisan.sh` de la release, con cierre ordenado y margen de 1500 segundos para los workers. El alojamiento web existente no arranca por sí solo estos procesos.
 
 | Proceso | Comando Artisan dentro del contenedor | Timeout |
 | --- | --- | --- |

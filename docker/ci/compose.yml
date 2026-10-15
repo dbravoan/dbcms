@@ -17,7 +17,6 @@ services:
       MAIL_MAILER: array
       REDIS_HOST: redis
     volumes:
-      - ../../.git:/var/www/html/.git:ro
       - ../../dist:/var/www/html/dist
     depends_on:
       mysql:

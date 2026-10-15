@@ -88,7 +88,7 @@
             box-shadow: 0 0 10px rgba(0, 255, 153, 0.6);
         }
     </style>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(cms_asset_entries())
 </head>
 <body data-admin-shell class="h-full flex overflow-hidden" x-data="{ mobileNavOpen: false }" @keydown.escape.window="mobileNavOpen = false">
 

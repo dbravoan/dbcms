@@ -1,0 +1,52 @@
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities) source(none);
+@source "./";
+
+.front-db-sunset .sunset-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(16px);
+    border-radius: 1rem;
+}
+
+.front-db-sunset .sunset-card:hover {
+    border-color: rgba(244, 63, 94, 0.3);
+}
+
+.front-db-sunset .btn-sunset {
+    background: linear-gradient(135deg, #f43f5e 0%, #f59e0b 100%);
+    color: #ffffff;
+    font-weight: 600;
+    border-radius: 0.75rem;
+    transition: all 0.2s;
+    box-shadow: 0 4px 14px 0 rgba(244, 63, 94, 0.3);
+}
+
+.front-db-sunset .btn-sunset:hover {
+    opacity: 0.95;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(244, 63, 94, 0.4);
+}
+
+.front-db-sunset {
+    --cms-accent: #f43f5e;
+    --cms-accent-contrast: #ffffff;
+    --cms-fg: #fafafa;
+    --cms-fg-muted: #a1a1aa;
+    --cms-surface: rgba(255, 255, 255, 0.04);
+    --cms-surface-2: rgba(255, 255, 255, 0.07);
+    --cms-border: rgba(255, 255, 255, 0.1);
+    --cms-border-strong: rgba(255, 255, 255, 0.22);
+    --cms-accent-soft: rgba(244, 63, 94, 0.12);
+    --cms-accent-border: rgba(244, 63, 94, 0.45);
+    --cms-glow: 0 0 30px rgba(244, 63, 94, 0.16);
+    --cms-radius: 16px;
+    --cms-card-blur: blur(16px);
+}
+
+.front-db-sunset .cyber-card {
+    background: var(--cms-surface);
+    border: 1px solid var(--cms-border);
+    border-radius: var(--cms-radius);
+    box-shadow: var(--cms-glow, none);
+}

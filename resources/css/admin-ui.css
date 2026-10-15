@@ -15,8 +15,7 @@
  * rewrites — and guarantees the icon colour in every state.
  */
 
-/* Shared tokens stay scoped: public pages can carry the brand class too. */
-html.theme-dbcms {
+:root {
     --admin-control-bg: #1a1a1a;
     --admin-control-border: #45454d;
     --admin-control-text: #f4f4f5;
@@ -30,22 +29,6 @@ html.theme-dbcms {
     --admin-danger: #fda4af;
     --admin-warning: #fcd34d;
     --admin-message-bg: rgba(255, 255, 255, 0.04);
-}
-
-html.theme-termocms {
-    --admin-control-bg: #ffffff;
-    --admin-control-border: #cbd5e1;
-    --admin-control-text: #0f172a;
-    --admin-control-placeholder: #64748b;
-    --admin-control-focus: #007b90;
-    --admin-control-ring: rgba(0, 144, 168, 0.16);
-    --admin-surface: #ffffff;
-    --admin-text: #0f172a;
-    --admin-muted: #475569;
-    --admin-border: #e2e8f0;
-    --admin-danger: #b91c1c;
-    --admin-warning: #92400e;
-    --admin-message-bg: #f8fafc;
 }
 
 .admin-field { display: grid; gap: 0.375rem; min-width: 0; }
@@ -70,7 +53,6 @@ html.theme-termocms {
 }
 [data-admin-shell] .admin-control { width: 100%; background: var(--admin-control-bg); color: var(--admin-control-text); border-color: var(--admin-control-border); }
 [data-admin-shell] :where(select, input, textarea)::placeholder { color: var(--admin-control-placeholder); opacity: 1; }
-html.theme-termocms [data-admin-shell] :where(select, input, textarea) { color-scheme: light; }
 [data-admin-shell] :where(select, input, textarea):focus-visible,
 [data-admin-shell] .admin-combobox:focus-within {
     outline: 2px solid var(--admin-control-focus);

@@ -51,7 +51,7 @@
             50% { opacity: 0; }
         }
     </style>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(cms_asset_entries())
 </head>
 <body class="min-h-full flex flex-col justify-between selection:bg-[#00FF99] selection:text-black">
 

@@ -1,6 +1,8 @@
----
 roles:
   - name: ansistrano.deploy
-    version: 2.10.0
-  - name: ansistrano.rollback
-    version: 2.10.0
+    src: https://github.com/ansistrano/deploy.git
+    scm: git
+    version: 3b6304ba54154fe6312dc9093820ec72133f790d
+collections:
+  - name: ansible.posix
+    version: 2.1.0

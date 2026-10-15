@@ -23,7 +23,7 @@
             <link rel="alternate" hreflang="{{ $localeTag }}" href="{{ $href }}" />
         @endforeach
     @endif
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(cms_asset_entries(true))
 </head>
 <body class="min-h-full flex flex-col justify-between selection:bg-indigo-600 selection:text-white">
     <!-- Header -->

@@ -48,7 +48,7 @@
             50% { opacity: 0; }
         }
     </style>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(cms_asset_entries())
 </head>
 <body data-admin-shell class="min-h-full flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
     <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">

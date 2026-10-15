@@ -8,6 +8,7 @@ parameters:
         - config/
         - database/
         - routes/
+        - bootstrap/RuntimeEnvironmentBootstrap.php
 
     # Level 8 provides complete static typing and analysis for Laravel applications
     level: 8

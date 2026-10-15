@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Console\Commands\UpdatesCommand;
+use App\Contracts\Services\ProjectMigrationServiceInterface;
+use App\Contracts\Services\ProjectSourceRepositoryInterface;
+use App\Contracts\Services\ProjectUpdateServiceInterface;
 use App\Contracts\Services\UpdateBackupServiceInterface;
 use App\Contracts\Services\UpdateCatalogServiceInterface;
 use App\Contracts\Services\UpdateDeploymentServiceInterface;
@@ -17,6 +20,9 @@ use App\Contracts\Services\UpdatePreparationServiceInterface;
 use App\Core\Updates\QueueUpdateAdmission;
 use App\Core\Updates\UpdateDeploymentClassifier;
 use App\Models\User;
+use App\Services\ProjectUpdates\GitProjectSourceRepository;
+use App\Services\ProjectUpdates\ProjectMigrationService;
+use App\Services\ProjectUpdates\ProjectUpdateService;
 use App\Services\Updates\MysqlUpdateBackupService;
 use App\Services\Updates\UpdateCatalogService;
 use App\Services\Updates\UpdateExecutionService;
@@ -39,6 +45,9 @@ final class UpdateServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(ProjectSourceRepositoryInterface::class, GitProjectSourceRepository::class);
+        $this->app->singleton(ProjectMigrationServiceInterface::class, ProjectMigrationService::class);
+        $this->app->singleton(ProjectUpdateServiceInterface::class, ProjectUpdateService::class);
         $this->app->singleton(QueueUpdateAdmission::class);
         $this->app->singleton(UpdateDeploymentServiceInterface::class, UpdateDeploymentClassifier::class);
         $this->app->singleton(UpdateHistoryServiceInterface::class, UpdateHistoryService::class);

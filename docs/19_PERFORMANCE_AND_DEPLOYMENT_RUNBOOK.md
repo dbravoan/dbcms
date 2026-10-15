@@ -1,7 +1,7 @@
 # 19 · Performance & Deployment Runbook
 
 Operational guide for building, caching, hardening and deploying dbCMS on a
-VPS/Plesk hosting with Docker CLI, or an explicitly selected Docker runtime.
+VPS/Plesk hosting with native PHP CLI, or an explicitly selected Docker runtime.
 Complements `DEPLOYMENT_GUIDE.md` (releases, persistent state and promotion)
 with the concrete performance and security mechanics the code relies on.
 
@@ -19,7 +19,7 @@ npm run build      # runs `prebuild` (FontAwesome generator) + `vite build`
 
 - `quality.yml` compiles assets and verifies `public/build/manifest.json` inside Docker.
 - The production Dockerfile includes the generator in `bin`, the seven themes, resources and modules before Vite runs.
-- `deploy.yml` transfers a built package and pinned CLI image; existing PHP-FPM/Plesk continues serving the site. PHP-FPM reload must succeed before the health gate.
+- `deploy.yml` transfers the built application directory for the github-actions profile; local rsync and Ansistrano use their own commands; existing PHP-FPM/Plesk continues serving the site. PHP-FPM reload must succeed before the health gate.
 
 ## 2. OPcache
 

@@ -24,6 +24,9 @@ final class UpdatePreparationService implements UpdatePreparationServiceInterfac
     public function prepare(string $version, int $actorId): array
     {
         $this->authorize($actorId);
+        if (is_file($this->root().'/cms-project.json')) {
+            throw new \DomainException('Este proyecto se actualiza mediante cms:project:update en una rama o copia local revisada; el perfil GitHub Actions también permite preparar una PR. No se aplican paquetes ZIP desde el panel.');
+        }
         $identity = $this->verifiedIdentity();
         if (version_compare($version, $identity['version'], '<=')) {
             throw new \DomainException('Solo se pueden preparar versiones posteriores al núcleo instalado.');

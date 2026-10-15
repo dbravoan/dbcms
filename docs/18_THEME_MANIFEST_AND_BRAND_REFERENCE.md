@@ -103,15 +103,16 @@ layout receives the active backoffice theme via the global `$adminTheme` view va
 expected to expose it as a CSS class on `<html>`:
 
 ```blade
-<html class="theme-{{ $adminTheme }}">   <!-- e.g. theme-termocms -->
+<html class="front-acme-clean theme-{{ $adminTheme }}">   <!-- e.g. theme-termocms -->
 ```
 
 This class lets shared chrome (the frontoffice admin bar, the embedded section editor) adopt the
-backoffice palette. A complete front theme must ship **16 files**:
+backoffice palette. A complete front theme must ship **17 files**:
 
 ```
 themes/{id}/
 ├── theme.json
+├── theme.css                        # isolated Tailwind sources + front-{id} design tokens
 ├── layouts/app.blade.php            # theme-{adminTheme}, @yield('content'), @stack('scripts'),
 │                                    # @stack('admin_scripts') + shared partials (see §6)
 ├── partials/header.blade.php
@@ -125,6 +126,17 @@ themes/{id}/
 
 Coverage is enforced dynamically by `ThemeSystemIntegrityTest` and `ThemeParityAndIntegrityTest`
 (they discover themes from disk, so a new theme is covered automatically).
+
+Public layouts load `@vite(cms_asset_entries(true))`; administrative layouts use
+`@vite(cms_asset_entries())`. Both receive the shared CSS/JavaScript and selected brand's
+`resources/views/themes/admin/{id}/theme.css`. Public layouts additionally receive only the
+active `themes/{id}/theme.css`. Shared semantic component styles remain in
+`resources/css/themes.css`, without rules belonging to another front theme.
+
+Vite builds separate entries for every installed theme, allowing activation without a rebuild.
+When `cms-project.json` exists, its `themes` and `brand` restrict the build and runtime selection.
+Derived themes fall back to shared module views; they do not depend on `db-cyber` or
+`default-clean` being installed.
 
 ---
 
@@ -181,14 +193,20 @@ Every front layout must include:
 - **Web installer** (step 4) and **`cms:install --brand= --theme=`** select and persist the theme.
   When only **one** brand (or front theme) exists on disk, the selector is hidden and that value is
   auto-selected.
-- Switch the front theme from the backoffice **Themes** page (writes `CMS_THEME`), or edit `.env`.
-- Switch the backoffice theme by setting `CMS_BRAND` (the brand identity travels with the theme).
+- The backoffice **Themes** page persists the frontend choice as the `cms.active_theme`
+  database setting and invalidates public HTML caches. It does not edit `.env`; activation
+  survives `config:cache` and the next request refreshes long-lived workers.
+- Without a stored installed choice, runtime uses an installed `CMS_THEME`, then the project's
+  `default_theme`, then the first available theme. A theme excluded by the profile cannot be activated.
+- In the source catalogue, set `CMS_BRAND` to switch backoffice branding. Derived projects
+  use the single brand recorded in `cms-project.json`.
 
 ---
 
 ## 8. Checklist for a new brand/theme
 
 - [ ] Backoffice theme under `resources/views/themes/admin/{id}` with a `brand` block.
+- [ ] Each frontend/backoffice theme includes its own `theme.css` entrypoint (the scaffold creates it).
 - [ ] No brand literal or theme `if` added to `config/*.php`.
 - [ ] `assets/admin-bar.css` added if the palette differs from dbCMS.
 - [ ] Brand read via `brand()` / `$cmsBrand`, never from a hardcoded string.

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - Unreleased
+
+### Added
+- Independent project initialization through GitHub templates or Docker/Composer, with required brand and frozen public-theme selections.
+- Signed Git-source update proposals with three-way comparisons, human-reviewed pull requests and post-deployment provenance reconciliation.
+- Independent deployment profiles: GitHub Actions over SSH, local rsync, local Ansistrano, local Docker registry digests or no deployment tooling; persistent data and guarded migration recovery.
+- A step-by-step Spanish guide in [DERIVED_PROJECTS_GUIDE.md](docs/DERIVED_PROJECTS_GUIDE.md).
+
+### Changed
+- Build separate theme bundles and load only shared assets, the project brand and the active public theme.
+- Keep shared development tooling in Composer exports and only the chosen deployment controls in derived projects; local profiles require no GitHub workflows or project Git repository. Derived projects cannot generate product installer archives.
+- Prepare release metadata for 1.3.0. Publication of the signed release and execution against a real VPS remain pending.
+
 ## [1.2.0] - 2026-10-15
 
 ### Added

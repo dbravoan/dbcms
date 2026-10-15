@@ -8,6 +8,16 @@ chown -R dbcms:dbcms storage bootstrap/cache public/uploads
 find storage bootstrap/cache public/uploads -type d -exec chmod 775 {} +
 find storage bootstrap/cache public/uploads -type f ! -name '*.key' ! -name '*.pem' ! -name '.env*' -exec chmod 664 {} +
 find storage bootstrap/cache -type f \( -name '*.key' -o -name '*.pem' -o -name '.env*' \) -exec chmod 600 {} +
+su-exec dbcms php -r '
+    require "vendor/autoload.php";
+    require "bootstrap/RuntimeEnvironmentBootstrap.php";
+    try {
+        RuntimeEnvironmentBootstrap::ensure("storage/app/runtime/.env", getenv("APP_KEY"), getenv("APP_URL") ?: "http://localhost");
+    } catch (Throwable) {
+        fwrite(STDERR, "Cannot provision the persistent runtime environment; check the original APP_KEY, URL and volume permissions.\n");
+        exit(1);
+    }
+'
 if [ -d storage/app/private ]; then
     find storage/app/private -type d -exec chmod 700 {} +
     find storage/app/private -type f -exec chmod 600 {} +

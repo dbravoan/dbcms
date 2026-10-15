@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title') | {{ config('cms.name') }}</title>
-    <link rel="icon" type="image/png" href="{{ asset('themes/admin/termocms/termosalud-favicon.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('themes/admin/termocms/termosalud-favicon.png') }}">
-    <link rel="stylesheet" href="{{ asset('themes/admin/termocms/termocms.css') }}">
+    <link rel="icon" type="image/png" href="{{ theme_asset('termosalud-favicon.png') }}">
+    <link rel="apple-touch-icon" href="{{ theme_asset('termosalud-favicon.png') }}">
+    <link rel="stylesheet" href="{{ theme_asset('termocms.css') }}">
     <style nonce="{{ $cspNonce ?? '' }}">
         body, html {
             font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
@@ -14,7 +14,7 @@
             color: #0F172A;
         }
     </style>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(cms_asset_entries())
 </head>
 <body data-admin-shell class="min-h-full flex flex-col justify-between py-10 px-4 sm:px-6 lg:px-8 bg-slate-50 text-slate-800">
     <!-- Header Brand -->

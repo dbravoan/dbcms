@@ -42,6 +42,7 @@ class MakeFrontThemeCommand extends Command
 
         $stubs = [
             'theme.json' => $this->themeJson($id, $name),
+            'theme.css' => $this->stylesheetStub($id),
             'layouts/app.blade.php' => $this->layoutStub(),
             'partials/header.blade.php' => $this->headerStub(),
             'partials/footer.blade.php' => $this->footerStub(),
@@ -68,7 +69,9 @@ class MakeFrontThemeCommand extends Command
 
         $this->newLine();
         $this->info("Front theme [{$id}] created.");
-        $this->line('Activate it from the backoffice <fg=yellow>Themes</> page, or set <fg=yellow>CMS_THEME='.$id.'</> in .env.');
+        $this->line(is_file(base_path('cms-project.json'))
+            ? 'Add <fg=yellow>'.$id.'</> to themes in <fg=yellow>cms-project.json</>, deploy its asset build, then activate it from Themes.'
+            : 'Activate it from the backoffice <fg=yellow>Themes</> page, or set <fg=yellow>CMS_THEME='.$id.'</> in .env.');
 
         return self::SUCCESS;
     }
@@ -91,7 +94,7 @@ class MakeFrontThemeCommand extends Command
     $adminTheme = $adminTheme ?? (string) config('cms.admin_theme', 'dbcms');
 @endphp
 <!DOCTYPE html>
-<html lang="{{ $currentLocale ?? app()->getLocale() }}" class="h-full theme-{{ $adminTheme }} bg-white text-slate-900 antialiased">
+<html lang="{{ $currentLocale ?? app()->getLocale() }}" class="h-full front-__THEME__ theme-{{ $adminTheme }} bg-white text-slate-900 antialiased">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -107,11 +110,13 @@ class MakeFrontThemeCommand extends Command
         @endforeach
     @endif
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(cms_asset_entries(true))
     <style>[x-cloak]{display:none!important}</style>
 </head>
 <body class="min-h-full flex flex-col justify-between">
+    <!--cms-private:themes.__THEME__.partials.header:start-->
     @include('themes.__THEME__.partials.header')
+    <!--cms-private:end-->
 
     <main class="flex-grow">
         @yield('content')
@@ -129,6 +134,31 @@ class MakeFrontThemeCommand extends Command
 </body>
 </html>
 BLADE;
+    }
+
+    private function stylesheetStub(string $id): string
+    {
+        return <<<CSS
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities) source(none);
+@source "./";
+
+.front-{$id} {
+    --cms-accent: #0f766e;
+    --cms-accent-contrast: #ffffff;
+    --cms-fg: #0f172a;
+    --cms-fg-muted: #475569;
+    --cms-surface: #ffffff;
+    --cms-surface-2: #f8fafc;
+    --cms-border: #e2e8f0;
+    --cms-border-strong: #cbd5e1;
+    --cms-accent-soft: rgba(15, 118, 110, 0.08);
+    --cms-accent-border: rgba(15, 118, 110, 0.35);
+    --cms-glow: none;
+    --cms-radius: 10px;
+    --cms-card-blur: none;
+}
+CSS;
     }
 
     private function headerStub(): string

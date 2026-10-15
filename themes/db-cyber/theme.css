@@ -1,0 +1,94 @@
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities) source(none);
+@source "./";
+
+.front-db-cyber body {
+    font-family: 'Google Sans Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    background-color: #1a1a1a;
+    color: #ffffff;
+    /* `clip` (not `hidden`) — `hidden` turns the body into a scroll container
+       and breaks `position: sticky` for the theme header. */
+    overflow-x: clip;
+}
+
+.front-db-cyber .cursor-blink {
+    color: #00ff99;
+    display: inline-block;
+    animation: cyber-blink 1s step-end infinite;
+}
+
+.front-db-cyber .btn-neon {
+    padding: 12px 24px;
+    background-color: transparent;
+    border: 2px solid #00ff99;
+    color: #00ff99;
+    font-family: 'Google Sans Code', ui-monospace, monospace;
+    font-weight: 700;
+    font-size: 0.95rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.front-db-cyber .btn-neon:hover {
+    background-color: #00ff99;
+    color: #1a1a1a;
+    box-shadow: 0 0 20px rgba(0, 255, 153, 0.4);
+}
+
+.front-db-cyber .cyber-card {
+    background-color: rgba(20, 20, 20, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 255, 153, 0.2);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 255, 153, 0.05);
+}
+
+.front-db-cyber {
+    --cms-accent: #00ff99;
+    --cms-accent-contrast: #0b1210;
+    --cms-fg: #ffffff;
+    --cms-fg-muted: #9ca3af;
+    --cms-surface: rgba(20, 20, 20, 0.85);
+    --cms-surface-2: #181818;
+    --cms-border: #262626;
+    --cms-border-strong: #404040;
+    --cms-accent-soft: rgba(0, 255, 153, 0.1);
+    --cms-accent-border: rgba(0, 255, 153, 0.4);
+    --cms-glow: 0 0 30px rgba(0, 255, 153, 0.12);
+    --cms-radius: 12px;
+    --cms-card-blur: blur(12px);
+}
+
+.front-db-cyber .cyber-card {
+    background: var(--cms-surface);
+    border: 1px solid var(--cms-border);
+    border-radius: var(--cms-radius);
+    box-shadow: var(--cms-glow);
+    backdrop-filter: var(--cms-card-blur);
+}
+
+#polygon-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+}
+
+@keyframes cyber-blink {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0;
+    }
+}

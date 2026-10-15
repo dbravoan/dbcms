@@ -2,7 +2,7 @@
 
 > **Estándar**: Semantic Versioning 2.0.0 ([SemVer](https://semver.org/))  
 > **Formato de Versión**: `MAJOR.MINOR.PATCH` (`0.0.0`)  
-> **Runtimes de Despliegue**: GitHub Actions (`deploy.yml`) → VPS/Plesk con releases, current y shared; CLI en Docker. Docker Compose de producción es opcional. Local: Sail.
+> **Runtimes de Despliegue**: Perfiles independientes: GitHub Actions, rsync local, Ansistrano local y Docker local. VPS nativo con CLI PHP o contenedores según elección. Desarrollo: Sail.
 
 ---
 
@@ -83,7 +83,16 @@ verifica el manifiesto multiarquitectura. La release espera ese manifiesto y los
 archivos ZIP, tarball y checksums. `bin/build-release-zip.sh` ejecuta Composer y PHP
 dentro del contenedor CI.
 
-`deploy.yml` se activa después de un CI correcto sobre `main` y usa exactamente su `head_sha`; la ejecución manual aplica la misma comprobación. Requiere además `VPS_DEPLOY_ENABLED=true`, un entorno `production` y los secretos SSH documentados en [la guía operativa](DEPLOYMENT_GUIDE.md). Envía un paquete construido en Docker y una imagen CLI identificada por SHA. Conserva PHP-FPM/Plesk, releases/current/shared; ejecuta una migración única en el contenedor CLI y exige /up con HTTP 200. Una promoción fallida restaura el enlace de código anterior si está disponible; no revierte la base de datos.
+`release.yml` queda limitado al repositorio canónico `dbravoan/dbcms`. Los derivados
+se preparan y actualizan por PR siguiendo [su guía](DERIVED_PROJECTS_GUIDE.md).
+`deploy.yml` consume el SHA exacto aprobado en `main`, conserva FPM/Plesk y
+transfiere un directorio mediante rsync para el perfil `github-actions`, con
+`DEPLOY_ENABLED=true` y entorno `production`. Los perfiles locales retiran los
+workflows de GitHub: `bin/deploy-rsync`, `bin/deploy-ansistrano` y
+`bin/deploy-docker` se ejecutan desde el equipo del desarrollador con cualquier
+proveedor de código. Docker publica en el registro elegido y despliega por digest. No generan instaladores ZIP/TAR. La CLI migra una vez
+solo las instalaciones terminadas; los fallos posteriores al inicio de migración
+mantienen cierre y exigen recuperación supervisada, sin rollback automático de DB.
 
 Para publicar una versión ya preparada:
 
@@ -120,9 +129,9 @@ archivos de distribución, sus checksums, la imagen multiarquitectura y la relea
 El build de paquetes usa `git archive HEAD`: las correcciones sin commit no se
 incluyen en el ZIP/TAR, aunque una imagen desde el working tree sí pueda contenerlas.
 La plantilla no se despliega por publicar código o una release mientras
-`VPS_DEPLOY_ENABLED` no esté activado.
+`DEPLOY_ENABLED` no esté activado y no exista un perfil `github-actions`.
 
-El despliegue usa una ventana de mantenimiento y no promete ausencia de interrupción. Conserva los enlaces y el alojamiento Plesk/Linux existentes; evita ejecutar PHP/Composer CLI en el host. Docker de producción sigue disponible como alternativa explícita.
+El despliegue usa una ventana de mantenimiento y no promete ausencia de interrupción. Conserva los enlaces y el alojamiento Plesk/Linux existentes; ejecuta Artisan con PHP CLI del VPS nativo y construye dependencias dentro de Docker. El perfil Docker aloja toda la aplicación en contenedores.
 
 ## Actualizaciones de proyectos derivados
 

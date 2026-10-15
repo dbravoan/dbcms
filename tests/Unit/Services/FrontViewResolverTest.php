@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+uses()->group('source-catalogue');
+
 use App\Services\Cms\FrontViewResolver;
 
 test('it resolves an existing theme view', function (): void {

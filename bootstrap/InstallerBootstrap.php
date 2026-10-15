@@ -28,7 +28,7 @@ final class InstallerBootstrap
 
         if (! is_file($this->root.'/vendor/autoload.php')) {
             return $this->failure('El paquete está incompleto', 'Faltan las dependencias incluidas en el instalador.', [
-                'Descarga dbcms-installer-v1.2.0.zip desde los archivos de la release.',
+                'Descarga dbcms-installer-v1.3.0.zip desde los archivos de la release.',
                 'No uses el archivo automático «Source code (zip)» de GitHub.',
             ]);
         }
@@ -44,6 +44,13 @@ final class InstallerBootstrap
                 ]);
             }
 
+            return null;
+        }
+
+        // Managed deployments provision their persistent key before publishing
+        // a release. Reading it is safe; initial bootstrap must never replace
+        // the symlink or generate a key through an unprovisioned target.
+        if (is_link($envPath) && is_file($envPath) && $this->hasValidKey((string) @file_get_contents($envPath))) {
             return null;
         }
 

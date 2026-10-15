@@ -8,6 +8,9 @@ cd /var/www/html
 composer validate --strict
 composer install --prefer-dist --no-progress --no-interaction
 composer audit
+if [ -f cms-project.json ]; then
+    php artisan cms:project:review
+fi
 mkdir -p storage/framework/cache/data storage/framework/views storage/framework/sessions storage/logs bootstrap/cache
 cp .env.example .env
 php artisan key:generate --no-interaction
@@ -19,6 +22,19 @@ test -f public/build/manifest.json
 node --test tests/Frontend/*.test.mjs
 vendor/bin/pint --test
 vendor/bin/phpstan analyse --memory-limit=2G
-php -d memory_limit=2G vendor/bin/pest --colors=always
-
-bash bin/test-update-apache.sh
+if [ -f cms-project.json ]; then
+    # Full catalogue parity suites intentionally exercise files removed during
+    # initialization. Local quality checks also work without a Git repository.
+    # Derived projects validate their selected deployment profile and core
+    # services/security/installation contracts instead.
+    bash bin/ci-derived-tests
+    RUN_DERIVED_CLONE_SMOKE=1 php -d memory_limit=2G vendor/bin/pest --colors=always \
+        tests/Projects/DerivedInstallationSmokeTest.php
+else
+    php -d memory_limit=2G vendor/bin/pest --colors=always
+    RUN_DERIVED_CLONE_SMOKE=1 php -d memory_limit=2G vendor/bin/pest --colors=always \
+        tests/Projects/DerivedInstallationSmokeTest.php
+    # The standalone updater's package/recovery boundary belongs to dbCMS product
+    # releases; derived applications update through reviewed branches or separate working copies.
+    bash bin/test-update-apache.sh
+fi

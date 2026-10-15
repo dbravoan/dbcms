@@ -57,11 +57,12 @@ class ThemeParityAndIntegrityTest extends TestCase
         }
     }
 
-    public function test_all_front_themes_have_complete_sixteen_view_component_manifest(): void
+    public function test_all_front_themes_have_complete_view_and_asset_manifest(): void
     {
         $themeNames = array_keys(app(ThemeManagerService::class)->getAvailableThemes());
 
         $requiredViews = [
+            'theme.css',
             'layouts/app.blade.php',
             'partials/header.blade.php',
             'partials/footer.blade.php',
@@ -204,7 +205,7 @@ class ThemeParityAndIntegrityTest extends TestCase
         $response->assertSee($marker, false);
 
         // Per-theme rules ship inside the compiled bundle (not inline anymore).
-        $bundle = (string) file_get_contents(base_path('resources/css/themes.css'));
+        $bundle = (string) file_get_contents(base_path("themes/{$theme}/theme.css"));
         $expectations = [
             'db-editorial' => '.front-db-editorial .editorial-card',
             'db-minimal' => '.front-db-minimal .minimal-card',

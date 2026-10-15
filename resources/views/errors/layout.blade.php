@@ -44,7 +44,7 @@
             50% { opacity: 0; }
         }
     </style>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(cms_asset_entries())
 </head>
 <body class="h-full flex flex-col justify-between p-6">
     <header class="flex items-center justify-between">

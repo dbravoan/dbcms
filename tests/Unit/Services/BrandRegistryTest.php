@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Unit\Services;
 
 use App\Services\Install\BrandRegistry;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
+#[Group('source-catalogue')]
 class BrandRegistryTest extends TestCase
 {
     public function test_it_discovers_on_disk_brands_and_front_themes(): void

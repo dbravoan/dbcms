@@ -93,7 +93,8 @@ it('keeps the public HTML within the performance budget', function (): void {
 
     expect($sizeKb)->toBeLessThan(150, sprintf('Home HTML is %.1f KB (budget 150 KB).', $sizeKb));
 
-    // A single bundled stylesheet + a single bundled script.
+    // Shared CSS + selected brand CSS + active frontend CSS + one shared script.
+    // Installing additional themes must not add more requests to this page.
     $assets = array_unique(preg_match_all('#/build/assets/[A-Za-z0-9._-]+#', $html, $m) ? $m[0] : []);
-    expect(count($assets))->toBeLessThanOrEqual(2, 'Too many bundled asset references: '.implode(', ', $assets));
+    expect(count($assets))->toBeLessThanOrEqual(4, 'Too many bundled asset references: '.implode(', ', $assets));
 });

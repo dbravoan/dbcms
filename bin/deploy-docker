@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/deploy-local-common.sh"
+: "${CMS_IMAGE_REPOSITORY:?Set the project registry/repository without a tag}"
+[[ "$CMS_IMAGE_REPOSITORY" =~ ^[a-z0-9][a-z0-9._:/-]*[a-z0-9]$ ]]
+[[ "$CMS_IMAGE_REPOSITORY" == */* ]] && [[ "$CMS_IMAGE_REPOSITORY" != *..* ]]
+[[ "${CMS_IMAGE_REPOSITORY##*/}" != *:* ]]
+deployment_validate_local
+deployment_build_context
+deployment_check_context
+image_tag="$CMS_IMAGE_REPOSITORY:$RELEASE_NAME"
+DEPLOY_IMAGE="$image_tag"
+docker buildx build --platform "${DEPLOY_PLATFORM:-linux/amd64}" --load \
+    --file "$DEPLOY_TEMP/context/docker/production/Dockerfile" --target runtime \
+    --tag "$image_tag" "$DEPLOY_TEMP/context"
+docker run --rm --entrypoint php "$image_tag" -r '
+    $profile = json_decode(file_get_contents("cms-project.json"), true, 512, JSON_THROW_ON_ERROR);
+    if (($profile["deployment"] ?? null) !== "docker") { fwrite(STDERR, "Select --deploy=docker before using this command.\n"); exit(1); }
+'
+# Authentication belongs to the caller's Docker configuration. No credentials
+# or registry-specific tokens are copied to the application or remote machine.
+docker push "$image_tag"
+digests="$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$image_tag")"
+CMS_IMAGE=''
+while IFS= read -r digest; do
+    digest_repository="${digest%@*}"
+    expected_repository="${CMS_IMAGE_REPOSITORY#docker.io/}"
+    if [[ "${digest_repository#docker.io/}" == "$expected_repository" ]] && [[ "${digest##*@}" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+        CMS_IMAGE="$digest"
+        break
+    fi
+done <<< "$digests"
+test -n "$CMS_IMAGE" || { echo 'The registry did not return an immutable project digest.' >&2; exit 1; }
+printf -v remote 'mkdir -p %q/control; test ! -e %q/control/%q; mkdir %q/control/%q' "$VPS_DIR" "$VPS_DIR" "$RELEASE_NAME" "$VPS_DIR" "$RELEASE_NAME"
+"${DEPLOY_SSH[@]}" "$DEPLOY_DESTINATION" "$remote"
+rsync -rlptz -e "$DEPLOY_RSYNC_SSH" \
+    "$DEPLOY_TEMP/context/docker-compose.prod.yml" \
+    "$DEPLOY_TEMP/context/bin/deploy-container.sh" \
+    "$DEPLOY_TEMP/context/bin/vps-bootstrap.sh" \
+    "$DEPLOY_DESTINATION:$VPS_DIR/control/$RELEASE_NAME/"
+deployment_remote_bootstrap "$VPS_DIR/control/$RELEASE_NAME/vps-bootstrap.sh"
+printf -v remote 'env VPS_DIR=%q VPS_RELEASE_DIR=%q VPS_COMPOSE_PROJECT=%q CMS_IMAGE=%q bash %q' \
+    "$VPS_DIR" "$VPS_DIR/control/$RELEASE_NAME" "${VPS_COMPOSE_PROJECT:-}" "$CMS_IMAGE" \
+    "$VPS_DIR/control/$RELEASE_NAME/deploy-container.sh"
+"${DEPLOY_SSH[@]}" "$DEPLOY_DESTINATION" "$remote"

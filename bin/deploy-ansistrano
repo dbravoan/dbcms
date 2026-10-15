@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/deploy-local-common.sh"
+deployment_validate_local
+deployment_build_runtime ansistrano
+# Ansible and its pinned dependencies stay inside this profile's controller image.
+docker build --tag dbcms-ansistrano-controller "$DEPLOY_PROJECT_ROOT/deploy/ansistrano"
+printf '[vps]\ndeploy-target ansible_host=%s ansible_user=%s ansible_port=%s ansible_connection=ssh\n' "$VPS_HOST" "$VPS_USER" "$VPS_PORT" > "$DEPLOY_TEMP/inventory"
+controller=(docker run --rm --network host --tmpfs /tmp:mode=1777 --env HOME=/tmp \
+    --volume "$DEPLOY_PROJECT_ROOT/deploy/ansistrano:/deployment:ro" \
+    --volume "$DEPLOY_TEMP/runtime:/runtime:ro" --volume "$DEPLOY_TEMP:/secrets:ro" \
+    --env VPS_DIR --env RELEASE_NAME --env VPS_PHP_BINARY --env VPS_FPM_SERVICE --env VPS_HEALTH_URL)
+if [ -n "${VPS_ENV_FILE_PATH:-}" ]; then
+    cp "$VPS_ENV_FILE_PATH" "$DEPLOY_TEMP/bootstrap.env"
+    chmod 600 "$DEPLOY_TEMP/bootstrap.env"
+    controller+=(--env BOOTSTRAP_CONFIGURATION=true)
+fi
+export VPS_DIR RELEASE_NAME VPS_PHP_BINARY="${VPS_PHP_BINARY:-/usr/bin/php}" VPS_FPM_SERVICE="${VPS_FPM_SERVICE:-}" VPS_HEALTH_URL="${VPS_HEALTH_URL:-}"
+"${controller[@]}" dbcms-ansistrano-controller -i /secrets/inventory --private-key /secrets/identity \
+    --ssh-common-args='-o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/secrets/known_hosts' /deployment/deploy.yml

@@ -144,7 +144,7 @@ test('deployment consumes only the exact successful CI commit and never repeats 
         ->and($on['workflow_dispatch']['inputs']['sha']['required'] ?? false)->toBeTrue()
         ->and($jobs)->toHaveKey('verify-ci')
         ->and((array) ($deploy['needs'] ?? []))->toContain('verify-ci')
-        ->and($deploy['if'] ?? '')->toContain('VPS_DEPLOY_ENABLED')
+        ->and($deploy['if'] ?? '')->toContain('DEPLOY_ENABLED')
         ->and($verification)->toContain('workflow_run', 'head_sha', 'head_branch', 'main', 'push', 'success')
         ->and($verification)->toMatch('/listWorkflowRuns|actions\/workflows\/ci\.yml\/runs/')
         ->and($checkout)->toHaveCount(1)

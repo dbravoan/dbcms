@@ -1,17 +1,7 @@
-# Dev-only & agent assets: excluidos de Packagist dist y release archives
+# Agent-only assets excluded from Composer sources; development tooling is retained.
 /.agents export-ignore
 /.gemini export-ignore
 /.opencode export-ignore
-/.github export-ignore
-/docs export-ignore
-/specs export-ignore
-/tests export-ignore
 /dist export-ignore
-/phpunit.xml export-ignore
-/phpstan.neon export-ignore
-/pint.json export-ignore
-/docker-compose.yml export-ignore
-/Makefile export-ignore
 /skills-lock.json export-ignore
-/CONTRIBUTING.md export-ignore
 /AGENTS.md export-ignore

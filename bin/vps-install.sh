@@ -11,4 +11,4 @@ bash "$script_dir/vps-artisan.sh" cms:install "$@"
 bash "$script_dir/vps-artisan.sh" config:cache
 bash "$script_dir/vps-artisan.sh" route:cache
 bash "$script_dir/vps-artisan.sh" view:cache
-echo 'Installed using containerized CLI; existing VPS/Plesk web hosting retained.'
+echo 'Installed using the VPS PHP CLI; existing VPS/Plesk web hosting retained.'

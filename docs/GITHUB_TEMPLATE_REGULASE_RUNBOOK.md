@@ -173,15 +173,16 @@ IA y MCP son opcionales, con permisos propios y conexiones verificadas. Shop,
 Ads, Analytics, Meta, Charts y BeforeAfter sólo se activan si existe un uso real.
 Conservar datos al desinstalar; no borrar tablas como forma de limpiar una instancia.
 
-El workflow de release obtiene el destino de imagen de `github.repository`, así
-RegulaSE no intenta publicar en el registry de dbCMS. Configurar `CMS_IMAGE` con
-la imagen/version de RegulaSE si se usa el compose productivo: su fallback genérico
-sigue apuntando a dbCMS. Revisar VERSION, nombre de paquetes, README, badges y
-etiquetas de origen antes de una release del proyecto derivado.
+RegulaSE debe inicializar marca, temas y método de despliegue siguiendo la
+[guía de derivados](DERIVED_PROJECTS_GUIDE.md). No hereda la distribución de
+instaladores del producto. El perfil `github-actions` conserva CI y actualización
+por PR; los perfiles locales retiran los workflows oficiales. Si elige Docker,
+configure el registro propio con `CMS_IMAGE_REPOSITORY`, no el registro de dbCMS.
+Revise VERSION, paquetes, README, badges y metadatos de identidad del proyecto.
 
 ## 6. Publicar en el alojamiento elegido
 
-Se mantiene el alojamiento VPS/Plesk con CLI en Docker descrito en
+El alojamiento nativo VPS/Plesk usa PHP CLI del servidor y releases persistentes, descritos en
 [DEPLOYMENT_GUIDE](DEPLOYMENT_GUIDE.md) y [DEPLOYMENT_AND_VERSIONING](DEPLOYMENT_AND_VERSIONING.md).
 La alternativa de runtime Docker tiene su propio compose; no mezclarlos sin diseñar
 volúmenes, proxy y copias de seguridad. Para RegulaSE, crear directorio, base y
@@ -191,7 +192,7 @@ que `regulase.es` u otro esté disponible.
 Configurar HTTPS, `APP_ENV=production`, debug desactivado, URL canónica definitiva,
 cookies seguras, correo real cuando se necesite, workers y scheduler. Generar claves
 de aplicación/OAuth exclusivas y conservarlas entre releases. Mantener secrets en
-el entorno de producción; activar `VPS_DEPLOY_ENABLED` únicamente después de revisar
+el entorno de producción; en el perfil GitHub Actions, activar `DEPLOY_ENABLED` únicamente después de revisar
 host, directorio, huella SSH, health URL y recuperación. No copiar esos secrets desde dbCMS.
 
 Las rutas `/llms.txt` y `/llms-full.txt` deben llegar a Laravel aunque haya exports

@@ -8,7 +8,7 @@
 [![MCP](https://img.shields.io/badge/MCP-Streamable%20HTTP%20%2B%20JSON--RPC%20%2B%20SSE-purple.svg)](#servidor-mcp)
 [![Entorno](https://img.shields.io/badge/Entorno-Sail%20(Docker)%20Zero--Host-sky.svg)](#puesta-en-marcha)
 [![Versionado](https://img.shields.io/badge/Versionado-SemVer%202.0.0-orange.svg)](#versionado-y-despliegue)
-[![Versión](https://img.shields.io/badge/Versión-1.2.0-orange.svg)](CHANGELOG.md)
+[![Versión](https://img.shields.io/badge/Versión-1.3.0-orange.svg)](CHANGELOG.md)
 [![PHPStan](https://img.shields.io/badge/PHPStan-nivel%208%20sin%20baseline-magenta.svg)](#calidad-y-verificación)
 [![Tests](https://img.shields.io/badge/Tests-Pest%20(Unit%2C%20Feature%2C%20Architecture)-green.svg)](#calidad-y-verificación)
 [![Stack](https://img.shields.io/badge/Stack-Laravel%2013%20·%20PHP%208.3-red.svg)](#qué-es-dbcms)
@@ -152,10 +152,18 @@ Dos temas de panel, seleccionables con `CMS_BRAND`: `dbcms` y `termocms`. La ide
 
 ### Cómo empezar un nuevo proyecto
 
+Consulta la [guía de proyectos derivados](docs/DERIVED_PROJECTS_GUIDE.md): creación
+desde GitHub o Composer, selección de marca, temas y método de despliegue.
+Puedes elegir GitHub Actions, Ansistrano local, rsync local, Docker local o ninguno.
+Los métodos locales no dependen de GitHub y rsync funciona sin repositorio Git.
+No generan instaladores ZIP/TAR. Las actualizaciones se revisan en una PR, rama
+o copia de trabajo según el proyecto. Estas funciones se preparan para
+la versión 1.3.0; su publicación requiere superar CI y publicar una release nueva.
+
 Tienes 3 formas de comenzar con dbCMS:
-1. **GitHub Template (Recomendada en la nube)**: Haz clic en [**Use this template**](https://github.com/new?template_name=dbcms&template_owner=dbravoan) en la parte superior para generar un repositorio independiente limpio para tu web con los pipelines de CI/CD ya listos.
-2. **Composer CLI (Línea de comandos)**: Ejecuta `composer create-project dbravoan/dbcms mi-sitio`.
-3. **Instalador ZIP para navegador (recomendado)**: Descarga **`dbcms-installer-v1.2.0.zip`** desde [Releases](https://github.com/dbravoan/dbcms/releases), súbelo y extráelo desde Plesk/cPanel y abre el dominio. Incluye dependencias y recursos compilados; no requiere Composer, Node, Artisan ni SSH. Los enlaces automáticos **Source code (zip/tar.gz)** de GitHub son para desarrollo y no sirven como instalador autónomo.
+1. **GitHub Template**: Haz clic en [**Use this template**](https://github.com/new?template_name=dbcms&template_owner=dbravoan) y prepara marca, temas y despliegue mediante la PR de inicialización.
+2. **Composer dentro de Docker**: Sigue el recorrido completo de `create-project` y `bin/project-init` en la [guía de derivados](docs/DERIVED_PROJECTS_GUIDE.md); no requiere PHP ni Composer en el host.
+3. **Instalador ZIP para navegador (recomendado)**: Descarga **`dbcms-installer-v1.3.0.zip`** desde [Releases](https://github.com/dbravoan/dbcms/releases), súbelo y extráelo desde Plesk/cPanel y abre el dominio. Incluye dependencias y recursos compilados; no requiere Composer, Node, Artisan ni SSH. Los enlaces automáticos **Source code (zip/tar.gz)** de GitHub son para desarrollo y no sirven como instalador autónomo.
 
 ### Requisitos locales (Desarrollo)
 
@@ -459,7 +467,7 @@ Para convertir el repositorio actual en plantilla y crear RegulaSE:
 
 El núcleo incorpora comprobación de releases estables y preparación de actualizaciones desde **Sistema → Actualizaciones**, con permiso `manage:updates`. Las instalaciones autónomas compatibles pueden actualizarse desde el navegador; los proyectos con Git o CI reciben una propuesta revisable para su despliegue. La primera incorporación en versiones antiguas requiere mantenimiento y adopción de una base oficial firmada. Consulta el [procedimiento de actualizaciones](docs/CORE_UPDATES_RUNBOOK.md), incluidos respaldos, conflictos y recuperación.
 
-El proyecto sigue **SemVer 2.0.0** (`MAYOR.MENOR.PARCHE`) y mantiene su versión en el archivo `VERSION`. La versión actual es **1.2.0** (véase [`CHANGELOG.md`](CHANGELOG.md)).
+El proyecto sigue **SemVer 2.0.0** (`MAYOR.MENOR.PARCHE`) y mantiene su versión en el archivo `VERSION`. La versión preparada en esta rama es **1.3.0** (véase [`CHANGELOG.md`](CHANGELOG.md)).
 
 ```bash
 # Consultar la versión activa y el estado del repositorio
@@ -477,8 +485,13 @@ También admite `--set=2.1.0` para fijar una versión concreta. El comando actua
 | Workflow | Disparador | Acción |
 | --- | --- | --- |
 | `ci.yml` | Push y pull requests a `main` y `develop` | Validación de dependencias, auditoría de seguridad, Pint, PHPStan, build de frontend y Pest |
-| `deploy.yml` | CI correcto sobre `main` o disparo manual; requiere `VPS_DEPLOY_ENABLED=true` | Consume el SHA exacto aprobado por CI. Conserva VPS/Plesk y releases/current/shared, con Artisan CLI en Docker, huella SSH fijada, mantenimiento, migración única, recarga PHP-FPM y `/up` HTTP 200. |
+| `deploy.yml` | Perfil `github-actions`, CI correcto en `main` o disparo manual; `DEPLOY_ENABLED=true` | Publica por SSH/rsync el SHA aprobado, con PHP nativo del VPS, persistencia y recuperación protegida. |
 | `release.yml` | Etiquetas `v*.*.*` o disparo manual | Verifica que el SHA exacto ya superó CI y publica ZIP, TAR.GZ, checksums e imagen Docker multiarquitectura sin repetir el gate completo |
+
+Los perfiles `ansistrano`, `rsync` y `docker` se ejecutan **desde tu máquina** y
+retiran los workflows oficiales de GitHub. Funcionan con GitLab, otros proveedores
+o, en rsync, sin repositorio Git. `--deploy=none` conserva solo las herramientas
+de desarrollo. Consulta [la guía de creación y despliegue](docs/DERIVED_PROJECTS_GUIDE.md).
 
 La guía completa está en [`docs/DEPLOYMENT_AND_VERSIONING.md`](docs/DEPLOYMENT_AND_VERSIONING.md), la [validación de publicación](docs/RELEASE_VALIDATION_2026-10-13.md) distingue pruebas locales y resultados de GitHub, y el runbook de rendimiento está en [`docs/19_PERFORMANCE_AND_DEPLOYMENT_RUNBOOK.md`](docs/19_PERFORMANCE_AND_DEPLOYMENT_RUNBOOK.md).
 

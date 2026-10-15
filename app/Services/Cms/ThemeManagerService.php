@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace App\Services\Cms;
 
+use App\Contracts\Services\GeneralSettingsServiceInterface;
 use App\Core\Themes\ThemeManifestReader;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\View;
+use Illuminate\Validation\ValidationException;
 
 class ThemeManagerService
 {
+    public const ACTIVE_THEME_SETTING = 'cms.active_theme';
+
     /**
      * Last theme whose view resolution was synced.
      */
@@ -17,19 +22,21 @@ class ThemeManagerService
 
     public function __construct(
         private readonly ThemeManifestReader $manifests,
+        private readonly GeneralSettingsServiceInterface $settings,
+        private readonly PageCacheService $pageCache,
     ) {}
 
     /**
      * Clears cached view resolution when the active theme changes.
      *
-     * Front themes are selected through `cms.theme`. The value only changes via
-     * `.env` / the Themes panel, i.e. with a fresh process or after `view:clear`.
-     * This hook exists so a theme switch inside a long-lived process (queue worker,
-     * test suite) doesn't serve the previous theme's views.
+     * Settings persist panel activation independently of cached deployment config.
+     * Refresh them at request boundaries for long-lived application workers too.
      */
     public function syncActiveTheme(): void
     {
+        $this->settings->flushCache();
         $theme = $this->getActiveTheme();
+        config(['cms.theme' => $theme]);
 
         if ($this->syncedTheme === $theme) {
             return;
@@ -56,7 +63,8 @@ class ThemeManagerService
      */
     public function flushCompiledViews(): void
     {
-        foreach (glob(storage_path('framework/views/*.php')) ?: [] as $compiled) {
+        $directory = (string) config('view.compiled', storage_path('framework/views'));
+        foreach (glob(rtrim($directory, DIRECTORY_SEPARATOR).'/*.php') ?: [] as $compiled) {
             @unlink($compiled);
         }
     }
@@ -70,12 +78,16 @@ class ThemeManagerService
     {
         $themesDir = base_path('themes');
         if (! File::exists($themesDir)) {
-            File::makeDirectory($themesDir, 0755, true);
+            return [];
         }
 
         $themes = [];
         foreach (File::directories($themesDir) as $dir) {
             $identifier = basename($dir);
+            $installed = config('cms.project.themes');
+            if (is_array($installed) && ! in_array($identifier, $installed, true)) {
+                continue;
+            }
             $manifest = $this->manifests->read($dir);
 
             $themes[$identifier] = $manifest !== []
@@ -96,29 +108,44 @@ class ThemeManagerService
      */
     public function getActiveTheme(): string
     {
-        return (string) config('cms.theme', 'db-cyber');
+        $default = (string) config('cms.project.default_theme', 'db-cyber');
+        $configured = (string) config('cms.theme', $default);
+        $stored = $this->settings->get(self::ACTIVE_THEME_SETTING, $configured);
+
+        foreach ([$stored, $configured, $default] as $candidate) {
+            if (is_string($candidate) && $this->isInstalledTheme($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return array_key_first($this->getAvailableThemes()) ?? $default;
     }
 
     /**
-     * Sets active theme in runtime/session or writes to .env.
+     * Activate only installed themes, retaining deployment-owned configuration.
      */
     public function setActiveTheme(string $themeIdentifier): bool
     {
-        config(['cms.theme' => $themeIdentifier]);
-        $this->flushCompiledViews();
-
-        // Persist to .env
-        $envPath = base_path('.env');
-        if (File::exists($envPath)) {
-            $content = (string) File::get($envPath);
-            if (preg_match('/^CMS_THEME=/m', $content)) {
-                $content = (string) preg_replace('/^CMS_THEME=.*/m', "CMS_THEME={$themeIdentifier}", $content);
-            } else {
-                $content .= "\nCMS_THEME={$themeIdentifier}";
-            }
-            File::put($envPath, $content);
+        if (! $this->isInstalledTheme($themeIdentifier) || $this->manifests->read(base_path("themes/{$themeIdentifier}")) === []) {
+            throw ValidationException::withMessages(['theme' => 'El tema seleccionado no está instalado en este proyecto.']);
         }
 
+        DB::transaction(fn () => $this->settings->set(self::ACTIVE_THEME_SETTING, $themeIdentifier, 'appearance'));
+        config(['cms.theme' => $themeIdentifier]);
+        $this->flushCompiledViews();
+        $this->syncActiveTheme();
+        $this->pageCache->invalidate();
+
         return true;
+    }
+
+    private function isInstalledTheme(string $identifier): bool
+    {
+        $installed = config('cms.project.themes');
+
+        return preg_match('/^[a-z0-9][a-z0-9-]*$/D', $identifier) === 1
+            && (! is_array($installed) || in_array($identifier, $installed, true))
+            && File::isDirectory(base_path("themes/{$identifier}"))
+            && File::isFile(base_path("themes/{$identifier}/theme.json"));
     }
 }

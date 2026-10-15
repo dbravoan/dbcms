@@ -13,6 +13,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+if [ -f "$ROOT_DIR/cms-project.json" ]; then
+    echo 'Derived projects deploy through GitHub Actions; standalone dbCMS archives are product-only.' >&2
+    exit 1
+fi
+
 # Packaging uses exactly the container runtime used by CI.
 if [ ! -f /.dockerenv ]; then
     cd "$ROOT_DIR"
@@ -70,6 +75,9 @@ trap cleanup EXIT
 echo "--> 1. Exporting clean source tree with git archive..."
 cd "${ROOT_DIR}"
 git archive HEAD | tar -x -C "${BUILD_TMP}"
+# Composer source exports retain development tooling; only runtime packages prune it.
+rm -rf "$BUILD_TMP/.github" "$BUILD_TMP/docs" "$BUILD_TMP/specs" "$BUILD_TMP/tests" "$BUILD_TMP/docker"
+rm -f "$BUILD_TMP/phpunit.xml" "$BUILD_TMP/phpstan.neon" "$BUILD_TMP/pint.json" "$BUILD_TMP/docker-compose.yml" "$BUILD_TMP/Makefile" "$BUILD_TMP/CONTRIBUTING.md"
 # Tracked development manifests must never be shipped as runtime configuration.
 find "$BUILD_TMP/bootstrap/cache" -type f -name '*.php' -delete
 rm -f "$BUILD_TMP/mcp/mcp_config.json" "$BUILD_TMP/.mcp.json"

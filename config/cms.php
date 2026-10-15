@@ -24,7 +24,11 @@ use Modules\Shop\Models\ProductCategory;
  *
  * @see docs/18_THEME_MANIFEST_AND_BRAND_REFERENCE.md
  */
+$projectPath = base_path('cms-project.json');
+$project = is_file($projectPath) ? json_decode((string) file_get_contents($projectPath), true, 512, JSON_THROW_ON_ERROR) : null;
+
 return [
+    'project' => $project,
     'orchestration' => ['enabled' => env('CMS_ORCHESTRATION_ENABLED', false)],
     'seed_demo' => env('CMS_SEED_DEMO', false),
     /*
@@ -34,8 +38,8 @@ return [
     | `CMS_BRAND` selects the backoffice theme directory; `CMS_THEME` selects the
     | public (front-office) theme under `themes/`.
     */
-    'admin_theme' => env('CMS_BRAND', 'dbcms'),
-    'theme' => env('CMS_THEME', 'db-cyber'),
+    'admin_theme' => $project['brand'] ?? env('CMS_BRAND', 'dbcms'),
+    'theme' => env('CMS_THEME', $project['default_theme'] ?? 'db-cyber'),
 
     /*
     |--------------------------------------------------------------------------
@@ -48,7 +52,7 @@ return [
     'name' => env('APP_NAME', 'CMS'),
     'tagline' => env('CMS_TAGLINE'),
     'admin_path' => env('ADMIN_PATH', 'admin'),
-    'version' => env('APP_VERSION', '1.2.0'),
+    'version' => env('APP_VERSION', '1.3.0'),
     'installation_id' => env('CMS_INSTALLATION_ID') ?: substr(hash('sha256', (string) env('APP_KEY', '')), 0, 32),
 
     /*

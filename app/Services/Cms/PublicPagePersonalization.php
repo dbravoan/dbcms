@@ -11,6 +11,8 @@ final class PublicPagePersonalization
 {
     private const TOKEN = '__CMS_REQUEST_CSRF__';
 
+    public function __construct(private readonly ThemeManagerService $themes) {}
+
     public function snapshot(string $html, string $csrfToken): string
     {
         $html = preg_replace_callback(
@@ -27,8 +29,9 @@ final class PublicPagePersonalization
     {
         $html = preg_replace_callback('/<!--cms-fragment:([a-zA-Z0-9_.-]+)-->/s', function (array $match) use ($render): string {
             $view = $match[1];
-            $allowed = preg_match('/^themes\.(db-(cyber|editorial|enterprise|minimal|sunset|brutalist)|default-clean)\.partials\.header$/', $view) === 1
-                || in_array($view, ['themes.components.visitor-geo-modal', 'themes.components.cookie-consent-modal', 'themes.components.analytics'], true);
+            $header = preg_match('/^themes\.([a-z0-9][a-z0-9-]*)\.partials\.header$/D', $view, $theme) === 1
+                && array_key_exists($theme[1], $this->themes->getAvailableThemes());
+            $allowed = $header || in_array($view, ['themes.components.visitor-geo-modal', 'themes.components.cookie-consent-modal', 'themes.components.analytics'], true);
             if (! $allowed) {
                 throw new \UnexpectedValueException('Unregistered public cache fragment.');
             }

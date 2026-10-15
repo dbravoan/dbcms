@@ -7,7 +7,30 @@ use App\Contracts\Services\BrandServiceInterface;
 use App\Contracts\Services\GeneralSettingsServiceInterface;
 use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\DTOs\BrandIdentity;
+use App\Services\Cms\ThemeManagerService;
 use Modules\Captcha\Services\CaptchaService;
+
+if (! function_exists('cms_asset_entries')) {
+    /** @return list<string> Shared runtime plus the selected brand and public theme. */
+    function cms_asset_entries(bool $frontend = false): array
+    {
+        $entries = ['resources/css/app.css', 'resources/js/app.js'];
+        $brand = brand()->theme;
+        $brandCss = "resources/views/themes/admin/{$brand}/theme.css";
+        if ($brand !== '' && is_file(base_path($brandCss))) {
+            $entries[] = $brandCss;
+        }
+        if ($frontend) {
+            $theme = app(ThemeManagerService::class)->getActiveTheme();
+            $themeCss = "themes/{$theme}/theme.css";
+            if (is_file(base_path($themeCss))) {
+                $entries[] = $themeCss;
+            }
+        }
+
+        return $entries;
+    }
+}
 
 if (! function_exists('theme_asset')) {
     /**

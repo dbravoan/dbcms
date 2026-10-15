@@ -33,6 +33,7 @@ test('all front themes are discovered and complete', function (): void {
 
     $required = [
         'theme.json',
+        'theme.css',
         'layouts/app.blade.php',
         'partials/header.blade.php',
         'partials/footer.blade.php',
@@ -198,6 +199,8 @@ test('the front html carries theme-dbcms when that is the active backoffice them
 });
 
 test('make:front-theme generates a renderable theme', function (): void {
+    // Newly generated source files are compiled by the developer's next Vite build.
+    $this->withoutVite();
     $id = 'tmpgen'.substr(md5(uniqid('', true)), 0, 6);
     $path = base_path("themes/{$id}");
 
@@ -205,6 +208,7 @@ test('make:front-theme generates a renderable theme', function (): void {
         $this->artisan('make:front-theme', ['id' => $id])->assertSuccessful();
 
         expect(file_exists("{$path}/layouts/app.blade.php"))->toBeTrue()
+            ->and(file_exists("{$path}/theme.css"))->toBeTrue()
             ->and(file_exists("{$path}/theme.json"))->toBeTrue();
 
         config(['cms.theme' => $id]);

@@ -10,6 +10,6 @@ final class UpdateDeploymentClassifier implements UpdateDeploymentServiceInterfa
 {
     public function isManaged(string $root): bool
     {
-        return file_exists($root.'/.git') || is_link($root) || file_exists('/.dockerenv') || config('updates.execution_model') === 'managed' || (bool) config('updates.managed', false);
+        return file_exists($root.'/cms-project.json') || file_exists($root.'/.git') || is_link($root) || file_exists('/.dockerenv') || config('updates.execution_model') === 'managed' || (bool) config('updates.managed', false);
     }
 }

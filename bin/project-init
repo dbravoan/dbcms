@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
+if [[ "$#" -lt 1 ]]; then
+    echo 'Usage: bin/project-init name --brand=dbcms|termocms --theme=all|theme-id[,theme-id] --deploy=github-actions|ansistrano|rsync|docker|none' >&2
+    exit 64
+fi
+if [[ -f /.dockerenv ]]; then
+    mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/views storage/framework/sessions storage/logs
+    [[ -f vendor/autoload.php ]] || composer install --no-interaction --prefer-dist --no-scripts
+    # Laravel's autoload hook clears stale tracked service/package caches and
+    # discovers providers for exactly the installed dependency lock. It does not
+    # run create-project hooks or generate environment/application/OAuth keys.
+    composer dump-autoload --no-interaction
+    exec ./bin/sail-run php artisan cms:project:init "$@"
+fi
+command -v docker >/dev/null || { echo 'Docker is required.' >&2; exit 1; }
+# The CI target has the project PHP/extensions, Composer and Git. Bootstrap mounts
+# source so preparation writes to the caller's checkout without running host PHP.
+docker build --target ci -f docker/production/Dockerfile -t dbcms-project-init .
+exec docker run --rm --user "$(id -u):$(id -g)" \
+    -e COMPOSER_HOME=/tmp/composer -v "$PROJECT_ROOT:/var/www/html" \
+    -w /var/www/html dbcms-project-init ./bin/project-init "$@"

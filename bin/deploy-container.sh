@@ -1,31 +1,109 @@
 #!/usr/bin/env bash
-set -euo pipefail
-: "${CMS_IMAGE:?An immutable image tag is required}"
+set -Eeuo pipefail
+: "${CMS_IMAGE:?An immutable registry image digest is required}"
+[[ "$CMS_IMAGE" =~ @sha256:[a-f0-9]{64}$ ]] || { echo 'CMS_IMAGE must be pinned by digest.' >&2; exit 1; }
 export CMS_IMAGE RUN_MIGRATIONS=false
-compose=(docker compose -f docker-compose.prod.yml)
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+app_dir="${VPS_DIR:-$(cd "$script_dir/.." && pwd)}"
+control_dir="${VPS_RELEASE_DIR:-$app_dir}"
+shared="$app_dir/shared"
+project="${VPS_COMPOSE_PROJECT:-$(basename "$app_dir")}"
+[[ "$project" =~ ^[a-z0-9][a-z0-9_-]*$ ]]
+test ! -e "$shared/deployment-recovery-required" || { echo 'Review shared/deployment-recovery-required before retrying.' >&2; exit 1; }
+docker image inspect "$CMS_IMAGE" >/dev/null 2>&1 || docker pull "$CMS_IMAGE"
+docker run --rm --entrypoint php "$CMS_IMAGE" -r '
+    $profile = json_decode(file_get_contents("cms-project.json"), true, 512, JSON_THROW_ON_ERROR);
+    if (($profile["deployment"] ?? null) !== "docker") {
+        fwrite(STDERR, "The image deployment profile must be docker.\n");
+        exit(1);
+    }
+'
+test -s "$shared/.env"
+if ! grep -Eq '^CMS_BRAND=' "$shared/.env"; then export CMS_BRAND="${PROJECT_BRAND:-dbcms}"; fi
+if ! grep -Eq '^CMS_THEME=' "$shared/.env"; then export CMS_THEME="${PROJECT_THEME:-db-cyber}"; fi
+compose=(docker compose --project-name "$project" --env-file "$shared/.env" -f "$control_dir/docker-compose.prod.yml")
 "${compose[@]}" config --quiet
-previous_id="$("${compose[@]}" ps -q app)"
-previous_image=""
-if [ -n "$previous_id" ]; then
-    previous_image="$(docker inspect --format '{{.Config.Image}}' "$previous_id")"
-fi
-rollback() {
-    if [ -n "$previous_image" ]; then
-        export CMS_IMAGE="$previous_image"
-        "${compose[@]}" up -d --no-build app
+previous_image=''
+migration_started=false
+app_started=false
+maintenance=false
+lock="$shared/.deployment-lock"
+lock_owned=false
+release_lock() {
+    if $lock_owned && [ "$(cat "$lock/owner" 2>/dev/null || true)" = "$CMS_IMAGE" ]; then
+        rm -f "$lock/owner"
+        rmdir "$lock"
+        lock_owned=false
     fi
-    echo 'Deployment failed; previous application image restored when available. Database changes require separate review.' >&2
 }
-trap rollback ERR
-# Start dependencies without replacing the healthy application yet.
-docker load -i image.tar.gz
+fail_deployment() {
+    local status=$?
+    trap - ERR
+    if $migration_started; then
+        printf '%s\n' "$CMS_IMAGE" > "$shared/deployment-recovery-required"
+        chmod 600 "$shared/deployment-recovery-required"
+        "${compose[@]}" run --rm --no-deps --entrypoint php app artisan down --retry=15 --quiet || true
+        "${compose[@]}" stop app || true
+        echo 'Migration started: application stopped for database review; image rollback requires an explicit recovery decision.' >&2
+    elif $app_started && [ -n "$previous_image" ]; then
+        export CMS_IMAGE="$previous_image"
+        "${compose[@]}" up -d --no-build --wait app || true
+    elif $app_started; then
+        "${compose[@]}" stop app || true
+    fi
+    if ! $migration_started && $maintenance; then
+        "${compose[@]}" exec -T app php artisan up --quiet || true
+    fi
+    if ! $migration_started; then release_lock; fi
+    exit "$status"
+}
+trap fail_deployment ERR
+if ! mkdir -m 700 "$lock"; then
+    echo 'Another deployment owns shared/.deployment-lock. Review its owner before removing an interrupted lock.' >&2
+    exit 1
+fi
+printf '%s\n' "$CMS_IMAGE" > "$lock/owner"
+lock_owned=true
+previous_id="$("${compose[@]}" ps -q app)"
+if [ -n "$previous_id" ]; then previous_image="$(docker inspect --format '{{.Config.Image}}' "$previous_id")"; fi
 "${compose[@]}" up -d --wait mysql redis
-# A single migration job precedes application replacement.
-"${compose[@]}" run --rm --no-deps app php artisan migrate --force --no-interaction
+# A fresh volume stays uninstalled: the HTTPS web installer owns provisioning.
+installed=false
+if "${compose[@]}" run --rm --no-deps --entrypoint sh app -c 'test -f storage/installed'; then
+    installed=true
+else
+    status=$?
+    [ "$status" = 1 ] || false
+fi
+if $installed; then
+    maintenance=true
+    "${compose[@]}" run --rm --no-deps --entrypoint php app artisan down --retry=15 --quiet
+    migration_command=migrate
+    if "${compose[@]}" run --rm --no-deps --entrypoint sh app -c 'test -f cms-project.json'; then
+        migration_command=cms:project:migrate
+    else
+        status=$?
+        [ "$status" = 1 ] || false
+    fi
+    migration_started=true
+    printf '%s\n' "$CMS_IMAGE" > "$shared/deployment-recovery-required"
+    chmod 600 "$shared/deployment-recovery-required"
+    "${compose[@]}" run --rm --no-deps app php artisan "$migration_command" --force --no-interaction
+fi
+app_started=true
 "${compose[@]}" up -d --no-build --wait --wait-timeout 120 app
 container_id="$("${compose[@]}" ps -q app)"
 test "$(docker inspect --format '{{.State.Health.Status}}' "$container_id")" = healthy
 "${compose[@]}" exec -T app curl -fsS http://127.0.0.1/up >/dev/null
+if $installed; then
+    if "${compose[@]}" exec -T app sh -c 'test -f cms-project.json && test -f resources/updates/project-update.json'; then
+        "${compose[@]}" exec -T app php artisan cms:project:reconcile --no-interaction
+    fi
+    "${compose[@]}" exec -T app php artisan queue:restart
+    "${compose[@]}" exec -T app php artisan up --quiet
+fi
+printf '%s\n' "$CMS_IMAGE" > "$shared/current-image"
+rm -f "$shared/deployment-recovery-required"
+release_lock
 trap - ERR
-rm -f image.tar.gz
-printf 'Promoted %s\n' "$CMS_IMAGE"
+printf 'Promoted %s. Complete the web installer if this is the first deployment.\n' "$CMS_IMAGE"

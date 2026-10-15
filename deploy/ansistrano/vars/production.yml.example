@@ -1,7 +1,0 @@
----
-# Example production variables for Ansistrano
-# Copy to production.yml or manage via ansible-vault
-ansistrano_deploy_to: "/var/www/vhosts/tudominio.com/dbcms"
-php_fpm_service: "php8.3-fpm" # o "plesk-php83-fpm"
-database_name: "dbcms_prod"
-database_user: "dbcms_user"

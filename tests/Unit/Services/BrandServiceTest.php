@@ -7,8 +7,10 @@ namespace Tests\Unit\Services;
 use App\Contracts\Services\BrandServiceInterface;
 use App\DTOs\BrandIdentity;
 use Illuminate\Support\Facades\Config;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
+#[Group('source-catalogue')]
 class BrandServiceTest extends TestCase
 {
     private BrandServiceInterface $brand;

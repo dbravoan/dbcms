@@ -17,7 +17,7 @@
      <title>{{ $seoMeta?->title ?? $pageTitle ?? config('cms.name') }} | {{ config('cms.name') }}</title>
 
     @include('themes.components.seo-head')
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(cms_asset_entries(true))
 </head>
 <body class="min-h-full flex flex-col justify-between relative selection:bg-[#00FF99] selection:text-black">
 

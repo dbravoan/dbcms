@@ -1,0 +1,44 @@
+{
+  "feature_id": "derived_projects",
+  "title": "Independent derived projects and reviewed Git updates",
+  "description": "Prepare selected brands/themes and deploy independent applications through the explicitly chosen GitHub Actions or local deployment profile.",
+  "dtos": [
+    {
+      "name": "App\\DTOs\\ProjectProfile",
+      "properties": {
+        "name": "string",
+        "brand": "dbcms|termocms",
+        "themes": "list<string>",
+        "defaultTheme": "string",
+        "coreVersion": "string",
+        "coreSha": "40hex",
+        "deployment": "github-actions|ansistrano|rsync|docker|none"
+      }
+    }
+  ],
+  "preconditions": [
+    "Required brand, complete theme selection and explicit deployment validated before mutation",
+    "Official stable version tag resolved to source SHA",
+    "Initialization needs no database"
+  ],
+  "postconditions": [
+    "Versioned cms-project.json stores schema 1 and core repository/version/sha",
+    "Only selected public themes and admin brand retained",
+    "Existing user data and .env preserved",
+    "GitHub updates require reviewed PR and successful CI SHA; local updates/deployments validate their working copy without requiring a project Git repository",
+    "Only github-actions retains official GitHub CI/update/deploy files; local rsync/ansistrano/docker/none retain only selected local deployment tooling without requiring a local Git repository; custom user workflows remain",
+    "Legacy profiles without deployment retain tooling until an explicit choice, without automatic inference"
+  ],
+  "test_invariants": [
+    "Invalid selection cannot delete files",
+    "Repeated identical initialization is idempotent",
+    "Changed initialization rejected",
+    "CSV order preserved and all defaults db-cyber",
+    "Excluded resources never restored by core update",
+    "Composer exports retain development files",
+    "Both brands crossed with github-actions, ansistrano, rsync, docker and none are physically projected and idempotent",
+    "Prepared workflow takes required deployment input and passes --deploy; its removal does not invalidate in-progress job"
+  ],
+  "geo_metadata": {},
+  "passport_scopes": []
+}

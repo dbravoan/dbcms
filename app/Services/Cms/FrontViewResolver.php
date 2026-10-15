@@ -28,6 +28,7 @@ final class FrontViewResolver
 
     public function __construct(
         private readonly Factory $views,
+        private readonly ThemeManagerService $themes,
     ) {}
 
     /**
@@ -35,9 +36,7 @@ final class FrontViewResolver
      */
     public function theme(): string
     {
-        $theme = (string) config('cms.theme', self::DEFAULT_THEME);
-
-        return $theme !== '' ? $theme : self::DEFAULT_THEME;
+        return $this->themes->getActiveTheme();
     }
 
     /**
@@ -72,11 +71,16 @@ final class FrontViewResolver
     /** @return view-string */
     public function layout(string $layout = 'app'): string
     {
-        foreach ([
+        $candidates = [
             $this->themeView("layouts.{$layout}"),
-            'themes.'.self::DEFAULT_THEME.".layouts.{$layout}",
-            'themes.'.self::FALLBACK_THEME.".layouts.{$layout}",
-        ] as $candidate) {
+        ];
+        // Catalogue compatibility: derived projects have no dependency on these.
+        if (config('cms.project') === null) {
+            $candidates[] = 'themes.'.self::DEFAULT_THEME.".layouts.{$layout}";
+            $candidates[] = 'themes.'.self::FALLBACK_THEME.".layouts.{$layout}";
+        }
+
+        foreach ($candidates as $candidate) {
             if ($this->views->exists($candidate)) {
                 return $candidate;
             }
@@ -99,12 +103,16 @@ final class FrontViewResolver
     {
         $theme = $this->theme();
 
-        foreach ([
+        $candidates = [
             "themes.{$theme}.{$module}.widgets.{$view}",
             "themes.{$theme}.widgets.{$module}.{$view}",
-            'themes.'.self::DEFAULT_THEME.".{$module}.widgets.{$view}",
-            $fallback,
-        ] as $candidate) {
+        ];
+        if (config('cms.project') === null) {
+            $candidates[] = 'themes.'.self::DEFAULT_THEME.".{$module}.widgets.{$view}";
+        }
+        $candidates[] = $fallback;
+
+        foreach ($candidates as $candidate) {
             if ($this->views->exists($candidate)) {
                 return $candidate;
             }

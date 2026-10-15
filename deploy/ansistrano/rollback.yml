@@ -1,9 +1,0 @@
----
-- name: Rollback dbCMS with Ansistrano
-  hosts: webservers
-  gather_facts: false
-  vars_files:
-    - vars/defaults.yml
-    - vars/{{ target_env | default('production') }}.yml
-  roles:
-    - ansistrano.rollback

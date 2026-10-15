@@ -54,7 +54,17 @@ Si falla la copia antes de cambiar archivos, el CMS retira ese cierre, revoca la
 
 ## Proyectos con Git, CI o contenedores
 
-El panel prepara una propuesta de fuentes con inventario, diferencias, conflictos y requisitos. El mantenedor la incorpora a una rama del proyecto; revisa composer.json/lock, temas, módulos y assets, ejecuta su gate y despliega por su circuito existente. No se mezclan automáticamente historiales de plantillas ni se modifica un checkout desde HTTP.
+Los derivados preparados con `cms-project.json` usan **Actions → Actualizar dbCMS**.
+La propuesta se obtiene de Git después de verificar firma, commit e inventario
+oficial; se abre una PR y se conserva la selección de marca/temas. No se preparan
+ZIP desde el panel para esos proyectos. La reconciliación de identidad ocurre
+tras migraciones y salud satisfactorias del despliegue. Consulte el recorrido
+completo y los conflictos en [Proyectos derivados](DERIVED_PROJECTS_GUIDE.md).
+
+En instalaciones gestionadas anteriores sin ese perfil, el panel prepara una
+propuesta de fuentes con inventario, diferencias, conflictos y requisitos. El
+mantenedor la incorpora a una rama y ejecuta su gate y circuito de despliegue.
+No se mezclan historiales de plantillas ni se modifica un checkout desde HTTP.
 
 Los contenedores y los despliegues de varios nodos requieren promoción de imagen/release y control de workers/OPcache por el orquestador del proyecto. El updater no promete poder reemplazar en vivo un sistema distribuido desde PHP. El panel reconoce la actualización al detectar la identidad nueva verificada.
 

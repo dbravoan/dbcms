@@ -1,9 +1,56 @@
 ---
-- name: Deploy dbCMS with Ansistrano
-  hosts: webservers
+- name: Deploy the selected dbCMS project through Ansistrano
+  hosts: vps
   gather_facts: false
-  vars_files:
-    - vars/defaults.yml
-    - vars/{{ target_env | default('production') }}.yml
-  roles:
-    - ansistrano.deploy
+  vars:
+    ansistrano_deploy_from: /runtime/
+    ansistrano_deploy_to: "{{ lookup('ansible.builtin.env', 'VPS_DIR') }}"
+    ansistrano_release_version: "{{ lookup('ansible.builtin.env', 'RELEASE_NAME') }}"
+    # Each deployment receives its own directory before acquiring the promotion lock.
+    ansistrano_deploy_via: rsync_direct
+    # Ansistrano prepares a staging symlink; the final hook promotes it atomically.
+    ansistrano_current_dir: .ansistrano-next
+    ansistrano_current_via: symlink
+    ansistrano_shared_paths: []
+    ansistrano_shared_files: []
+    ansistrano_keep_releases: 0
+    ansistrano_allow_anonymous_stats: false
+    ansistrano_rsync_use_ssh_args: true
+    ansistrano_rsync_extra_params:
+      - --chmod=Du=rwx,Dgo=rx,Fu=rwX,Fgo=rX
+    ansistrano_before_setup_tasks_file: "{{ playbook_dir }}/hooks/preflight.yml"
+    ansistrano_after_update_code_tasks_file: "{{ playbook_dir }}/hooks/bootstrap.yml"
+    ansistrano_before_symlink_tasks_file: "{{ playbook_dir }}/hooks/prepare.yml"
+    ansistrano_after_symlink_tasks_file: "{{ playbook_dir }}/hooks/finalize.yml"
+    deployment_environment:
+      VPS_DIR: "{{ ansistrano_deploy_to }}"
+      RELEASE_NAME: "{{ ansistrano_release_version }}"
+      VPS_DEPLOYMENT_PROFILE: ansistrano
+      VPS_PHP_BINARY: "{{ lookup('ansible.builtin.env', 'VPS_PHP_BINARY') | default('/usr/bin/php', true) }}"
+      VPS_FPM_SERVICE: "{{ lookup('ansible.builtin.env', 'VPS_FPM_SERVICE') }}"
+      VPS_HEALTH_URL: "{{ lookup('ansible.builtin.env', 'VPS_HEALTH_URL') }}"
+  tasks:
+    - name: Deploy with the pinned Ansistrano role
+      block:
+        - name: Run Ansistrano deployment lifecycle
+          ansible.builtin.include_role:
+            name: ansistrano.deploy
+      rescue:
+        - name: Check whether release preparation started
+          ansible.builtin.stat:
+            path: "{{ ansistrano_release_path | default(ansistrano_deploy_to + '/releases/' + ansistrano_release_version) }}/.deployment-state/previous"
+          register: deployment_state
+        - name: Recover safely or keep the application closed after migrations
+          ansible.builtin.command:
+            argv:
+              - bash
+              - "{{ ansistrano_release_path }}/bin/deploy-vps-release.sh"
+              - "{{ ansistrano_release_path }}"
+              - abort
+          environment: "{{ deployment_environment }}"
+          when: deployment_state.stat.exists
+          failed_when: false
+          changed_when: true
+        - name: Report deployment failure for operator review
+          ansible.builtin.fail:
+            msg: Deployment failed. Review the release and shared/deployment-recovery-required before retrying.

@@ -84,7 +84,7 @@
             box-shadow: 0 0 30px rgba(var(--install-accent-rgb), 0.30) !important;
         }
     </style>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(cms_asset_entries())
 </head>
 <body class="min-h-full flex flex-col justify-between py-8 px-4 sm:px-6 lg:px-8">
     <div class="max-w-3xl w-full mx-auto">

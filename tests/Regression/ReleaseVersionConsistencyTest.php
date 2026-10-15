@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-test('all canonical release version surfaces identify version 1.2.0', function (): void {
+test('all canonical release version surfaces identify the prepared release', function (): void {
     $root = dirname(__DIR__, 2);
     $version = trim((string) file_get_contents($root.'/VERSION'));
     $package = json_decode((string) file_get_contents($root.'/package.json'), true, flags: JSON_THROW_ON_ERROR);
@@ -14,20 +14,20 @@ test('all canonical release version surfaces identify version 1.2.0', function (
     $installer = (string) file_get_contents($root.'/bootstrap/InstallerBootstrap.php');
     $start = (string) file_get_contents($root.'/EMPEZAR.html');
 
-    expect($version)->toBe('1.2.0')
+    expect($version)->toMatch('/^\d+\.\d+\.\d+$/')
         ->and($package['version'] ?? null)->toBe($version)
         ->and($lock['version'] ?? null)->toBe($version)
         ->and($lock['packages']['']['version'] ?? null)->toBe($version)
         ->and($core['version'] ?? null)->toBe($version)
         ->and($core['repository'] ?? null)->toBe('dbravoan/dbcms')
         ->and($policy['version'] ?? null)->toBe($version)
-        ->and($policy['supported_from'] ?? null)->toBe(['1.0.0', '1.0.1', '1.1.0', '1.2.0'])
+        ->and($policy['supported_from'] ?? null)->toBe(['1.0.0', '1.0.1', '1.1.0', '1.2.0', $version])
         ->and($policy['rollback_compatible'] ?? null)->toBeTrue()
-        ->and($policy['review'] ?? '')->toContain('Explicit 1.2.0 migration review', 'migration_started', 'E2E')
-        ->and($installer)->toContain('dbcms-installer-v1.2.0.zip')
-        ->and($start)->toContain('dbcms-installer-v1.2.0.zip')
-        ->and($cms)->toContain("env('APP_VERSION', '1.2.0')")
-        ->and($readme)->toContain('Versión-1.2.0', 'versión actual es **1.2.0**');
+        ->and($policy['review'] ?? '')->toContain($version, 'without adding database migrations', 'no automatic database rollback')
+        ->and($installer)->toContain('dbcms-installer-v'.$version.'.zip')
+        ->and($start)->toContain('dbcms-installer-v'.$version.'.zip')
+        ->and($cms)->toContain("env('APP_VERSION', '".$version."')")
+        ->and($readme)->toContain('Versión-'.$version, 'versión preparada en esta rama es **'.$version.'**');
 });
 
 test('the standalone release is presented as a browser installer', function (): void {
@@ -43,7 +43,7 @@ test('the standalone release is presented as a browser installer', function (): 
         'curl --fail-with-body',
     )->and($workflow)->toContain(
         'dbcms-installer-v',
-        'default: "1.2.0"',
+        'default: "'.trim((string) file_get_contents($root.'/VERSION')).'"',
         'Descarga este archivo',
         'Source code',
     );

@@ -1,15 +1,15 @@
-@import 'tailwindcss';
+@import 'tailwindcss' source(none);
+@source '../../app';
+@source '../../modules';
+@source '../views';
+@source not '../views/themes/admin';
 
 /*
  * dbCMS build-time Tailwind (v4).
  *
- * Tailwind v4 auto-detects sources from the project root (respecting
- * .gitignore), which covers themes/, modules/, resources/ and app/. We rely on
- * that instead of explicit @source globs: an unresolvable @source makes Tailwind
- * fall back to scanning everything, which is slower and less predictable.
- *
- * The compiled bundle is content-hashed and served immutably; brotli/gzip bring
- * it to ~18-21KB for the whole multi-theme design system.
+ * Only shared application views belong here. Each front/backoffice theme has
+ * its own source-scoped entrypoint, so inactive templates never enter this
+ * bundle and switching installed themes needs no rebuild.
  */
 
 /*
@@ -22,14 +22,11 @@
 @source inline("bg-[#0A0A0A] bg-[#0B0B0B] bg-[#0D0D0D] bg-[#0E0E0E] bg-[#0E0E0E]/95 bg-[#0F0F0F] bg-[#101010] bg-[#111111] bg-[#121212] bg-[#141414] bg-[#151515] bg-[#161616] bg-[#171717] bg-[#181818] bg-[#1A1A1A] bg-[#1C1C1C] bg-[#1e1e1e] bg-[#1F1F1F] bg-[#202020] bg-[#222222] bg-[#252525] bg-[#EFEFEF] bg-[#07050e] bg-[#0e0a1a] bg-[#120c22] bg-[#0a0712] bg-[#FFFDF8]");
 
 /*
- * Filter skins live outside Blade: the neutral tokens are in
- * `config/front_filter_ui.php` and each theme overrides them from
- * `themes/{theme}/filter.json`. Tailwind must scan those files too, otherwise a
- * skin token (arbitrary shadows, tracking, colours…) never reaches the bundle.
+ * Filter skins live outside Blade: neutral tokens come from
+ * `config/front_filter_ui.php`; each theme's `filter.json` is scanned by its
+ * own entrypoint.
  */
 @source "../../config/front_filter_ui.php";
-@source "../../themes/*/filter.json";
-
 
 /* Legacy dark hex containers repainted by the backoffice theme stylesheet. */
 @source inline("bg-[#0D0D0D] bg-[#0F0F11] bg-[#131313] bg-[#191919] bg-[#232323] bg-[#2A2A2A] bg-[#2E2E2E]");

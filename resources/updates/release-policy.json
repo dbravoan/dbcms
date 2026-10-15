@@ -1,8 +1,8 @@
 {
-    "version": "1.2.0",
+    "version": "1.3.0",
     "min_php": "8.3.0",
     "extensions": ["openssl", "pdo_mysql", "mbstring", "zip", "fileinfo", "dom"],
-    "supported_from": ["1.0.0", "1.0.1", "1.1.0", "1.2.0"],
+    "supported_from": ["1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0"],
     "rollback_compatible": true,
-    "review": "Explicit 1.2.0 migration review: integration guides, CreativeStudio and SocialPublishing only create new tables or add columns to newly introduced module tables; core 1.1.0 contracts are unchanged and modules default inactive. Code rollback does not reverse database changes. Automatic rollback remains forbidden after migration_started; ambiguous failures require guided recovery and verified backups. Core 1.1.0 boot with the migrated database must be verified by the release E2E gate."
+    "review": "1.3.0 adds project profiles, Git-source update proposals, theme assets and deployment workflows without adding database migrations. Existing 1.2.0 module migration compatibility review remains applicable. Source conflicts require human review. Deployment failures after migration starts remain closed for guided recovery; no automatic database rollback."
 }

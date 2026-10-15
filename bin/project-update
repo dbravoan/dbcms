@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$project_root"
+if [[ "$#" -lt 1 ]]; then
+    echo 'Usage: bin/project-update version [--working-copy]' >&2
+    exit 64
+fi
+if [[ -f /.dockerenv ]]; then
+    mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/views storage/framework/sessions storage/logs
+    [[ -f vendor/autoload.php ]] || composer install --no-interaction --prefer-dist --no-scripts
+    composer dump-autoload --no-interaction
+    exec ./bin/sail-run php artisan cms:project:update "$@"
+fi
+command -v docker >/dev/null || { echo 'Docker is required.' >&2; exit 1; }
+docker build --target ci -f docker/production/Dockerfile -t dbcms-project-update .
+exec docker run --rm --user "$(id -u):$(id -g)" \
+    -e COMPOSER_HOME=/tmp/composer -v "$project_root:/var/www/html" \
+    -w /var/www/html dbcms-project-update ./bin/project-update "$@"

@@ -1,4 +1,9 @@
-# Despliegue de dbCMS: VPS/Plesk y alternativa Docker
+# Despliegue de dbCMS: GitHub Actions, rsync, Ansistrano y Docker
+
+Para crear y publicar una web derivada mediante Actions, siga primero
+[Proyectos derivados](DERIVED_PROJECTS_GUIDE.md): preparación de marca/temas/despliegue,
+secretos, bootstrap, asistente web y actualizaciones por PR. Los instaladores
+autónomos descritos al final pertenecen a la distribución del producto dbCMS.
 
 El repositorio se verifica con Docker. `ci.yml` ejecuta Composer validate/audit,
 Pint, PHPStan nivel 8, Pest, Vite y la construcción de producción. Releases y
@@ -7,19 +12,25 @@ sin repetir el gate completo. No hay PHP ni Composer en el host de los workflows
 
 ## VPS/Plesk: alojamiento existente
 
-`deploy.yml` conserva el servidor web y PHP-FPM existentes. El docroot sigue en
-`VPS_DIR/current/public`; cada paquete se extrae en `releases/<release>` y
-`current` se cambia mediante un enlace atómico. Composer, Vite y las pruebas
-corren en Docker CI. Las migraciones y comandos Artisan remotos corren en un
-contenedor CLI con el mismo PHP 8.3 y extensiones, sin ejecutar PHP/Composer en
-el host. No se sustituye el alojamiento web por Docker Compose.
+El perfil `github-actions` conserva `deploy.yml`: GitHub construye y publica por
+SSH/rsync después del CI del SHA exacto. Los perfiles `rsync` y `ansistrano` se
+ejecutan desde tu máquina y funcionan con GitHub, GitLab u otro proveedor, incluso
+sin `.git` en rsync. Solo se incluyen los controles del perfil seleccionado;
+`none` permite usar un procedimiento propio sin automatización incluida.
 
-El servidor necesita Docker para la CLI, Bash/GNU coreutils, curl y PHP-FPM 8.3+
-con las extensiones requeridas por Composer. El usuario SSH debe poder ejecutar
-Docker, ser el propietario compatible con PHP-FPM de los archivos persistentes y
-recargar el servicio mediante `sudo -n systemctl reload`. Configure
-`VPS_FPM_SERVICE` para su servicio; si está vacío se prueban `plesk-php83-fpm`,
-`php8.3-fpm` y `php-fpm`. Una recarga fallida hace fallar el despliegue.
+Los tres perfiles nativos conservan el servidor web y PHP-FPM existentes. El
+docroot apunta a `VPS_DIR/current/public`; se transfiere el directorio construido
+a `releases/<release>` y `current` se cambia mediante un enlace atómico.
+Composer, Vite y las pruebas corren en Docker de construcción. Los comandos
+Artisan remotos utilizan la CLI PHP del VPS, seleccionada por `VPS_PHP_BINARY`
+(ruta absoluta, por defecto `/usr/bin/php`). No requieren Docker ni registro OCI
+en el destino. El preflight comprueba versión y extensiones antes de promover.
+
+El servidor necesita PHP CLI/FPM 8.3+, Bash/GNU coreutils, rsync y curl; Ansistrano
+necesita también Python3. El pool FPM del dominio debe ejecutar con el mismo usuario que SSH: los secretos
+se conservan con permisos 0600. Use un pool dedicado o el propietario de la
+suscripción de Plesk, y permiso sudo limitado para recargar su servicio.
+Configure `VPS_FPM_SERVICE`; una recarga fallida hace fallar el despliegue.
 
 ### Documentos GEO dinámicos y exports antiguos
 
@@ -55,25 +66,34 @@ VPS_DIR/
   shared/uploads/
 ```
 
-Active `VPS_DEPLOY_ENABLED=true` en variables del repositorio y configure el
-entorno `production`. Secretos: `VPS_HOST`, `VPS_PORT`, `VPS_USER`, `VPS_DIR`,
-`VPS_SSH_KEY` y `VPS_SSH_FINGERPRINT`. `VPS_HEALTH_URL` es opcional: por defecto
-se usa APP_URL de la `.env` persistente. La huella SSH es obligatoria.
+Para `github-actions`, active `DEPLOY_ENABLED=true` y configure el entorno
+`production`. Secretos: `VPS_HOST`, `VPS_PORT`, `VPS_USER`, `VPS_DIR`,
+`VPS_SSH_KEY`, `VPS_SSH_FINGERPRINT` y `VPS_HEALTH_URL`. La huella es obligatoria.
+El bootstrap explícito utiliza `VPS_ENV_FILE` solo si falta la configuración.
+El workflow construye la aplicación y extrae su directorio con vendor y assets,
+sin publicar una imagen en GHCR ni instalar Docker en el VPS.
 
-El workflow envía el paquete con vendor y assets compilados, sus checksums y una
-imagen CLI identificada por SHA. Verifica los hashes, carga esa imagen y llama a
-`bin/deploy-vps-release.sh`. Este entra en mantenimiento, ejecuta una única
-migración, prepara cachés, cambia `current`, recarga PHP-FPM, reinicia las colas y
-exige HTTP **200** de `/up`. Cualquier error falla el job y restaura el enlace de
-código anterior cuando existe. Las migraciones NO se revierten: deben ser
-aditivas y compatibles con ambas versiones. No se promete ausencia de
-interrupción; conserve copias verificadas y releases anteriores.
+Para desplegar desde su máquina, configure las variables indicadas en
+[la guía de derivados](DERIVED_PROJECTS_GUIDE.md) y use `bin/deploy-rsync` o
+`bin/deploy-ansistrano`. Las claves y el archivo de entorno de producción deben
+estar fuera del proyecto. Los comandos verifican la huella SSH y construyen en
+una copia temporal sin Git, secretos ni datos locales. No se generan ZIP/TAR ni
+archivos `docker save`.
+
+En sitios instalados prepara mantenimiento, migra una vez, construye cachés,
+promueve `current`, recarga FPM y comprueba HTTP **200** de `/up`. En la primera
+entrega conserva el asistente web. Si una migración ya comenzó, un error mantiene
+mantenimiento y crea `shared/deployment-recovery-required`; exige revisión antes
+de reintentar, sin rollback automático de código/base. El bloqueo exclusivo
+`shared/.deployment-lock/owner` evita entregas concurrentes y persiste ante cortes.
+Retire el marcador y el bloqueo únicamente después de revisar y recuperar la
+combinación de código/base apropiada. Antes de migrar puede
+recuperar el código anterior. Conserve copias verificadas y releases previas.
 
 Para instalar un paquete construido o administrar la release desde el servidor:
 
 ```bash
-# Usa la imagen CLI cargada por el despliegue, o una imagen publicada y fijada.
-export VPS_CLI_IMAGE=dbcms-cli:<sha>
+# vps-artisan.sh utiliza la CLI PHP del VPS; configure VPS_PHP_BINARY si procede.
 cd /ruta/al/cms/current
 bash bin/vps-install.sh --db-host=127.0.0.1 --db-database=dbcms
 bash bin/vps-artisan.sh cms:cache:purge
@@ -81,16 +101,19 @@ bash bin/vps-artisan.sh queue:restart
 ```
 
 `vps-install.sh` exige vendor ya incluido; no instala dependencias en el host.
-`vps-artisan.sh` monta el árbol en su misma ruta absoluta y usa la red del host
-Linux para mantener conexiones a MySQL/Redis en localhost. Para workers
+`vps-artisan.sh` ejecuta el archivo Artisan de la release con la CLI PHP nativa
+y conserva las conexiones a los servicios configurados en su `.env` persistente. Para workers
 administrados por Supervisor, use esa CLI con `queue:work --tries=1
 --timeout=1200`; configure `retry_after` a 1500 y el cierre con el mismo margen.
 
 ## Docker de producción: alternativa explícita
 
-Esta modalidad es opcional y tiene su propio script `bin/deploy-container.sh`.
-El workflow VPS/Plesk no la activa. Los comandos siguientes son para quien haya
-elegido alojar la aplicación completa en contenedores.
+El perfil `docker` tiene un comando local `bin/deploy-docker` y el control remoto
+`bin/deploy-container.sh`. No depende de GitHub ni conserva workflows de Actions.
+Construye la aplicación, publica en `CMS_IMAGE_REPOSITORY` y promueve el digest
+obtenido del registro. Configure previamente la autenticación Docker local y de
+lectura en el VPS; no se transmiten credenciales de GitHub. Los comandos siguientes
+explican también la administración manual del runtime.
 
 ## Preparación
 
@@ -143,7 +166,10 @@ La CLI de instalación se ha probado en una imagen de producción local 1.2.0. L
 
 ## Rollback y mantenimiento
 
-En la alternativa Docker, si la promoción falla, `deploy-container.sh` restaura la imagen de aplicación anterior cuando existe. No revierte la base de datos. Las migraciones deben ser aditivas y compatibles con ambas versiones durante la transición. Cambios destructivos requieren un plan y copias de seguridad propios.
+En Docker, `deploy-container.sh` consume `CMS_IMAGE` por digest y `shared/.env`.
+Antes de comenzar migraciones puede recuperar la imagen anterior. Después de
+iniciarlas, un fallo detiene la aplicación y deja el marcador de recuperación
+para revisar la base y el código conjuntamente. No revierte la base de datos.
 
 ```bash
 docker compose -f docker-compose.prod.yml logs --tail=100 app

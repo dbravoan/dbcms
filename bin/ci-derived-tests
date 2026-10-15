@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ ! -f /.dockerenv ]; then
+    echo 'Run bin/ci-derived-tests inside the Docker CI container.' >&2
+    exit 1
+fi
+# Executed from the project root in the Docker CI runtime. Keep this list explicit:
+# it validates the selected deployment, domain behavior and installed themes without
+# requiring Git, GitHub workflows or the original theme/deployment catalogue.
+php -d memory_limit=2G vendor/bin/pest --colors=always \
+        --exclude-group=source-catalogue \
+        tests/Projects tests/Unit \
+        tests/Feature/Auth/PassportOAuth2Test.php \
+        tests/Feature/Auth/RbacPermissionsTest.php \
+        tests/Feature/Auth/BackofficeMinimumPrivilegeTest.php \
+        tests/Feature/Install/EnsureCmsIsInstalledTest.php \
+        tests/Feature/Install/FinalInstallationSafetyTest.php \
+        tests/Feature/Install/WebInstallerSafetyTest.php \
+        tests/Feature/Security tests/Feature/Modules tests/Feature/Maintenance \
+        tests/Feature/Cms/ZeroModulesCleanInstallTest.php \
+        tests/Feature/Cms/InstalledProjectProfileTest.php \
+        tests/Feature/Updates/ProjectDeploymentMigrationsTest.php

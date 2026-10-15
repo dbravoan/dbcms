@@ -62,11 +62,23 @@ dbcms/
 │   ├── guard-host-php.sh             # Hard firewall preventing execution on host PHP
 │   ├── sail-run                      # Safe bridge wrapper into the Docker Sail container
 │   ├── ci-check                     # Container-only quality gate
+│   ├── ci-derived-tests             # Selected-profile, domain and security verification
+│   ├── project-init                 # Prepare brand/themes and one deployment profile
+│   ├── project-update               # Signed upstream changes in a branch or separate working copy
+│   ├── deploy-rsync                 # Local directory deployment without a project Git repository
+│   ├── deploy-ansistrano            # Local containerized Ansistrano controller
+│   ├── deploy-docker                # Local publication and remote registry digest deployment
+│   ├── deploy-local-common.sh       # Temporary source context, quality gate and pinned SSH transport
+│   ├── vps-preflight.sh             # Native destination PHP/profile requirements
+│   ├── vite-theme-inputs.mjs         # Independent frontend/brand stylesheet entrypoints
+│   ├── vps-bootstrap.sh             # Write initial persistent production configuration once
 │   ├── deploy-vps-release.sh         # Existing VPS/Plesk hosting, persistent shared data and code rollback
-│   ├── vps-artisan.sh                # Container-only CLI for existing host web deployments
+│   ├── vps-artisan.sh                # Native PHP CLI bridge for an existing VPS/Plesk release
 │   ├── deploy-container.sh           # Optional Docker hosting: explicit migrations and image promotion
 │   └── check-lts-updates.sh          # Legacy support check tooling
 │
+├── deploy/ansistrano/                # Pinned controller, playbook and guarded lifecycle hooks
+├── bootstrap/RuntimeEnvironmentBootstrap.php # Atomic persistent Docker environment and stable key
 ├── config/front_filter_ui.php         # Neutral filter-panel skin tokens (themes override via filter.json)
 ├── docs/                             # Academic & Architectural Documentation (The "Why")
 │   ├── 01_ARCHITECTURE_AND_CLEAN_CODE.md
@@ -111,6 +123,7 @@ dbcms/
 │   ├── AI_EDITOR_TRANSLATION.md      # Structured entity translation, review, permissions and provider limits
 │   ├── FINAL_SYSTEM_AUDIT_2026-10-12.md # Final isolated checks, backoffice coverage, defects and launch limitations
 │   ├── GITHUB_TEMPLATE_REGULASE_RUNBOOK.md # Existing dbCMS repo template, clean RegulaSE bootstrap and updates
+│   ├── DERIVED_PROJECTS_GUIDE.md     # GitHub/Composer creation, theme selection, Git PR updates and archive-free Actions deployment
 │   ├── CORE_UPDATES_RUNBOOK.md       # Signed core updates, adoption, backups, conflicts and recovery
 │   ├── RELEASE_VALIDATION_2026-10-13.md # Release version regression, local evidence and GitHub publication checks
 │   ├── RELEASE_1.2.0_INTEGRATION.md  # Integration provenance, immutable baselines, compatibility review and pending validation matrix

@@ -3,12 +3,9 @@ FROM node:24-alpine AS frontend
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
-COPY vite.config.js ./
-COPY bin ./bin
-COPY themes ./themes
-COPY resources ./resources
-COPY modules ./modules
-COPY public ./public
+# Include app/config Tailwind sources and the optional derived-project profile.
+# .dockerignore excludes secrets, local runtime state and installed dependencies.
+COPY . .
 RUN npm run build && test -f public/build/manifest.json
 
 # The same PHP extensions are used for Composer, CI and production.
@@ -52,6 +49,7 @@ RUN adduser -D -u 1000 -g dbcms dbcms \
 COPY --chown=root:root . .
 COPY --from=vendor --chown=root:root /var/www/html/vendor ./vendor
 COPY --from=frontend --chown=root:root /app/public/build ./public/build
+COPY --from=frontend --chown=root:root /app/public/fonts ./public/fonts
 COPY docker/production/nginx.conf /etc/nginx/nginx.conf
 COPY docker/production/supervisord.conf /etc/supervisord.conf
 COPY docker/production/entrypoint.sh /usr/local/bin/entrypoint.sh

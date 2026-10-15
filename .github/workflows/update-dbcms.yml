@@ -1,0 +1,96 @@
+name: Actualizar dbCMS
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Stable dbCMS version to review (for example 1.3.0)"
+        required: true
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: update-dbcms
+  cancel-in-progress: false
+jobs:
+  propose:
+    if: github.repository != 'dbravoan/dbcms'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      UPDATE_VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ secrets.PROJECT_BOT_TOKEN }}
+    steps:
+      - name: Require project-scoped workflow editing credentials
+        run: test -n "$GH_TOKEN" || { echo 'Set PROJECT_BOT_TOKEN with Contents, Pull requests and Workflows write access to this repository.'; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.PROJECT_BOT_TOKEN }}
+          persist-credentials: false
+      - name: Validate update request
+        run: |
+          [[ "$UPDATE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test -f cms-project.json
+          git switch -c "codex/dbcms-$UPDATE_VERSION"
+      - name: Prepare signed Git source changes in Docker
+        id: prepare
+        run: |
+          docker compose -f docker/ci/compose.yml build app
+          docker compose -f docker/ci/compose.yml run --rm \
+            --volume "$PWD:/var/www/html" app bash -c '
+            set -euo pipefail
+            ./bin/sail-run composer install --no-interaction --prefer-dist
+            ./bin/sail-run php artisan cms:project:update "$1"
+          ' -- "$UPDATE_VERSION" && status=0 || status=$?
+          # Exit 2 means a verified proposal with conflicts, rather than a failed verification.
+          case "$status" in
+            0) echo 'conflicts=false' >> "$GITHUB_OUTPUT" ;;
+            2) echo 'conflicts=true' >> "$GITHUB_OUTPUT" ;;
+            *) exit "$status" ;;
+          esac
+      - name: Resolve dependency locks and validate the proposal
+        id: validate
+        if: steps.prepare.outputs.conflicts == 'false'
+        continue-on-error: true
+        run: |
+          docker compose -f docker/ci/compose.yml run --rm \
+            --volume "$PWD:/var/www/html" app bash -c '
+            set -euo pipefail
+            ./bin/sail-run composer update --with-all-dependencies --no-scripts --no-interaction
+            npm install --package-lock-only --ignore-scripts
+          '
+          # Build a new context so the quality gate sees precisely the proposed source and locks.
+          docker compose -f docker/ci/compose.yml run --build --rm app bash bin/ci-check
+          docker build -f docker/production/Dockerfile -t project:proposed .
+      - name: Commit and open the human-reviewed proposal
+        env:
+          HAS_CONFLICTS: ${{ steps.prepare.outputs.conflicts }}
+          VALIDATION_OUTCOME: ${{ steps.validate.outcome }}
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A -- . ':!bootstrap/cache'
+          git commit -m "Review dbCMS $UPDATE_VERSION update"
+          gh auth setup-git --hostname github.com
+          git push -u origin "codex/dbcms-$UPDATE_VERSION"
+          if [ "$HAS_CONFLICTS" = true ] || [ "$VALIDATION_OUTCOME" != success ]; then
+            cat > "$RUNNER_TEMP/update-pr.md" <<'BODY'
+          Verified dbCMS Git-source proposal requiring human resolution: source conflicts or unsuccessful dependency/build/quality checks keep this PR in draft. Local conflicting files have been retained. Consult this workflow's validation log for failures.
+
+          Read `resources/updates/project-update.json`. Resolve each path against the signed target, then remove only its resolved entry from `conflicts`; retaining local code is an explicit review decision. Run the quality gate after resolving dependencies. This PR remains a draft until review and checks pass.
+
+          No ZIP update package was downloaded or generated. Deployment occurs only after human merge and successful main CI.
+          BODY
+            gh pr create --draft --base main --head "codex/dbcms-$UPDATE_VERSION" --title "Review dbCMS $UPDATE_VERSION update" --body-file "$RUNNER_TEMP/update-pr.md"
+          else
+            cat > "$RUNNER_TEMP/update-pr.md" <<'BODY'
+          Incorporates a stable dbCMS release verified by its signature, Git commit and source file hashes. The selected brand/themes and local customizations are preserved; dependency locks were resolved in Docker.
+
+          Validation: project quality gate and production image build completed against this proposed source. Review the source, locks and migration compatibility before merging. Successful main CI triggers the project's configured deployment. No ZIP update package was downloaded or generated.
+          BODY
+            gh pr create --base main --head "codex/dbcms-$UPDATE_VERSION" --title "Update dbCMS to $UPDATE_VERSION" --body-file "$RUNNER_TEMP/update-pr.md"
+          fi
+      - name: Stop disposable validation services
+        if: always()
+        run: docker compose -f docker/ci/compose.yml down --volumes --remove-orphans

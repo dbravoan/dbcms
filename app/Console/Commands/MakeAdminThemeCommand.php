@@ -42,6 +42,7 @@ class MakeAdminThemeCommand extends Command
 
         $stubs = [
             'theme.json' => $this->themeJson($id, $name),
+            'theme.css' => "@import \"tailwindcss/theme\" layer(theme);\n@import \"tailwindcss/utilities\" layer(utilities) source(none);\n@source \"./\";\n",
             'admin/layout.blade.php' => $this->layoutStub($id, $name),
             'admin/dashboard.blade.php' => $this->dashboardStub(),
             'admin/auth/login.blade.php' => $this->loginStub($id),
@@ -99,7 +100,7 @@ class MakeAdminThemeCommand extends Command
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', __('admin.layout.backoffice')) | {{ \$cmsBrandName }}</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(cms_asset_entries())
     <link rel="stylesheet" href="{{ theme_asset('{$id}.css') }}?v={{ config('cms.version', '1.0.0') }}">
     <style>[x-cloak]{display:none!important}</style>
 </head>
@@ -196,7 +197,7 @@ BLADE;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ __('admin.auth.backoffice_access_title') }} | {{ config('cms.name') }}</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(cms_asset_entries())
     <link rel="stylesheet" href="{{ theme_asset('{$id}.css') }}">
 </head>
 <body class="h-full flex items-center justify-center bg-slate-100 text-slate-900">
@@ -233,7 +234,7 @@ BLADE;
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title') | {{ config('cms.name') }}</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(cms_asset_entries())
     <link rel="stylesheet" href="{{ theme_asset('{$id}.css') }}">
 </head>
 <body class="h-full flex items-center justify-center bg-slate-100 text-slate-900">

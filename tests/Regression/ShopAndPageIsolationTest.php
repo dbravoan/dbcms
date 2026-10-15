@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Services\Cms\PublicPagePersonalization;
+use App\Services\Cms\ThemeManagerService;
 use App\Services\Install\EnvValueSerializer;
 use Dotenv\Dotenv;
 use Modules\Shop\Services\CheckoutPolicy;
@@ -15,7 +16,9 @@ it('rejects simulated payment methods without changing offline methods', functio
 });
 
 it('never stores visitor fragments or csrf tokens in the shared snapshot', function (): void {
-    $personalization = new PublicPagePersonalization;
+    $themes = Mockery::mock(ThemeManagerService::class);
+    $themes->shouldReceive('getAvailableThemes')->andReturn(['db-cyber' => []]);
+    $personalization = new PublicPagePersonalization($themes);
     $html = '<main>Public</main><!--cms-private:themes.db-cyber.partials.header:start--><b>Alice cart</b><!--cms-private:end--><input value="first-session-token">';
     $snapshot = $personalization->snapshot($html, 'first-session-token');
     expect($snapshot)->not->toContain('Alice cart')->not->toContain('first-session-token');
@@ -24,7 +27,7 @@ it('never stores visitor fragments or csrf tokens in the shared snapshot', funct
 });
 
 it('rejects unregistered private fragment views from cached content', function (): void {
-    $personalization = new PublicPagePersonalization;
+    $personalization = new PublicPagePersonalization(Mockery::mock(ThemeManagerService::class));
     expect(fn () => $personalization->hydrate('<!--cms-fragment:admin.users.index-->', 'token', fn () => 'private'))
         ->toThrow(UnexpectedValueException::class);
 });
