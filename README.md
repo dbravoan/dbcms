@@ -62,7 +62,7 @@ El sistema está construido bajo el paradigma **Human+IA**: el mismo núcleo sir
 
 | Capacidad | Descripción |
 | --- | --- |
-| Módulos desacoplados | 16 módulos independientes en `modules/`, instalables y activables desde el panel o desde MCP |
+| Módulos desacoplados | 18 módulos independientes en `modules/`, instalables y activables desde el panel o desde MCP |
 | Multi-mercado real | Mercados, idiomas y divisas gestionados desde el backoffice; URL localizadas y clústeres hreflang |
 | Constructor de páginas | Páginas compuestas por secciones estilizadas, animaciones y widgets embebidos (módulo troncal `pages`) |
 | Blog y tienda | Blog multiautor con etiquetas y tiempo de lectura; catálogo de productos con carrito y pago |
@@ -95,6 +95,10 @@ Cada módulo vive en su propia carpeta `modules/{Nombre}/` con su manifiesto `mo
 | Copiloto Asistente IA | `ai_assistant` | Asistencia editorial y maquetación de bloques con Gemini, OpenAI, DeepSeek, Anthropic, Ollama y OpenCode |
 | General Search | `search` | Buscador del frontoffice sobre todas las entidades, con URL amigable y facetas |
 | Servidor MCP | `mcp` | Servidor MCP estándar con transporte SSE / JSON-RPC 2.0 y autenticación Passport |
+| CreativeStudio | `creative-studio` | Campañas, presupuestos, revisiones y composición local de imágenes/vídeo con exportación privada |
+| SocialPublishing | `social-publishing` | Preparación, aprobación humana, calendario y entrega social; TikTok mediante exportación manual |
+
+CreativeStudio y SocialPublishing se distribuyen **desactivados por defecto**. Sus guías de conexión se pueden consultar antes de activarlos. La generación remota requiere proveedores configurados; las funciones multimedia y las entregas necesitan los procesos y requisitos del [runbook de marketing](docs/MARKETING_MODULES_RUNBOOK.md). La entrega 1.2.0 valida contratos simulados de proveedores; los pilotos con cuentas reales quedan pendientes. Consulta la [trazabilidad y validación de integración](docs/RELEASE_1.2.0_INTEGRATION.md).
 
 Los módulos se instalan, activan, desactivan y desinstalan desde el backoffice (`/admin/modules`) o mediante las herramientas MCP, con análisis de impacto antes de cada operación destructiva. Desinstalar retira acceso y capacidades, conserva tablas y contenido y permite reinstalar sin perder datos. Discovery no reactiva un módulo desinstalado.
 
