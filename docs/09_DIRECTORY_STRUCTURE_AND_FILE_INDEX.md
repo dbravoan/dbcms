@@ -68,6 +68,7 @@ Composer/npm during an HTTP request.
 - [ADR: Fronteras de aplicación verificables](ADR_EXTRACTED_APPLICATION_BOUNDARIES.md)
 - [Asistente IA en los editores](AI_EDITOR_ENTRYPOINTS.md)
 - [Asistente IA en los editores y traducción de contenido](AI_EDITOR_TRANSLATION.md)
+- [IA en práctica: crear el blog mínimo de formación](AI_LEARNING_STARTER.md)
 - [Mantener y extender dbCMS: arquitectura y decisiones](ARCHITECTURE_MAINTENANCE_GUIDE.md)
 - [Auditoría y Calidad: operación editorial](CONTENT_AUDIT_WORKFLOW.md)
 - [Registro del núcleo y las extensiones](CORE_EXTENSION_REGISTRATION.md)
