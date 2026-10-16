@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Blog;
 
-use App\Contracts\Services\LocalizationServiceInterface;
+use App\Contracts\Services\AdminThemeServiceInterface;
 use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Models\User;
+use App\Services\Cms\ThemeManagerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Models\Comment;
 use Modules\Blog\Models\Post;
@@ -53,19 +54,20 @@ test('post allowsComments returns expected boolean based on global setting and p
     expect($post->allowsComments())->toBeFalse();
 });
 
-test('blog show page conditionally renders comment form or disabled notice', function (): void {
+test('blog show page conditionally renders a working comment form', function (string $theme, string $brand): void {
+    app(ThemeManagerService::class)->setActiveTheme($theme);
+    app(AdminThemeServiceInterface::class)->setActiveTheme($brand);
     $post = Post::firstOrFail();
     $translation = $post->translations->where('locale', 'es')->first() ?? $post->translations->firstOrFail();
     $settings = app(ModuleSettingsServiceInterface::class);
 
-    $commentForm = static function (string $html) use ($translation, $post): ?\DOMNode {
+    $commentForm = static function (string $html): ?\DOMNode {
         $document = new \DOMDocument;
         $previous = libxml_use_internal_errors(true);
         $document->loadHTML($html);
         libxml_clear_errors();
         libxml_use_internal_errors($previous);
-        $action = app(LocalizationServiceInterface::class)->url("/blog/{$translation->slug}/comments", $post->markets()->firstOrFail(), 'es');
-        $forms = (new \DOMXPath($document))->query('//form[@action="'.$action.'"][@method="POST" or @method="post"]');
+        $forms = (new \DOMXPath($document))->query('//form[@method="POST" or @method="post"][.//input[@name="author_email"]][.//textarea[@name="content"]]');
 
         return $forms === false ? null : $forms->item(0);
     };
@@ -76,13 +78,42 @@ test('blog show page conditionally renders comment form or disabled notice', fun
 
     $response = $this->get("/es/es/blog/{$translation->slug}");
     $response->assertStatus(200);
-    expect($commentForm((string) $response->getContent()))->toBeInstanceOf(\DOMElement::class);
+    $form = $commentForm((string) $response->getContent());
+    expect($form)->toBeInstanceOf(\DOMElement::class);
+    assert($form instanceof \DOMElement);
+    $this->post($form->getAttribute('action'), [
+        'author_name' => 'Lector del blog',
+        'author_email' => 'lector@example.com',
+        'content' => 'Un comentario enviado desde el formulario publicado.',
+        '_hp_security_check' => '',
+    ])->assertRedirect()->assertSessionHas('comment_success');
+    $this->assertDatabaseHas('comments', ['post_id' => $post->getKey(), 'author_email' => 'lector@example.com']);
 
     // Case 2: Comments disabled for this post
     $post->update(['allow_comments' => false]);
     $responseDisabled = $this->get("/es/es/blog/{$translation->slug}");
     $responseDisabled->assertStatus(200);
     expect($commentForm((string) $responseDisabled->getContent()))->toBeNull();
+
+    // Case 3: Comments disabled globally, even when this post permits them
+    $post->update(['allow_comments' => true]);
+    $settings->set('blog', 'comments_enabled', false);
+    $globallyDisabled = $this->get("/es/es/blog/{$translation->slug}")->assertOk();
+    expect($commentForm((string) $globallyDisabled->getContent()))->toBeNull();
+})->with(function (): array {
+    $cases = [];
+    foreach (['db-cyber', 'db-editorial', 'ia-practica'] as $theme) {
+        if (! is_file(__DIR__."/../../../themes/{$theme}/theme.json")) {
+            continue;
+        }
+        foreach (['dbcms', 'termocms'] as $brand) {
+            if (is_file(__DIR__."/../../../resources/views/themes/admin/{$brand}/theme.json")) {
+                $cases["{$theme} / {$brand}"] = [$theme, $brand];
+            }
+        }
+    }
+
+    return $cases;
 });
 
 test('user can submit comment when comments are enabled and honeypot is empty', function (): void {
