@@ -209,7 +209,7 @@ final class BlogCatalogueReader implements BlogCatalogueReaderInterface
             ->whereHas('translations', function ($q) use ($locale): void {
                 $q->where('locale', $locale);
             })
-            ->with(['translations', 'author'])
+            ->with(['translations', 'author', 'category' => fn ($query) => $query->where('is_active', true)->forMarket($market)->with('translations')])
             ->paginate(12, ['*'], 'page', $context->page);
 
         // Build localized alternate hreflang tags for category

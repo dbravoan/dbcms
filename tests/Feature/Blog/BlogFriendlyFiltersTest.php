@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Contracts\Services\LocalizationServiceInterface;
 use App\Core\Filters\FilterSet;
 use App\Models\FilterPage;
 use App\Models\Market;
@@ -110,3 +111,31 @@ test('editorial article cards only expose public categories without lazy loading
 test('filter vocabularies reject an unavailable market or language context', function (string $market, string $locale): void {
     expect(app(FilterNavigationService::class)->dimensions('blog', $market, $locale))->toHaveKey('error');
 })->with([['unknown', 'es'], ['es', 'fr']]);
+
+test('category facet links replace the selected category and retain independent filters', function (string $path, string $target, string $removed): void {
+    config(['cms.theme' => 'ia-practica']);
+    taggedPost();
+    $market = Market::query()->where('code', 'es')->sole();
+    $sales = Category::create(['is_active' => true]);
+    $sales->translations()->create(['locale' => 'es', 'name' => 'Ventas', 'slug' => 'ventas']);
+    $sales->markets()->attach($market);
+    Post::query()->orderByDesc('id')->firstOrFail()->update(['category_id' => $sales->getKey()]);
+
+    $response = $this->get($path)->assertOk();
+    $document = new DOMDocument;
+    $previous = libxml_use_internal_errors(true);
+    $document->loadHTML((string) $response->getContent());
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+    $xpath = new DOMXPath($document);
+    $salesLink = (string) $xpath->evaluate('string(//a[@data-filter-option="ventas"]/@href)');
+    $activeLink = (string) $xpath->evaluate('string(//a[@data-filter-option="arquitectura"]/@href)');
+    $localization = app(LocalizationServiceInterface::class);
+
+    expect($salesLink)->toBe($localization->url($target, $market, 'es'));
+    expect($activeLink)->toBe($localization->url($removed, $market, 'es'));
+    $this->get($salesLink)->assertOk()->assertSee('Artículo 3');
+})->with([
+    'category page' => ['/es/es/blog/arquitectura', '/blog/ventas', '/blog'],
+    'category and tag page' => ['/es/es/blog/arquitectura/laravel', '/blog/ventas/laravel', '/blog/laravel'],
+]);

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Contracts\Services\LocalizationServiceInterface;
 use App\Core\Filters\Contracts\FilterableModule;
 use App\Core\Filters\FilterDimension;
 use App\Core\Filters\FilterFacets;
@@ -123,4 +124,16 @@ test('active link-based selections travel inside the form as hidden inputs', fun
     $hidden = app(FilterFacets::class)->hiddenInputs(controlModule(), $set);
 
     expect($hidden)->toBe(['tag' => ['laravel']]);
+});
+
+test('multi term facet links retain existing values and other dimensions', function (): void {
+    $module = controlModule();
+    $market = Market::query()->where('code', 'es')->sole();
+    $localization = app(LocalizationServiceInterface::class);
+    $set = new FilterSet('demo', 'es', 'es', ['tag' => ['laravel'], 'sort' => 'recientes']);
+    $groups = app(FilterFacets::class)->groups($module, $set, $module->filterDimensions(), $market, $localization);
+    $tags = collect($groups)->firstWhere('key', 'tag');
+    $vue = collect($tags['values'])->firstWhere('value', 'vue');
+
+    expect($vue['url'])->toBe($localization->url('/demo/laravel+vue/recientes', $market, 'es'));
 });

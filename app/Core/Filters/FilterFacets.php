@@ -111,7 +111,8 @@ final class FilterFacets
                             set: $set,
                             market: $market,
                             localization: $localization,
-                            add: $isActive ? [] : [$dimension->key => (string) $slug],
+                            add: ! $isActive && $dimension->multi ? [$dimension->key => (string) $slug] : [],
+                            assign: ! $isActive && ! $dimension->multi ? [$dimension->key => [(string) $slug]] : [],
                             remove: $isActive ? [$dimension->key => (string) $slug] : [],
                         ),
                     ];
@@ -217,7 +218,7 @@ final class FilterFacets
      *
      * @param  array<string, string>  $add
      * @param  array<string, string>  $remove
-     * @param  array<string, string>  $assign
+     * @param  array<string, string|array<int, string>>  $assign
      * @param  array<int, string>  $forget
      */
     private function url(
@@ -249,7 +250,7 @@ final class FilterFacets
         }
 
         foreach ($assign as $key => $value) {
-            $values[$key] = (string) $value;
+            $values[$key] = $value;
         }
 
         foreach ($forget as $key) {
