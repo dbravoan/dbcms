@@ -1,6 +1,8 @@
 <?php
 
 declare(strict_types=1);
+use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Process\Process;
 
 test('all canonical release version surfaces identify the prepared release', function (): void {
     $root = dirname(__DIR__, 2);
@@ -9,7 +11,6 @@ test('all canonical release version surfaces identify the prepared release', fun
     $lock = json_decode((string) file_get_contents($root.'/package-lock.json'), true, flags: JSON_THROW_ON_ERROR);
     $core = json_decode((string) file_get_contents($root.'/resources/updates/core-version.json'), true, flags: JSON_THROW_ON_ERROR);
     $policy = json_decode((string) file_get_contents($root.'/resources/updates/release-policy.json'), true, flags: JSON_THROW_ON_ERROR);
-    $cms = (string) file_get_contents($root.'/config/cms.php');
     $readme = (string) file_get_contents($root.'/README.md');
     $installer = (string) file_get_contents($root.'/bootstrap/InstallerBootstrap.php');
     $start = (string) file_get_contents($root.'/EMPEZAR.html');
@@ -21,14 +22,33 @@ test('all canonical release version surfaces identify the prepared release', fun
         ->and($core['version'] ?? null)->toBe($version)
         ->and($core['repository'] ?? null)->toBe('dbravoan/dbcms')
         ->and($policy['version'] ?? null)->toBe($version)
-        ->and($policy['supported_from'] ?? null)->toBe(['1.0.0', '1.0.1', '1.1.0', '1.2.0', $version])
-        ->and($policy['rollback_compatible'] ?? null)->toBeTrue()
-        ->and($policy['review'] ?? '')->toContain($version, 'without adding database migrations', 'no automatic database rollback')
+        ->and($policy['supported_from'] ?? null)->toBe([$version])
+        ->and($policy['rollback_compatible'] ?? null)->toBeFalse()
+        ->and($policy['review'] ?? '')->toContain($version, '1.x', 'unsupported')
         ->and($installer)->toContain('dbcms-installer-v'.$version.'.zip')
         ->and($start)->toContain('dbcms-installer-v'.$version.'.zip')
-        ->and($cms)->toContain("env('APP_VERSION', '".$version."')")
         ->and($readme)->toContain('Versión-'.$version, 'versión preparada en esta rama es **'.$version.'**');
 });
+
+test('runtime version reads the VERSION file and respects an application override', function (?string $override): void {
+    $root = dirname(__DIR__, 2);
+    $fixture = sys_get_temp_dir().'/dbcms-version-config-'.bin2hex(random_bytes(8));
+    mkdir($fixture, 0700);
+    file_put_contents($fixture.'/VERSION', "9.8.7\n");
+    $script = <<<'PHP'
+    require $argv[1].'/vendor/autoload.php';
+    new Illuminate\Foundation\Application($argv[2]);
+    $configuration = require $argv[1].'/config/cms.php';
+    echo json_encode($configuration['version'], JSON_THROW_ON_ERROR);
+    PHP;
+    try {
+        $process = new Process([PHP_BINARY, '-r', $script, $root, $fixture], $root, ['APP_VERSION' => $override ?? false]);
+        $process->mustRun();
+        expect(json_decode($process->getOutput(), true, flags: JSON_THROW_ON_ERROR))->toBe($override ?? '9.8.7');
+    } finally {
+        (new Filesystem)->remove($fixture);
+    }
+})->with(['release fallback' => [null], 'application override' => ['customer-4.2.1']]);
 
 test('the standalone release is presented as a browser installer', function (): void {
     $root = dirname(__DIR__, 2);
