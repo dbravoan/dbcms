@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout Candidate
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.sha || github.ref }}
           fetch-depth: 0
@@ -134,7 +134,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.verify-ci.outputs.target_sha }}
           fetch-depth: 0
@@ -187,7 +187,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.verify-ci.outputs.target_sha }}
 
@@ -322,7 +322,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.verify-ci.outputs.target_sha }}
 

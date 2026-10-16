@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: Require project-scoped workflow editing credentials
         run: test -n "$GH_TOKEN" || { echo 'Set PROJECT_BOT_TOKEN with Contents, Pull requests and Workflows write access to this repository.'; exit 1; }
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
