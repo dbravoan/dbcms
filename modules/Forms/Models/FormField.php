@@ -99,43 +99,6 @@ class FormField extends Model
         return Attribute::get(fn (): ?array => $this->translation()?->options);
     }
 
-    /**
-     * Normalize the stored options (ordered pairs or legacy map) into an
-     * ordered list of value/label pairs for consistent rendering.
-     *
-     * @return array<int, array{value: string, label: string}>
-     */
-    public function optionPairs(): array
-    {
-        $options = $this->options;
-
-        if (! is_array($options)) {
-            return [];
-        }
-
-        $pairs = [];
-        foreach ($options as $key => $option) {
-            if (is_array($option)) {
-                $value = (string) ($option['value'] ?? $key);
-                $label = (string) ($option['label'] ?? $value);
-            } elseif (is_int($key) || ctype_digit((string) $key)) {
-                $value = (string) $option;
-                $label = (string) $option;
-            } else {
-                $value = (string) $key;
-                $label = (string) $option;
-            }
-
-            if ($value === '' && $label === '') {
-                continue;
-            }
-
-            $pairs[] = ['value' => $value, 'label' => $label];
-        }
-
-        return $pairs;
-    }
-
     private function currentMarketId(): ?int
     {
         if (! app()->bound('current.market')) {

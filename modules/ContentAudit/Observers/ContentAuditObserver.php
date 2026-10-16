@@ -8,8 +8,10 @@ use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Core\Capabilities\ExecutionContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
 use Modules\ContentAudit\Enums\AuditAction;
+use Modules\ContentAudit\Services\AuditRevisionService;
+use Modules\ContentAudit\Services\EditorialQualityGate;
+use Modules\ContentAudit\Services\EditorialWorkflow;
 
 class ContentAuditObserver
 {
@@ -21,8 +23,8 @@ class ContentAuditObserver
             return;
         }
 
-        /** @var ContentAuditServiceInterface $auditService */
-        $auditService = app(ContentAuditServiceInterface::class);
+        /** @var EditorialWorkflow $auditService */
+        $auditService = app(EditorialWorkflow::class);
         if (! $auditService->isEnabled()) {
             return;
         }
@@ -37,7 +39,7 @@ class ContentAuditObserver
 
         // Binding editorial quality gate (configurable): blocks the save with
         // concrete recommendations when the content does not meet the bar.
-        $auditService->enforceEditorialQuality($model, $user, $requiresAudit);
+        app(EditorialQualityGate::class)->enforceRequest($model, $user, $requiresAudit);
 
         if ($requiresAudit || $auditAction === 'submit_for_review') {
             $fillable = $model->getFillable();
@@ -58,8 +60,8 @@ class ContentAuditObserver
             return;
         }
 
-        /** @var ContentAuditServiceInterface $auditService */
-        $auditService = app(ContentAuditServiceInterface::class);
+        /** @var EditorialWorkflow $auditService */
+        $auditService = app(EditorialWorkflow::class);
         if (! $auditService->isEnabled()) {
             return;
         }
@@ -93,7 +95,7 @@ class ContentAuditObserver
                     : ($isPublished ? AuditAction::PUBLISHED->value : AuditAction::UPDATED->value);
                 $status = $isPublished ? 'published' : 'draft';
 
-                $auditService->recordChange($model, $user, $action, null, $status);
+                app(AuditRevisionService::class)->record($model, $user, $action, null, $status);
             }
         } finally {
             static::$isHandling = false;

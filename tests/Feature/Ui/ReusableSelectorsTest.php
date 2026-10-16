@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
 });
 
 test('market select wraps the generic search select with the markets source', function (): void {

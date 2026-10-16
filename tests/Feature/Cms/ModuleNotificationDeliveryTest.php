@@ -8,21 +8,25 @@ use App\Mail\ModuleNotificationMail;
 use App\Models\NotificationEmailDelivery;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Cms\AdminThemeService;
 use App\Services\Cms\NotificationRecipientResolverService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Mail\MailManager;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Tests\Support\FormsComposition;
+
+uses(FormsComposition::class);
 
 beforeEach(function (): void {
+    config(['mail.default' => 'smtp', 'mail.mailers.smtp' => ['transport' => 'smtp', 'host' => 'mail.test', 'port' => 2525]]);
     Mail::fake();
     $this->recipient = User::factory()->create();
     $this->recipient->assignRole(Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Admin']));
     $this->notifier = app(ModuleNotificationServiceInterface::class);
 });
 
-test('module notification dispatches actual Laravel mail to its target', function (): void {
+test('module notification dispatches a mailable to its target when SMTP is configured', function (): void {
     $notification = $this->notifier->notify('forms', 'lead', 'A new lead', 'Contact received', userId: $this->recipient->id);
     Mail::assertSent(ModuleNotificationMail::class, fn ($mail) => $mail->hasTo($this->recipient->email));
     expect(NotificationEmailDelivery::where('notification_id', $notification->id)->value('status'))->toBe('sent');
@@ -82,7 +86,7 @@ test('SMTP error is recorded and repeated job does not repeat an uncertain send'
     $delivery = NotificationEmailDelivery::where('notification_id', $notification->id)->firstOrFail();
     Mail::shouldReceive('to')->once()->with($this->recipient->email)->andThrow(new RuntimeException('SMTP unavailable'));
     $job = new SendModuleNotificationEmailJob($delivery->id);
-    expect(fn () => $job->handle(app(NotificationRecipientResolverService::class)))->toThrow(RuntimeException::class);
+    expect(fn () => $job->handle(app(NotificationRecipientResolverService::class)))->toThrow(RuntimeException::class, 'SMTP unavailable');
     expect($delivery->fresh()->status)->toBe('failed')->and($delivery->fresh()->failure_code)->toBe(RuntimeException::class);
     $job->handle(app(NotificationRecipientResolverService::class));
 });
@@ -97,24 +101,24 @@ test('notification email preferences change only the current session user', func
 });
 
 test('notification email preference component renders in both backoffice themes', function (string $brand): void {
-    config(['cms.brand' => $brand]);
+    app(AdminThemeService::class)->setActiveTheme($brand);
     $this->actingAs($this->recipient)->get('/admin')->assertOk()->assertSee('notification-email-preference')->assertSee(__('mail.module_notification.email_preference'));
 })->with(['dbcms', 'termocms']);
 
-test('a log only transport is never recorded as actual email delivery', function (): void {
+test('non delivery transports never record a successful email even when mail is faked', function (string $transport): void {
     Bus::fake([SendModuleNotificationEmailJob::class]);
     $notification = $this->notifier->notify('forms', 'lead', 'Transport', 'Local', userId: $this->recipient->id);
     $delivery = NotificationEmailDelivery::where('notification_id', $notification->id)->firstOrFail();
-    config(['mail.default' => 'qa_log', 'mail.mailers.qa_log' => ['transport' => 'log']]);
-    Mail::swap(new MailManager(app()));
+    config(['mail.default' => 'qa_local', 'mail.mailers.qa_local' => ['transport' => $transport]]);
     expect(fn () => (new SendModuleNotificationEmailJob($delivery->id))->handle(app(NotificationRecipientResolverService::class)))->toThrow(RuntimeException::class, 'A real email transport is not configured.');
-    expect($delivery->fresh()->status)->toBe('failed');
-});
+    expect($delivery->fresh()->status)->toBe('failed')->and($delivery->fresh()->sent_at)->toBeNull();
+    Mail::assertNothingSent();
+})->with(['array', 'log']);
 
 test('mail transport failure after commit preserves the saved notification without claiming mail success', function (): void {
     config(['mail.default' => 'qa_log', 'mail.mailers.qa_log' => ['transport' => 'log']]);
-    Mail::swap(new MailManager(app()));
     $notification = $this->notifier->notify('forms', 'lead', 'Committed notice', 'Received', userId: $this->recipient->id);
     expect($notification->fresh())->not->toBeNull()
         ->and(NotificationEmailDelivery::where('notification_id', $notification->id)->value('status'))->toBe('failed');
+    Mail::assertNothingSent();
 });

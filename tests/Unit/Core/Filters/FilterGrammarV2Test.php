@@ -64,6 +64,7 @@ test('the canonical path is markerless and round-trips', function (string $label
     'hyphenated value stays intact' => ['tag', ['tag' => ['aceite-de-oliva']], 'aceite-de-oliva'],
     'implicit category is a bare segment' => ['category', ['category' => ['tecnologia']], 'tecnologia'],
     'category + tag' => ['combo', ['category' => ['tecnologia'], 'tag' => ['laravel']], 'tecnologia/laravel'],
+    'category and reserved sort' => ['combo', ['category' => ['tecnologia'], 'sort' => 'recientes'], 'tecnologia/recientes'],
     'reserved enum token' => ['sort', ['sort' => 'recientes'], 'recientes'],
     'reserved flag token' => ['featured', ['featured' => true], 'destacados'],
     'range reads naturally' => ['price', ['price' => '100-200'], 'entre-100-200-eur'],
@@ -73,23 +74,6 @@ test('the canonical path is markerless and round-trips', function (string $label
     'date range' => ['dates', ['date_from' => '2026-01-01', 'date_to' => '2026-06-30'], 'desde-2026-01-01/hasta-2026-06-30'],
     'search term' => ['search', ['search' => 'mi-termino'], 'mi-termino'],
     'full combination' => ['combo', ['category' => ['tecnologia'], 'tag' => ['laravel', 'vue'], 'sort' => 'recientes'], 'tecnologia/laravel+vue/recientes'],
-]);
-
-test('legacy markers and compact forms still parse (so they can 301)', function (string $path, array $expected): void {
-    $parsed = v2Parser()->parse('blog', 'es', 'es', $path, v2Dimensions());
-
-    expect($parsed)->not->toBeNull()
-        ->and($parsed?->values)->toEqual($expected);
-})->with([
-    'explicit term marker' => ['etiqueta/laravel', ['tag' => ['laravel']]],
-    'explicit enum marker' => ['orden/recientes', ['sort' => 'recientes']],
-    'explicit range marker' => ['precio/100-200', ['price' => '100-200']],
-    'compact range' => ['100-200', ['price' => '100-200']],
-    'underscore join' => ['laravel_vue', ['tag' => ['laravel', 'vue']]],
-    'hyphen join' => ['laravel-vue', ['tag' => ['laravel', 'vue']]],
-    'bare date' => ['2026-01-01', ['date_from' => '2026-01-01']],
-    'both dates in one segment' => ['desde-2026-01-01-hasta-2026-06-30', ['date_from' => '2026-01-01', 'date_to' => '2026-06-30']],
-    'category + bare sort' => ['tecnologia/recientes', ['category' => ['tecnologia'], 'sort' => 'recientes']],
 ]);
 
 test('connectors and values are translated for hreflang', function (): void {
@@ -105,7 +89,7 @@ test('connectors and values are translated for hreflang', function (): void {
 });
 
 test('unknown and ambiguous values never resolve', function (): void {
-    // An exact vocabulary key always wins over a possible split (deterministic).
+    // Hyphens are part of one vocabulary key, never guessed separators.
     $exact = [
         new FilterDimension('tag', 'terms', true, 20, true, vocabulary: static fn (): array => [
             'laravel' => ['label' => 'Laravel', 'key' => 1],
@@ -116,7 +100,7 @@ test('unknown and ambiguous values never resolve', function (): void {
 
     expect(v2Parser()->parse('blog', 'es', 'es', 'laravel-vue', $exact)?->list('tag'))->toBe(['laravel-vue']);
 
-    // Genuine ambiguity: two different splits fit the same payload → 404.
+    // Multiple possible hyphen splits do not invent an undeclared vocabulary key.
     $ambiguous = [
         new FilterDimension('tag', 'terms', true, 20, true, vocabulary: static fn (): array => [
             'a' => ['label' => 'A', 'key' => 1],

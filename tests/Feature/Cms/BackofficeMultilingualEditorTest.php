@@ -4,21 +4,25 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Cms;
 
+use App\Content\Pages\Contracts\PageDomainServiceInterface;
+use App\Content\Pages\Models\Page;
 use App\Core\Sections\SectionEditorService;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Contracts\PostDomainServiceInterface;
 use Modules\Blog\Models\Post;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
-use Modules\Pages\Contracts\PageDomainServiceInterface;
-use Modules\Pages\Models\Page;
+use Modules\ContentAudit\Services\EditorialWorkflow;
 use Modules\Shop\Contracts\ShopEditorialServiceInterface;
 use Modules\Shop\Models\Product;
+use Tests\Support\BlogFixtures;
+use Tests\Support\CmsFixtures;
+use Tests\Support\MultilingualEditorialComposition;
+use Tests\Support\ShopFixtures;
 use Tests\TestCase;
 
 class BackofficeMultilingualEditorTest extends TestCase
 {
+    use MultilingualEditorialComposition;
     use RefreshDatabase;
 
     protected User $adminUser;
@@ -26,7 +30,11 @@ class BackofficeMultilingualEditorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(PlatformShowcaseSeeder::class);
+        CmsFixtures::localization(['es', 'en', 'fr']);
+        CmsFixtures::identities();
+        CmsFixtures::home(['es', 'en', 'fr']);
+        BlogFixtures::post(['es', 'en', 'fr']);
+        ShopFixtures::product(locales: ['es', 'en', 'fr']);
 
         /** @var User $admin */
         $admin = User::where('email', 'admin@db-cms.io')->first();
@@ -128,7 +136,7 @@ class BackofficeMultilingualEditorTest extends TestCase
 
         $this->assertNotNull($transFr);
         $this->assertEquals('Section en Français', $transFr->content_json['title'] ?? null);
-        app(ContentAuditServiceInterface::class)->approve($live, $this->adminUser);
+        app(EditorialWorkflow::class)->approve($live, $this->adminUser);
         $this->assertSame($pendingSections, app(SectionEditorService::class)->payload($live->fresh()));
         $this->assertTrue($live->fresh()->is_published);
     }
@@ -196,7 +204,7 @@ class BackofficeMultilingualEditorTest extends TestCase
 
         $this->assertNotNull($transEn);
         $this->assertEquals('Specifications EN', $transEn->content_json['title'] ?? null);
-        app(ContentAuditServiceInterface::class)->approve($live, $this->adminUser);
+        app(EditorialWorkflow::class)->approve($live, $this->adminUser);
         $this->assertSame($pendingSections, app(SectionEditorService::class)->payload($live->fresh()));
         $this->assertTrue($live->fresh()->is_active);
     }
@@ -262,23 +270,9 @@ class BackofficeMultilingualEditorTest extends TestCase
 
         $this->assertNotNull($transEn);
         $this->assertEquals('Main Paragraph EN', $transEn->content_json['title'] ?? null);
-        app(ContentAuditServiceInterface::class)->approve($live, $this->adminUser);
+        app(EditorialWorkflow::class)->approve($live, $this->adminUser);
         $this->assertSame($pendingSections, app(SectionEditorService::class)->payload($live->fresh()));
         $this->assertTrue($live->fresh()->is_published);
-    }
-
-    public function test_themes_render_universal_scroll_magic_engine_and_video_scrub_support(): void
-    {
-        config(['cms.theme' => 'db-cyber']);
-        $cyberResponse = $this->followingRedirects()->get('/');
-        $cyberResponse->assertOk();
-        $cyberResponse->assertSee('Universal Scroll-Magic', false);
-        $cyberResponse->assertSee('data-scroll-scrub', false);
-
-        config(['cms.theme' => 'db-editorial']);
-        $editorialResponse = $this->followingRedirects()->get('/');
-        $editorialResponse->assertOk();
-        $editorialResponse->assertSee('Universal Scroll-Magic', false);
     }
 
     public function test_seo_meta_box_and_block_manager_rendered_with_proper_spanish_and_bindings(): void
@@ -295,7 +289,7 @@ class BackofficeMultilingualEditorTest extends TestCase
             ->get(route('admin.pages.edit', $page->id));
         $pageResponse->assertOk();
         $pageResponse->assertSee('Copiloto SEO y optimización GEO', false);
-        $pageResponse->assertSee('Gestor modular de secciones y widgets', false);
+        $pageResponse->assertSee('Gestor de bloques', false);
         $pageResponse->assertSee('activeMetaTitle', false);
         $pageResponse->assertSee('activeMetaDesc', false);
         $pageResponse->assertSee('Añadir sección', false);
@@ -305,7 +299,7 @@ class BackofficeMultilingualEditorTest extends TestCase
             ->get(route('admin.blog.posts.edit', $post->id));
         $postResponse->assertOk();
         $postResponse->assertSee('Copiloto SEO y optimización GEO', false);
-        $postResponse->assertSee('Gestor modular de secciones y widgets', false);
+        $postResponse->assertSee('Gestor de bloques', false);
         $postResponse->assertSee('activeMetaTitle', false);
 
         // 3. Product Edit View
@@ -313,7 +307,7 @@ class BackofficeMultilingualEditorTest extends TestCase
             ->get(route('admin.shop.products.edit', $product->id));
         $productResponse->assertOk();
         $productResponse->assertSee('Copiloto SEO y optimización GEO', false);
-        $productResponse->assertSee('Gestor modular de secciones y widgets', false);
+        $productResponse->assertSee('Gestor de bloques', false);
         $productResponse->assertSee('activeMetaTitle', false);
     }
 }

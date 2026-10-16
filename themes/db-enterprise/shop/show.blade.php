@@ -1,4 +1,4 @@
-@extends('themes.db-enterprise.layouts.app')
+@extends('themes::db-enterprise.layouts.app')
 
 @section('title', ($translation->meta_title ?? $translation->name) . ' - dbCMS Enterprise')
 @section('meta_description', $translation->meta_description ?? $translation->summary ?? '')

@@ -1,4 +1,4 @@
-@extends('themes.db-cyber.layouts.app')
+@extends('themes::db-cyber.layouts.app')
 
 @php
     $trans = $post->translations->where('locale', app()->getLocale())->first()

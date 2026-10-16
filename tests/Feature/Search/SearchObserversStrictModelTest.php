@@ -2,16 +2,19 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
+use App\Content\Pages\Models\PageSection;
+use App\Content\Pages\Models\PageTranslation;
+use App\Content\Pages\Models\SectionTranslation;
+use App\Content\Pages\Observers\PageSearchObserver;
 use Illuminate\Database\Eloquent\Model;
 use Modules\Gallery\Models\Gallery;
 use Modules\Gallery\Models\GalleryItem;
 use Modules\Gallery\Models\GalleryTranslation;
 use Modules\Gallery\Observers\GallerySearchObserver;
-use Modules\Pages\Models\Page;
-use Modules\Pages\Models\PageSection;
-use Modules\Pages\Models\PageTranslation;
-use Modules\Pages\Models\SectionTranslation;
-use Modules\Pages\Observers\PageSearchObserver;
+use Tests\Support\GalleryRoutingComposition;
+
+uses(GalleryRoutingComposition::class);
 
 test('page observer resolves the section translation parent with strict missing attributes', function (): void {
     $page = Page::withoutEvents(fn (): Page => Page::create(['is_published' => false, 'template' => 'default']));

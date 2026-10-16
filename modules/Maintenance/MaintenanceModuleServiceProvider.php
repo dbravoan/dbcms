@@ -9,8 +9,9 @@ use App\Core\Modules\BaseModuleServiceProvider;
 use App\Core\Modules\Contracts\MaintenanceModeInterface;
 use App\Core\Modules\ModuleSettingsExtensionRegistry;
 use App\DTOs\Modules\ModuleSettingsUpdateDTO;
-use App\Services\Capabilities\CmsActionService;
+use Illuminate\View\View;
 use Modules\Maintenance\Capabilities\MaintenanceActionCatalog;
+use Modules\Maintenance\Capabilities\MaintenanceActions;
 use Modules\Maintenance\Contracts\MaintenanceSettingsAdministrationInterface;
 use Modules\Maintenance\Services\MaintenanceService;
 use Modules\Maintenance\Services\MaintenanceSettingsAdministrationService;
@@ -41,12 +42,17 @@ class MaintenanceModuleServiceProvider extends BaseModuleServiceProvider
         $this->app->booted(function (): void {
             MaintenanceActionCatalog::register(
                 $this->app->make(CapabilityRegistry::class),
-                $this->app->make(CmsActionService::class),
+                $this->app->make(MaintenanceActions::class),
             );
         });
         parent::boot();
 
         $this->loadViewsFrom(__DIR__.'/Resources/views', 'maintenance');
+        \Illuminate\Support\Facades\View::composer('components.frontoffice-admin-bar', function (View $view): void {
+            if ($this->app->make(MaintenanceService::class)->isActive()) {
+                $view->getFactory()->startPush('front_admin_status', view('maintenance::admin.front-status')->render());
+            }
+        });
     }
 
     public function hasDedicatedPanel(): bool

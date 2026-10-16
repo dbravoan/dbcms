@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Storage;
 
 use App\Contracts\Services\GeneralSettingsServiceInterface;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -95,8 +96,7 @@ final class ExternalStorageService
         try {
             return (string) Crypt::decryptString($stored);
         } catch (Throwable) {
-            // Legacy / plaintext value written before encryption was enabled.
-            return $stored;
+            return ''; // Invalid ciphertext cannot be used as credentials.
         }
     }
 
@@ -239,6 +239,12 @@ final class ExternalStorageService
         if (is_array($existing) && ! ($existing['_external_managed'] ?? false)) {
             return;
         }
+        if (is_array($existing) && ($existing['_external_managed'] ?? false)) {
+            $resolved = Storage::disk(self::DISK);
+            if (! $resolved instanceof FilesystemAdapter || ! ($resolved->getConfig()['_external_managed'] ?? false)) {
+                return;
+            }
+        }
 
         $provider = self::PROVIDERS[$this->provider()];
 
@@ -266,7 +272,12 @@ final class ExternalStorageService
             $disk['url'] = rtrim($publicUrl, '/');
         }
 
-        config(['filesystems.disks.'.self::DISK => $disk]);
+        if ($existing !== $disk) {
+            if ($existing !== null) {
+                Storage::forgetDisk(self::DISK);
+            }
+            config(['filesystems.disks.'.self::DISK => $disk]);
+        }
     }
 
     /**

@@ -17,6 +17,8 @@ use App\Http\Middleware\CachePublicPage;
 use App\Http\Middleware\CanonicalModulePrefix;
 use App\Http\Middleware\EnsureSeoMeta;
 use App\Http\Middleware\ResolveMarketAndLocaleMiddleware;
+use App\Models\User;
+use App\Observers\ContentTranslationCacheObserver;
 use App\Services\Geo\PublicEntityWidgetContributor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Route;
@@ -29,13 +31,19 @@ use Modules\Blog\Contracts\CommentPublicationServiceInterface;
 use Modules\Blog\Contracts\PostDomainServiceInterface;
 use Modules\Blog\Filters\BlogFilters;
 use Modules\Blog\Http\Controllers\BlogFrontController;
+use Modules\Blog\Http\Controllers\RssController;
+use Modules\Blog\Models\Category;
+use Modules\Blog\Models\CategoryTranslation;
 use Modules\Blog\Models\Post;
+use Modules\Blog\Models\PostSectionTranslation;
 use Modules\Blog\Models\PostTranslation;
 use Modules\Blog\Schema\BlogEntitySchemas;
 use Modules\Blog\Search\PostSearchSource;
 use Modules\Blog\Services\BlogArticleReader;
 use Modules\Blog\Services\BlogCatalogueReader;
+use Modules\Blog\Services\BlogDashboard;
 use Modules\Blog\Services\BlogPublicReader;
+use Modules\Blog\Services\BlogPublicSemanticContributor;
 use Modules\Blog\Services\CategoryDomainService;
 use Modules\Blog\Services\CommentPublicationService;
 use Modules\Blog\Services\PostDomainService;
@@ -54,20 +62,26 @@ class BlogModuleServiceProvider extends BaseModuleServiceProvider
 
     public function register(): void
     {
+        $this->mergeConfigFrom(__DIR__.'/Config/entity_search.php', 'entity_search.sources');
+        config(['cms.page_cache_models' => array_values(array_unique(array_merge((array) config('cms.page_cache_models', []), [Post::class, Category::class])))]);
         $this->app->bind(BlogCatalogueReaderInterface::class, BlogCatalogueReader::class);
         $this->app->bind(BlogArticleReaderInterface::class, BlogArticleReader::class);
         $this->app->bind(BlogPublicReaderInterface::class, BlogPublicReader::class);
         $this->app->bind(CommentPublicationServiceInterface::class, CommentPublicationService::class);
         $this->app->bind(PostDomainServiceInterface::class, PostDomainService::class);
         $this->app->bind(CategoryDomainServiceInterface::class, CategoryDomainService::class);
-        $this->app->bind('widget.blog.featured_posts', fn () => FeaturedPostsWidget::class);
-        $this->app->bind('widget.blog.latest_posts_grid', fn () => LatestPostsGridWidget::class);
     }
 
     public function boot(): void
     {
+        $this->app->make(PublicSemanticRegistry::class)->register($this->app->make(BlogPublicSemanticContributor::class));
+        $this->app->make(BlockRegistryInterface::class)->register($this->app->make(FeaturedPostsWidget::class));
+        $this->app->make(BlockRegistryInterface::class)->register($this->app->make(LatestPostsGridWidget::class));
+        PostTranslation::observe(ContentTranslationCacheObserver::class);
+        PostSectionTranslation::observe(ContentTranslationCacheObserver::class);
+        CategoryTranslation::observe(ContentTranslationCacheObserver::class);
         $this->app->make(PublicSemanticRegistry::class)->registerWidget(
-            new PublicEntityWidgetContributor('blog', 'post', ['blog.featured_posts', 'blog.latest_posts_grid', 'widget_posts', 'posts'])
+            new PublicEntityWidgetContributor('blog', 'post', ['blog.featured_posts', 'blog.latest_posts_grid', 'widget_posts'])
         );
         $this->loadViewsFrom(__DIR__.'/Resources/views', 'blog');
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
@@ -116,6 +130,7 @@ class BlogModuleServiceProvider extends BaseModuleServiceProvider
 
     public function registerPageableRoutes(): void
     {
+        Route::get('/feed.xml', RssController::class)->middleware(['web', 'module.enabled:blog'])->name('seo.feed');
         Route::middleware(['web', ResolveMarketAndLocaleMiddleware::class, CanonicalModulePrefix::class, EnsureSeoMeta::class, CachePublicPage::class])->group(function (): void {
             /** @var LocalizationServiceInterface $localization */
             $localization = app(LocalizationServiceInterface::class);
@@ -154,21 +169,20 @@ class BlogModuleServiceProvider extends BaseModuleServiceProvider
         });
     }
 
-    public function getWidgets(): array
+    public function getAdminDashboard(User $user): ?array
     {
-        return [
-            FeaturedPostsWidget::getKey() => FeaturedPostsWidget::class,
-            LatestPostsGridWidget::getKey() => LatestPostsGridWidget::class,
-        ];
+        return $this->app->make(BlogDashboard::class)->data($user);
     }
 
     public function getAdminNavigation(): array
     {
         return [
             [
-                'title' => 'Blog Posts',
+                'title' => __('admin.nav.items.blog_posts'),
                 'route' => 'admin.blog.posts.index',
-                'icon' => 'book-open',
+                'createRoute' => 'admin.blog.posts.create',
+                'activePattern' => 'admin.blog.posts.*',
+                'icon' => 'pen-to-square',
                 'permission' => 'manage:posts',
             ],
             [

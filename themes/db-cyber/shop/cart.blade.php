@@ -1,4 +1,4 @@
-@extends('themes.db-cyber.layouts.app')
+@extends('themes::db-cyber.layouts.app')
 
 @php
     $cartTitle = $currentLocale === 'ca' ? 'Carretó de Compra' : ($currentLocale === 'en' ? 'Shopping Cart' : 'Carrito de Compras');

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
 });
 
 test('block manager blade component contains hover insertion zones at any position', function (): void {
@@ -31,8 +31,6 @@ test('block manager blade component contains hover insertion zones at any positi
     // Unified empty state
     expect($rendered)->toContain('Añadir primera sección');
 
-    // Agnostic external insertion event listener
-    expect($rendered)->toContain('cms-insert-block');
 });
 
 test('block manager component contains position badge indicator in modal', function (): void {

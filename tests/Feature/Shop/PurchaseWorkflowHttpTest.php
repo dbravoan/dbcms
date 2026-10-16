@@ -2,13 +2,18 @@
 
 declare(strict_types=1);
 
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Support\Facades\Cache;
 use Modules\Shop\Models\Order;
 use Modules\Shop\Models\Product;
+use Tests\Support\CmsFixtures;
+use Tests\Support\ShopComposition;
+use Tests\Support\ShopFixtures;
+
+uses(ShopComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    ShopFixtures::product();
     config(['cms.page_cache.enabled' => true]);
     Cache::flush();
 });
@@ -23,6 +28,7 @@ test('checkout transport preserves manual payment session ownership and a privat
         'country' => 'España', 'payment_method' => 'bank_transfer',
     ])->assertRedirect();
     expect(Order::count())->toBe($before + 1);
+    expect($product->fresh()->stock_quantity)->toBe($product->stock_quantity - 1);
     $order = Order::latest('id')->firstOrFail();
     expect($order->payment_status)->not->toBe('paid');
     expect(session('shop_owned_orders'))->toContain($order->order_number);

@@ -1,4 +1,4 @@
-@extends('themes.db-minimal.layouts.app')
+@extends('themes::db-minimal.layouts.app')
 
 @php
     $trans = $post->translations->where('locale', app()->getLocale())->first()

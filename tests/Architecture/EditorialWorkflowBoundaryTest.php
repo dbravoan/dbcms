@@ -25,4 +25,4 @@ it('keeps editorial consumers independent of optional module namespaces', functi
             expect($call->name->toString())->not->toBe('revisions');
         }
     }
-})->with(['app/Services/Capabilities/EntityCrudService.php', 'app/Services/Capabilities/CmsActionService.php', 'app/Services/Capabilities/LegacyCmsService.php', 'app/Services/Admin/AdminNavigationService.php', 'app/Services/Admin/AdminDashboardService.php']);
+})->with(['app/Services/Capabilities/EntityMutationService.php', 'app/Services/Capabilities/ContentSectionActions.php', 'app/Services/Admin/AdminNavigationService.php', 'app/Services/Admin/AdminDashboardService.php']);

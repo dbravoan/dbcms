@@ -31,7 +31,7 @@
     },
 
     proceedDeactivation() {
-        if (this.submitFormId) {
+        if (this.submitFormId && this.impactData && this.impactData.dependents.length === 0) {
             document.getElementById(this.submitFormId).submit();
         }
     }
@@ -48,7 +48,7 @@
             @csrf
             <input type="file" name="module_zip" accept=".zip" required class="text-xs text-gray-400 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#1A1A1A] file:text-gray-300 hover:file:bg-gray-800 cursor-pointer">
             <button type="submit" class="btn-neon">
-                Subir e Instalar
+                Subir paquete
             </button>
         </form>
     </div>
@@ -71,19 +71,14 @@
                             <div class="flex items-center gap-2">
                                 <h4 class="font-bold text-white text-base">{{ $module->name }}</h4>
                                 <x-admin.chip>v{{ $module->version }}</x-admin.chip>
-                                @if($module->is_core)
-                                    <x-admin.chip variant="purple" icon="fa-solid fa-shield-halved">
-                                        TRONCAL / CORE
-                                    </x-admin.chip>
-                                @endif
                                 @if($module->is_pageable)
                                     <x-admin.chip variant="brand">{{ __('admin.modules.pages_blocks') }}</x-admin.chip>
                                 @endif
                                 @php
-                                    $hasSettingsSchema = !empty($module->getSettingsSchema());
+                                    $hasSettingsSchema = $configuration[$module->identifier]['hasSchema'];
                                 @endphp
                                 @if($hasSettingsSchema)
-                                    @if($module->isConfigured())
+                                    @if($configuration[$module->identifier]['configured'])
                                         <x-admin.chip variant="success">
                                             Configurado
                                         </x-admin.chip>
@@ -110,6 +105,7 @@
                             </a>
                         @endif
                         <!-- Activation / Deactivation Toggle -->
+                        @if($module->is_installed)
                         <form id="toggle-form-{{ $module->identifier }}" action="{{ route('admin.modules.toggle', ['identifier' => $module->identifier]) }}" method="POST">
                             @csrf
                             @if($module->is_active)
@@ -127,14 +123,10 @@
                                 </button>
                             @endif
                         </form>
+                        @endif
 
                         <!-- Install / Uninstall -->
-                        @if($module->is_core)
-                            <span class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-gray-400 bg-gray-900 border border-gray-800 flex items-center gap-1.5 cursor-not-allowed" title="{{ __('admin.modules.core_tooltip') }}">
-                                <i class="fa-solid fa-shield-halved text-purple-400 text-[10px]"></i>
-                                <span>{{ __('admin.modules.core') }}</span>
-                            </span>
-                        @elseif($module->is_installed)
+                        @if($module->is_installed)
                             <form action="{{ route('admin.modules.uninstall', ['identifier' => $module->identifier]) }}" method="POST">
                                 @csrf
                                 <button type="submit" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition-colors">
@@ -145,7 +137,7 @@
                             <form action="{{ route('admin.modules.install', ['identifier' => $module->identifier]) }}" method="POST">
                                 @csrf
                                 <button type="submit" class="btn-neon">
-                                    Ejecutar Migraciones
+                                    Instalar y activar
                                 </button>
                             </form>
                         @endif
@@ -187,8 +179,8 @@
 
             <!-- Content Loaded -->
             <div x-show="!loadingImpact && impactData" class="space-y-4">
-                <!-- Critical Warning (e.g. Pages module) -->
-                <div x-show="impactData?.is_core_risk" class="p-4 rounded-xl bg-red-950/40 border border-red-500/50 text-red-200 space-y-2">
+                <!-- Active dependents must be disabled first. -->
+                <div x-show="impactData?.dependents?.length > 0" class="p-4 rounded-xl bg-red-950/40 border border-red-500/50 text-red-200 space-y-2">
                     <div class="flex items-center gap-2 font-bold text-red-400">
                         <i class="fa-solid fa-shield-halved text-sm"></i>
                         <span>{{ __('admin.modules.critical_warning') }}</span>
@@ -258,6 +250,7 @@
             </button>
             <button type="button"
                     @click="proceedDeactivation()"
+                    :disabled="loadingImpact || !impactData || impactData.dependents.length > 0"
                     class="px-4 py-2 bg-amber-600/80 hover:bg-amber-600 text-white font-bold rounded-lg text-xs font-mono shadow-lg shadow-amber-600/20 transition-all flex items-center gap-2">
                 <i class="fa-solid fa-power-off"></i>
                 <span>{{ __('admin.modules.confirm_deactivate') }}</span>

@@ -102,6 +102,7 @@ El archivo `module.json` define la identidad del módulo y sus parámetros de co
     "description": "Módulo avanzado para sedes clínicas, doctores y sincronización externa de pacientes.",
     "provider": "Modules\\Clinics\\Providers\\ClinicsServiceProvider",
     "is_pageable": true,
+    "requires": {"core": "^1.3"},
     "settings": {
         "is_enabled": {
             "type": "boolean",
@@ -876,7 +877,13 @@ test('un administrador puede listar y crear sedes clínicas', function (): void 
 
 ## 9. Inferencia y Arquitectura Zero-Knowledge entre Módulos
 
-En un CMS modular de escala empresarial, **ningún módulo núcleo debe conocer la existencia de otros módulos**. Desinstalar retira disponibilidad y conserva datos; eliminar una carpeta es una operación distinta. Las nuevas fronteras usan contratos y adaptadores neutros. Las combinaciones compatibles deben comprobarse; no hay una garantía global sobre cualquier eliminación física. Véase [mantenimiento](ARCHITECTURE_MAINTENANCE_GUIDE.md).
+El núcleo funciona con el directorio `modules/` físicamente ausente: instala,
+autentica y publica Pages. Los módulos opcionales declaran sus dependencias en
+`requires`; no importan dominios que no hayan declarado. Discovery es lectura.
+`CMS_MODULES` selecciona la composición inicial y la instalación ejecuta solo
+sus migraciones. Desactivar conserva datos y rechaza dependientes activos.
+Charts/KPI/ROI y BeforeAfter son paquetes visuales, no módulos de negocio.
+Véase la [especificación](../specs/CORE_AND_EXTENSIONS.md).
 
 ### 9.1. Inyección Dinámica de Relaciones Eloquent
 En lugar de importar traits o relaciones en los modelos de `Pages`, `Blog` o `Shop`, el módulo extensor registra la relación en tiempo de arranque dentro de su `ServiceProvider::boot()`:

@@ -5,13 +5,7 @@
     $navDesktopClass = ($nav['layout'] ?? 'inline') === 'stacked'
         ? 'hidden md:flex flex-col items-start gap-3'
         : 'hidden md:flex items-center space-x-6';
-    $navFallback = [
-        ['title' => __('Inicio'), 'url' => $localization->url('/', $currentMarket)],
-        ['title' => __('Blog'), 'url' => $localization->url('/blog', $currentMarket)],
-        ['title' => __('Galería'), 'url' => $localization->url("/{$galPrefix}", $currentMarket)],
-        ['title' => __('Nosotros'), 'url' => $localization->url('/sobre-nosotros', $currentMarket)],
-        ['title' => __('Contacto'), 'url' => $localization->url('/contacto', $currentMarket)],
-    ];
+    $navFallback = [['title' => __('Inicio'), 'url' => $localization->url('/', $currentMarket)]];
 @endphp
 <header class="border-b border-gray-800 bg-[#121212]/90 backdrop-blur-md sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4 sm:gap-6">
@@ -23,7 +17,7 @@
 
         <!-- Dynamic Menu Items (disposición configurable en el backoffice) -->
         @if($desktopNavVisible)
-            @include('themes.components.nav-items', [
+            @include('themes::components.nav-items', [
                 'items' => $headerMenu,
                 'fallback' => $navFallback,
                 'class' => $navDesktopClass.' text-xs font-mono font-bold tracking-wider uppercase',
@@ -32,7 +26,7 @@
         @endif
 
         <!-- General search (module Search) -->
-        @include('themes.components.search-box', ['variant' => 'dark'])
+        @include('themes::components.search-box', ['variant' => 'dark'])
 
         <!-- Right Side: Market/Language Switcher & Admin Button -->
         <div class="flex items-center space-x-4 font-mono text-xs">
@@ -112,12 +106,7 @@
             @endif
 
             <!-- Cart Indicator (when Shop Mode is enabled) -->
-            @php
-                $shopService = app(\Modules\Shop\Services\ShopDomainService::class);
-                $cartService = app(\Modules\Shop\Services\CartService::class);
-                $cartCount = $cartService->count();
-            @endphp
-            @if($shopService->isShopEnabled())
+            @if(($isShopEnabled ?? false))
                 <a href="{{ $localization->url('/cart', $currentMarket) }}"
                    class="relative p-2 rounded-lg bg-[#1A1A1A] hover:bg-gray-800 border border-gray-700 hover:border-[#00FF99] text-gray-300 hover:text-white transition-all shadow-sm flex items-center"
                    title="{{ __('Carrito de Compras') }}">
@@ -131,14 +120,14 @@
             @endif
 
             <!-- Backoffice Access CTA (configurable; oculto por defecto) -->
-            @include('themes.components.nav-admin', [
+            @include('themes::components.nav-admin', [
                 'frontNav' => $nav,
                 'class' => 'btn-neon text-xs py-1.5 px-3 hidden sm:inline-block',
                 'label' => '<span>&gt;_admin</span>',
             ])
 
             <!-- Collapsible menu toggle -->
-            @include('themes.components.nav-toggle', [
+            @include('themes::components.nav-toggle', [
                 'frontNav' => $nav,
                 'class' => 'p-2 rounded-lg bg-[#1A1A1A] border border-gray-700 text-gray-300 hover:text-[#00FF99] transition-colors',
                 'activeClass' => 'text-[#00FF99] border-[#00FF99]/50',
@@ -146,7 +135,7 @@
         </div>
     </div>
 
-    @include('themes.components.nav-panel', [
+    @include('themes::components.nav-panel', [
         'frontNav' => $nav,
         'items' => $headerMenu,
         'fallback' => $navFallback,

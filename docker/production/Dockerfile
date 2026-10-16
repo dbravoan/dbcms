@@ -10,16 +10,20 @@ RUN npm run build && test -f public/build/manifest.json
 
 # The same PHP extensions are used for Composer, CI and production.
 FROM php:8.3-fpm-alpine AS php-base
-RUN apk add --no-cache bash curl git unzip zip nginx supervisor su-exec tzdata icu-data-full libstdc++ ffmpeg font-dejavu \
+ARG WITH_CREATIVE_TOOLS=false
+RUN apk add --no-cache bash curl git unzip zip nginx supervisor su-exec tzdata icu-data-full libstdc++ \
     && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS icu-dev libzip-dev libpng-dev libjpeg-turbo-dev freetype-dev libwebp-dev oniguruma-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install -j$(nproc) pdo_mysql mbstring bcmath intl zip gd pcntl opcache \
     && pecl install redis-6.1.0 && docker-php-ext-enable redis \
     && apk add --no-cache icu-libs libzip libpng libjpeg-turbo freetype libwebp oniguruma \
     && apk del .build-deps \
-    && mkdir -p /usr/share/fonts/truetype \
-    && ln -s /usr/share/fonts/dejavu /usr/share/fonts/truetype/dejavu \
-    && test -f /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+    && if [ "$WITH_CREATIVE_TOOLS" = true ]; then \
+        apk add --no-cache ffmpeg font-dejavu; \
+        mkdir -p /usr/share/fonts/truetype; \
+        ln -s /usr/share/fonts/dejavu /usr/share/fonts/truetype/dejavu; \
+        test -f /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf; \
+    fi
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 RUN printf '%s\n' 'short_open_tag=Off' 'upload_max_filesize=512M' 'post_max_size=520M' > /usr/local/etc/php/conf.d/dbcms-compatibility.ini
 WORKDIR /var/www/html

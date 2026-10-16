@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use Modules\Captcha\Services\CaptchaService;
+use Tests\Support\CaptchaComposition;
+
+uses(CaptchaComposition::class);
 
 test('captcha service generates svg challenge and encrypted token', function (): void {
     $service = app(CaptchaService::class);

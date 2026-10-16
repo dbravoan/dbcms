@@ -19,12 +19,12 @@ description: Official architecture and clean code guidelines for the CMS project
    Controllers MUST be single-action invokable classes (`__invoke`) named descriptively with the entity prefix and HTTP verb suffix (e.g., `PagesGetController`, `PageCreateGetController`, `PagePostController`, `PageEditGetController`, `PagePutController`, `PageDeleteController`). Group all actions for an entity directly in a single domain directory without deep nested action folders.
 3. **Thin Controllers ($\le 30$ lines)**:
    Controllers only accept requests, validate through FormRequests/DTOs, delegate to a domain service contract, and return a view or JsonResponse. Maximum 10 lines inside `__invoke()`. No raw SQL, no business algorithms.
-4. **Fat Domain Services & Strict Contracts**:
-   All business logic resides in Services implementing explicit interfaces (`App\Contracts\Services\*Interface` or `Modules\{Module}\Contracts\*Interface`). All mutations are wrapped in `DB::transaction()`.
-5. **Immutable Data Transfer Objects (DTOs)**:
-   Use PHP 8.3+ `readonly class` with typed properties. No untyped associative arrays passed across domain boundaries.
+4. **Domain Services & Useful Contracts**:
+   Business logic resides in focused services. Add an interface for an actual substitution/subsystem boundary, not every helper. Use transactions when related writes require atomicity; external effects follow commit.
+5. **Typed Boundaries**:
+   Use immutable DTOs where they make input/output contracts clearer. Do not create DTOs or forwarding wrappers solely to satisfy a pattern.
 6. **Decoupled Module Lifecycle & Visibility**:
-   Modules must be 100% self-contained in `modules/{Module}`. Visibility of menus, tabs, and routes is governed by `ModuleManager::isModuleEnabled($id)` (both DB `is_active` and setting `is_enabled`). Modules register views, routes, migrations, and navigation hooks via their `ModuleServiceProvider`.
+   Optional modules own their code in `modules/{Module}`. Discovery reads manifests without database writes; explicit installation reconciles state and runs selected migrations. `ModuleManager::isModuleEnabled($id)` controls availability. Pages is core in `app/Content/Pages`; Charts/BeforeAfter are visual packages. Follow `specs/CORE_AND_EXTENSIONS.md`.
 7. **Zero SQL/Eloquent Queries in Blade**:
    Blade templates (`.blade.php`) MUST NEVER execute queries or call `Model::where()`. Navigation and global layouts receive data exclusively via View Composers (`App\Http\ViewComposers\*Composer`) or dedicated navigation services.
 8. **Canonical Backoffice UI Design System & Dual Themes**:
@@ -110,11 +110,11 @@ modules/{ModuleName}/
 
 | Principle | Application in this CMS | Concrete Rule |
 | :--- | :--- | :--- |
-| **S** (Single Responsibility) | Controllers handle only HTTP routing/response. Services handle business logic. Models define schema/relations. View Composers supply Blade data. | Class length $\le 50$ lines for controllers; methods $\le 10$ lines. |
+| **S** (Single Responsibility) | Controllers handle only HTTP routing/response. Services handle business logic. Models define schema/relations. View Composers supply Blade data. | Short invokable actions delegate business decisions and transaction boundaries. |
 | **O** (Open/Closed) | Extend features via modules and service providers without editing core controllers. | Module settings load dynamically via `{$identifier}::admin.settings`. |
-| **L** (Liskov Substitution) | Any service interface implementation can be swapped in ServiceProvider bindings without breaking callers. | Inject `AiBrandProfileServiceInterface`, not concrete classes. |
-| **I** (Interface Segregation) | Keep contracts focused. Decompose monolithic interfaces into specific capabilities. | Split monolithic MCP servers into `McpToolRegistryInterface`, `McpSearchServiceInterface`. |
-| **D** (Dependency Inversion) | High-level modules and controllers depend on abstractions (interfaces), never on low-level concrete implementations. | Injected via constructor types. |
+| **L** (Liskov Substitution) | Implementations preserve the behavior promised by their contract. | `EditorialWorkflowInterface` supports the optional workflow and its neutral core implementation. |
+| **I** (Interface Segregation) | Keep contracts focused on real consumers. | Entity mutation, revision inspection and editorial workflow have separate boundaries. |
+| **D** (Dependency Inversion) | Depend on contracts across subsystem boundaries; inject concrete helpers when substitution is unnecessary. | Do not introduce forwarding interfaces solely for dependency injection. |
 
 ---
 
@@ -125,27 +125,21 @@ Controllers are strictly named with their entity prefix and HTTP verb suffix, re
 ```php
 declare(strict_types=1);
 
-namespace Modules\Pages\Http\Controllers\Admin;
+namespace App\Content\Pages\Http\Controllers\Admin;
 
+use App\Content\Pages\Contracts\PageDomainServiceInterface;
+use App\Content\Pages\Models\Page;
 use App\Http\Controllers\Controller;
-use Modules\Pages\Models\Page;
+use App\Http\Requests\Admin\EditorialEntityRequest;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 final class PagePutController extends Controller
 {
-    public function __invoke(Request $request, Page $page): RedirectResponse
-    {
-        $validated = $request->validate([
-            'is_published' => 'boolean',
-            'translations' => 'required|array',
-        ]);
+    public function __construct(private readonly PageDomainServiceInterface $service) {}
 
-        DB::transaction(function () use ($page, $validated): void {
-            $page->update(['is_published' => $validated['is_published'] ?? false]);
-            // sync translations via service
-        });
+    public function __invoke(EditorialEntityRequest $request, Page $page): RedirectResponse
+    {
+        $this->service->updatePage($page, $request->validated());
 
         return redirect()->route('admin.pages.index')->with('success', 'Página actualizada.');
     }
@@ -154,12 +148,12 @@ final class PagePutController extends Controller
 
 In route files (`routes/web.php`):
 ```php
-use Modules\Pages\Http\Controllers\Admin\PagesGetController;
-use Modules\Pages\Http\Controllers\Admin\PageCreateGetController;
-use Modules\Pages\Http\Controllers\Admin\PagePostController;
-use Modules\Pages\Http\Controllers\Admin\PageEditGetController;
-use Modules\Pages\Http\Controllers\Admin\PagePutController;
-use Modules\Pages\Http\Controllers\Admin\PageDeleteController;
+use App\Content\Pages\Http\Controllers\Admin\PagesGetController;
+use App\Content\Pages\Http\Controllers\Admin\PageCreateGetController;
+use App\Content\Pages\Http\Controllers\Admin\PagePostController;
+use App\Content\Pages\Http\Controllers\Admin\PageEditGetController;
+use App\Content\Pages\Http\Controllers\Admin\PagePutController;
+use App\Content\Pages\Http\Controllers\Admin\PageDeleteController;
 
 Route::prefix('admin/pages')->name('admin.pages.')->group(function (): void {
     Route::get('/', PagesGetController::class)->name('index');
@@ -203,11 +197,12 @@ Every admin view (in core or modules) MUST be assembled from the following reusa
 
 1. **State Discovery**:
    A module is considered **active and visible** if and only if:
-   - Database record `CmsModule::where('identifier', $id)->first()->is_active === true`
-   - Settings record `module_settings.is_enabled !== false`
+   - The manifest exists and its requirements are available.
+   - The `CmsModule` record is installed and active.
+   - Its optional manifest `availability_setting` is enabled in `CmsModule.settings`.
    Call `app(ModuleManager::class)->isModuleEnabled($id)` for the unified canonical check.
 2. **Navigation Tabs**:
    - Módulos inactivos **no deben** renderizar pestañas de primer nivel, menús laterales ni subenlaces.
    - Si todos los elementos de un grupo están ocultos, el encabezado del grupo (`SECCIONES`, `HERRAMIENTAS`) **no se renderiza**.
 3. **Route Protection**:
-   Apply middleware `module.enabled:ai-assistant` to module admin and front routes to prevent unauthorized URL access when a module is toggled off.
+   Apply middleware `module.enabled:ai_assistant` to module admin and front routes to prevent unauthorized URL access when a module is toggled off.

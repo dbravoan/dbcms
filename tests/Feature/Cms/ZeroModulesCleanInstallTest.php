@@ -2,34 +2,16 @@
 
 declare(strict_types=1);
 
-use App\Core\Modules\ModuleManager;
-use App\Models\CmsModule;
-use App\Models\Role;
 use App\Models\User;
-use Database\Seeders\CmsFoundationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(CmsFoundationSeeder::class);
-    $this->manager = app(ModuleManager::class);
-    $this->manager->discoverModules();
-
-    // Create admin user with full role
-    $this->user = User::create([
-        'name' => 'Super Admin',
-        'email' => 'admin@test.local',
-        'password' => bcrypt('password'),
-    ]);
-    $adminRole = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Admin']);
-    $this->user->roles()->sync([$adminRole->id]);
-
-    // Deactivate ALL modules to simulate clean zero-module state
-    $modules = CmsModule::all();
-    foreach ($modules as $mod) {
-        $this->manager->deactivate($mod->identifier);
-    }
+    CmsFixtures::localization(['es']);
+    CmsFixtures::identities();
+    $this->user = User::where('email', 'admin@db-cms.io')->firstOrFail();
 });
 
 test('clean install with zero active modules renders welcome-cms on root route', function (): void {
@@ -41,7 +23,7 @@ test('clean install with zero active modules renders welcome-cms on root route',
         ->assertSee('INSTALACIÓN LIMPIA AUTÓNOMA');
 });
 
-test('clean install renders welcome-cms on localized routes when pages module is disabled', function (): void {
+test('an empty core installation serves welcome on localized routes and rejects missing pages', function (): void {
     $responseLocale = $this->get('/es');
     $responseLocale->assertStatus(200)->assertViewIs('welcome-cms');
 
@@ -70,6 +52,8 @@ test('clean install backoffice dashboard renders cleanly with zero module errors
 test('core backoffice sections remain fully functional in zero-module state', function (): void {
     $acting = $this->actingAs($this->user, 'web');
 
+    $acting->get('/admin/pages')->assertStatus(200);
+    $acting->get('/admin/pages/create')->assertStatus(200);
     $acting->get('/admin/modules')->assertStatus(200);
     $acting->get('/admin/users')->assertStatus(200);
     $acting->get('/admin/media')->assertStatus(200);
@@ -80,12 +64,11 @@ test('core backoffice sections remain fully functional in zero-module state', fu
     $acting->get('/admin/tokens')->assertStatus(200);
 });
 
-test('module routes return 404 when modules are disabled', function (): void {
+test('optional module routes are unavailable in the core only composition', function (): void {
     $acting = $this->actingAs($this->user, 'web');
 
     $acting->get('/admin/blog/posts')->assertStatus(404);
     $acting->get('/admin/shop/products')->assertStatus(404);
     $acting->get('/admin/forms')->assertStatus(404);
-    $acting->get('/admin/pages')->assertStatus(404);
     $acting->get('/admin/galleries')->assertStatus(404);
 });

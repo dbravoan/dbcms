@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
 });
 
 test('a guest can switch the backoffice language from the login screen', function (): void {
@@ -39,7 +40,7 @@ test('the locale switcher is a working segmented control that marks the current 
 });
 
 test('the termocms login renders the redesigned interface', function (): void {
-    $html = view('themes.admin.termocms.admin.auth.login', ['cspNonce' => 'test-nonce'])->render();
+    $html = view('themes::admin.termocms.admin.auth.login', ['cspNonce' => 'test-nonce'])->render();
 
     expect($html)
         // Heading + subtitle, single brand block (no duplicated brand copy).

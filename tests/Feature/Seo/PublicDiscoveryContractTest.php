@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
 use App\Core\Modules\ModuleManager;
 use App\Core\Search\SearchEngine;
 use App\Core\Search\SearchIndexer;
@@ -11,8 +12,10 @@ use App\Models\Market;
 use App\Models\User;
 use Modules\Blog\Models\Post;
 use Modules\Gallery\Models\Gallery;
-use Modules\Pages\Models\Page;
 use Modules\Shop\Models\Product;
+use Tests\Support\PublicContentComposition;
+
+uses(PublicContentComposition::class);
 
 beforeEach(function (): void {
     app(ModuleManager::class)->discoverModules();
@@ -125,7 +128,7 @@ test('feeds and discovery never expose private foreign-market or untranslated co
     $this->get('/feed.xml')->assertOk()->assertSee('/es/es/blog/visible')->assertDontSee('/blog/foreign')->assertDontSee('/blog/draft');
     $this->get('/sitemaps/posts.xml')->assertOk()->assertDontSee('/blog/foreign')->assertDontSee('/blog/draft');
     $this->get('/es/es/llms-full.txt')->assertOk()->assertSee('visible')->assertDontSee('foreign')->assertDontSee('draft');
-    app(ModuleManager::class)->disable('blog');
-    $this->get('/sitemaps/posts.xml')->assertOk()->assertDontSee('/blog/visible');
+    app(ModuleManager::class)->deactivate('blog');
+    $this->get('/sitemaps/posts.xml')->assertNotFound();
     $this->get('/es/es/llms-full.txt')->assertOk()->assertDontSee('## Article: visible');
 });

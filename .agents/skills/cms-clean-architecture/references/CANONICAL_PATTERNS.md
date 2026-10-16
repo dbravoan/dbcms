@@ -6,11 +6,11 @@ Every controller action is a dedicated class implementing `__invoke`, named desc
 ```php
 declare(strict_types=1);
 
-namespace Modules\Pages\Http\Controllers\Admin;
+namespace App\Content\Pages\Http\Controllers\Admin;
 
 use App\Contracts\Services\PageServiceInterface;
 use App\Http\Controllers\Controller;
-use Modules\Pages\Models\Page;
+use App\Content\Pages\Models\Page;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 

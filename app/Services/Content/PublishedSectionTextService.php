@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Content;
 
 use App\Contracts\Services\PublishedSectionTextInterface;
+use App\Core\Blocks\Contracts\BlockRegistryInterface;
 use App\Core\Content\PublicSemanticRegistry;
 use App\Core\Sections\SectionLayout;
 use App\Models\Market;
@@ -14,7 +15,7 @@ use Illuminate\Support\Collection;
 /** One extraction contract for public GEO and indexed authored block text. */
 final class PublishedSectionTextService implements PublishedSectionTextInterface
 {
-    public function __construct(private readonly PublicSemanticRegistry $widgets) {}
+    public function __construct(private readonly PublicSemanticRegistry $widgets, private readonly BlockRegistryInterface $blocks) {}
 
     public function text(Model $entity, Market $market, string $locale, bool $includeWidgets = true): string
     {
@@ -33,7 +34,12 @@ final class PublishedSectionTextService implements PublishedSectionTextInterface
             }
             $translations = $section->getRelationValue('translations');
             $translation = $translations instanceof Collection ? $translations->firstWhere('locale', $locale) : null;
-            $payload = SectionLayout::resolve((array) $section->getAttribute('styling_json'), $translation instanceof Model ? (array) $translation->getAttribute('content_json') : []);
+            if (! $translation instanceof Model) {
+                continue;
+            }
+            $payload = SectionLayout::resolve((array) $section->getAttribute('styling_json'), (array) $translation->getAttribute('content_json'));
+            $visible = array_values(array_filter(SectionLayout::blocks($payload), fn (array $block): bool => $this->blocks->isAvailable((string) ($block['type'] ?? 'text'))));
+            $payload = ['columns' => [['blocks' => $visible]]];
             $body = SectionLayout::plainText($payload, ['title', 'headline', 'content', 'body', 'summary', 'subtitle', 'description', 'question', 'answer', 'caption', 'alt', 'label', 'value']);
             if ($includeWidgets) {
                 $body .= $this->widgetTexts($payload, $market, $locale);

@@ -16,7 +16,6 @@ use Modules\Shop\Models\Order;
 use Modules\Shop\Models\OrderItem;
 use Modules\Shop\Models\Product;
 use Modules\Shop\Models\ProductTranslation;
-use Modules\Shop\Models\ShopSetting;
 
 class ShopDomainService
 {
@@ -25,7 +24,7 @@ class ShopDomainService
      */
     public function isShopEnabled(): bool
     {
-        return ShopSetting::get('shop.mode', 'full_shop') === 'full_shop';
+        return module_setting('shop', 'shop_mode', 'full_shop') === 'full_shop';
     }
 
     /**
@@ -33,12 +32,12 @@ class ShopDomainService
      */
     public function isCatalogOnly(): bool
     {
-        return ShopSetting::get('shop.mode', 'full_shop') === 'catalog_only';
+        return module_setting('shop', 'shop_mode', 'full_shop') === 'catalog_only';
     }
 
     public function getShopMode(): string
     {
-        return (string) ShopSetting::get('shop.mode', 'full_shop');
+        return (string) module_setting('shop', 'shop_mode', 'full_shop');
     }
 
     /**
@@ -52,7 +51,7 @@ class ShopDomainService
             return true;
         }
 
-        return (bool) ShopSetting::get('shop.catalog_show_prices', true);
+        return (bool) module_setting('shop', 'catalog_show_prices', true);
     }
 
     /**
@@ -166,7 +165,7 @@ class ShopDomainService
             $lines = [];
             foreach ($quantities as $productId => $quantity) {
                 $product = $products->get($productId);
-                if (! $product || $quantity < 1 || ((bool) ShopSetting::get('shop.enable_stock', true) && $product->track_stock && $product->stock_quantity < $quantity)) {
+                if (! $product || $quantity < 1 || ((bool) module_setting('shop', 'enable_stock', true) && $product->track_stock && $product->stock_quantity < $quantity)) {
                     throw ValidationException::withMessages(['cart' => 'Uno de los productos ya no está disponible en la cantidad solicitada.']);
                 }
                 $lines[] = ['product' => $product, 'quantity' => $quantity, 'unit_price' => $product->getPriceForMarket($market)];
@@ -179,12 +178,12 @@ class ShopDomainService
                 $subtotal += ($item['unit_price'] * $item['quantity']);
             }
 
-            $taxRate = (float) ShopSetting::get('shop.tax_rate', 21.0);
+            $taxRate = (float) module_setting('shop', 'tax_rate', 21.0);
             $taxTotal = round($subtotal * ($taxRate / 100), 2);
             $shippingTotal = (float) ($customerData['shipping_total'] ?? 0.00);
             $grandTotal = $subtotal + $taxTotal + $shippingTotal;
 
-            $currency = $market->currency ?? (string) ShopSetting::get('shop.currency', 'EUR');
+            $currency = $market->currency ?? (string) module_setting('shop', 'currency', 'EUR');
             $orderNumber = 'ORD-'.strtoupper(Str::random(16));
 
             /** @var Order $order */
@@ -226,7 +225,7 @@ class ShopDomainService
                 ]);
 
                 // Stock decrement
-                if ((bool) ShopSetting::get('shop.enable_stock', true) && $prod->track_stock) {
+                if ((bool) module_setting('shop', 'enable_stock', true) && $prod->track_stock) {
                     // The row remains locked; save also emits cache/index observers.
                     $prod->stock_quantity -= $item['quantity'];
                     $prod->save();

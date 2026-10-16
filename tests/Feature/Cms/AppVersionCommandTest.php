@@ -5,7 +5,6 @@ declare(strict_types=1);
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
-use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Process\Process;
 
 beforeEach(function (): void {
@@ -89,22 +88,3 @@ test('it rejects invalid semver formats', function (): void {
         ->expectsOutputToContain('Invalid bump type')
         ->assertFailed();
 });
-
-test('deprecated tagging fails without changing version environment or Git tags', function (array $options): void {
-    $versionBefore = File::get($this->versionFile);
-    $environmentBefore = File::get(base_path('.env'));
-    $tagsBefore = (new Process(['git', 'show-ref', '--tags'], $this->privateRuntime))->mustRun()->getOutput();
-
-    $exitCode = Artisan::call('app:version', $options);
-    $output = Artisan::output();
-
-    expect(File::get($this->versionFile))->toBe($versionBefore)
-        ->and(File::get(base_path('.env')))->toBe($environmentBefore)
-        ->and((new Process(['git', 'show-ref', '--tags'], $this->privateRuntime))->mustRun()->getOutput())->toBe($tagsBefore)
-        ->and($exitCode)->toBe(Command::FAILURE)
-        ->and($output)->toContain('--tag is deprecated');
-})->with([
-    'tag only' => [['--tag' => true]],
-    'bump with tag' => [['--bump' => 'patch', '--tag' => true]],
-    'explicit version with tag' => [['--set' => '2.0.0', '--tag' => true]],
-]);

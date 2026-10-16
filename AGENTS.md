@@ -1,217 +1,60 @@
-# Universal Agent Orchestration & Superagent Protocol (AGENTS.md)
+# Working on dbCMS
 
-> **Framework**: Laravel LTS Multi-Agent Enterprise Architecture  
-> **Orchestration Model**: Hierarchical Superagent Directed Acyclic Graph (DAG) with Reflexion Loop  
-> **Token Economy Tier**: Level 3 (KV-Cache Prefix Invariant, Strict Context Partitioning)  
-> **Target Runtimes**: Antigravity AI Engine & OpenCode
+Read the applicable specification before implementing behavior. The current
+architecture contract is [Core and extensions](specs/CORE_AND_EXTENSIONS.md);
+[Testing](docs/TESTING.md) defines the verification lanes.
 
----
+## Runtime and working state
 
-## 1. Executive Summary & Superagent Architectural Vision
+- Never run PHP, Composer, Artisan or Pest on the host. Start official Sail with
+  `./vendor/bin/sail up -d` (`--build` on first launch); use official Sail commands.
+  Without vendor, follow `docs/06_ZERO_HOST_PHP_SAIL_RUNBOOK.md` or `bin/project-init`.
+- Inside an existing CI/bootstrap container run PHP/Composer directly; never nest
+  Sail. Native VPS commands follow the deployment runbook.
+- Preserve existing changes, `.env`, installed data, keys and runtime locks. Tests
+  that change installation/update files run only in a disposable filesystem and
+  database. `RefreshDatabase` does not isolate files.
+- Delegate independent subsystem work when useful; give each agent explicit file
+  ownership and reconcile shared contracts before merging their changes.
 
-In this enterprise Laravel ecosystem, no single agent operates as a monolithic "do-everything" entity. Instead, system execution is governed by a **Superagent (Meta-Orchestrator Cognitive Kernel)**. The Superagent serves as the centralized deterministic state machine that receives human intent, synthesizes a directed task graph, delegates isolated execution units to specialized subagents, and enforces zero-regression gating through deterministic verification (Pest tests, PHPStan Level 8, Docker Sail containment).
+## Architecture
 
-```
-========================================================================================================
-                                     SUPERAGENT (META-ORCHESTRATOR)
-                                  [Cognitive Kernel & State Machine]
-========================================================================================================
-                                                  |
-                    +-----------------------------+-----------------------------+
-                    |                             |                             |
-                    v                             v                             v
-           [Phase 1: Formal Spec]        [Phase 2: Test Harness]       [Phase 3: Domain Synthesis]
-             `SpecArchitect`                 `TddCraftsman`                 `DomainEngineer`
-            - Hoare Triples (P{Q}R)         - Pest Unit/Arch Tests        - Fat Domain Services
-            - DTO Contracts                 - Boundary Assertions         - DB::transaction Safety
-            - OpenAPI & JSON Schema         - 100% Red State Check        - Strict Types (Level 8)
-                    |                             |                             |
-                    +-----------------------------+-----------------------------+
-                                                  |
-                    +-----------------------------+-----------------------------+
-                    |                                                           |
-                    v                                                           v
-         [Phase 4: Security & Auth]                                  [Phase 5: GEO & SEO Indexing]
-            `SecurityAuditor`                                            `GeoSeoSpecialist`
-          - Passport OAuth2 Scopes                                     - /llms.txt & /llms-full.txt
-          - Cryptographic Isolation                                    - Schema.org JSON-LD Graphs
-          - Secrets & PII Masking                                      - Semantic Context Chunking
-                    |                                                           |
-                    +-----------------------------+-----------------------------+
-                                                  |
-                                                  v
-                                     [Phase 6: LTS & QA Watchdog]
-                                           `LtsWatchdog`
-                                    - Zero-Host Sail Verification
-                                    - Automated Upgrades & CVE Audit
-========================================================================================================
-```
+- Core owns installation, identity/permissions, localization, media, pages, menus,
+  publication, sections, themes and technical SEO. Pages is `App\Content\Pages`,
+  not a module. Section rendering is `App\Core\Sections\SectionRendererService`.
+- Optional modules own their entities, migrations, routes, navigation and
+  capabilities. Discovery reads manifests; installation changes persistent state.
+  Boot must not discover by writing records or activate every directory found.
+- Blocks and widgets share one definition/registry and availability decision.
+  Charts, KPI/ROI and BeforeAfter are visual packages, not business modules.
+- A disabled definition cannot execute or enter selectors. Preserve stored
+  instances, show unavailable editor placeholders and restore them on activation.
+- HTTP controllers validate/delegate/respond. Keep actions short; no SQL in Blade.
+  Domain services own business decisions and transaction boundaries. Dispatch
+  remote effects after commit when a write must be atomic.
+- Introduce interfaces for actual substitution or subsystem boundaries and DTOs
+  for meaningful typed inputs/outputs. Do not add forwarding wrappers, duplicate
+  registries, universal interfaces or converters for retired contracts.
+- This development version targets fresh installations. No legacy API aliases or
+  historical payload conversion are required. Remove their tests with the retired
+  behavior; preserve current authorization, publication and isolation controls.
+- Use strict PHP types, PHPStan level 8 without baseline ignores and Pint. Views
+  use shared semantic admin components and support both installed brands.
 
----
+## Tests and delivery
 
-## 2. Formal Cognitive State Machine of the Superagent
-
-The operational lifecycle of the Superagent is modeled as a Deterministic Finite Automaton (DFA) with state set $S$, input alphabet $\Sigma$, transition function $\delta: S \times \Sigma \rightarrow S$, and terminal validation states:
-
-$$\mathcal{M}_{\text{super}} = \langle S, \Sigma, \delta, s_0, F \rangle$$
-
-```
-   [S0: Intent Ingestion]
-             |
-             v
-   [S1: Repository State & LTS Check]
-             |
-             v
-   [S2: Spec Synthesis (SDD)] <------+  (Reflexion Retry Loop on Spec Failure)
-             |                       |
-             v                       |
-   [S3: TDD Invariant Authoring]     |
-             |                       |
-             v                       |
-   [S4: Domain Service Impl]         |
-             |                       |
-             v                       |
-   [S5: Zero-Host Verification] -----+  (Tests Failed: Trigger Reflexion to S3/S4)
-             |
-       (All Green)
-             v
-   [S6: Security & OAuth2 Audit]
-             |
-             v
-   [S7: GEO & SEO Index Update]
-             |
-             v
-   [S8: Clean Atomic Commit & Handoff]
-```
-
-### Local runtime entry point
-
-Start official Sail explicitly with `./vendor/bin/sail up -d` before local PHP,
-Composer, Artisan or tests; use `up -d --build` on the first launch and `down` to
-stop it. Without `vendor/`, follow the compatible Docker bootstrap in
-`docs/06_ZERO_HOST_PHP_SAIL_RUNBOOK.md` or use `bin/project-init`. There is no
-automatic one-off fallback. Inside CI/bootstrap containers execute PHP/Composer
-directly; never invoke Sail inside another container. Native VPS commands follow
-the remote deployment procedure.
-
-### State Definitions & Operational Invariants
-
-| State | Name | Active Agent | Precondition | Deterministic Exit Gate |
-| :--- | :--- | :--- | :--- | :--- |
-| **`S0`** | `INTENT_INGESTION` | Superagent | User prompt received | Intent disambiguated into formal requirements. |
-| **`S1`** | `LTS_HEALTH_AUDIT` | `LtsWatchdog` | Repository loaded | Laravel LTS version verified; no critical CVEs. |
-| **`S2`** | `SPEC_SYNTHESIS` | `SpecArchitect` | Requirements clear | `specs/*.md` valid against `feature_spec.schema.json`. |
-| **`S3`** | `TDD_HARNESS` | `TddCraftsman` | Spec approved | Pest tests fail with descriptive domain errors (**Red**). |
-| **`S4`** | `DOMAIN_SYNTHESIS` | `DomainEngineer` | Failing tests exist | Fat Services created; `./vendor/bin/sail pest` is **Green**. |
-| **`S5`** | `STATIC_VERIFICATION` | Superagent | Tests green | PHPStan Level 8 passes ($0$ errors); Pint compliant. |
-| **`S6`** | `SECURITY_AUDIT` | `SecurityAuditor` | Service complete | Passport OAuth2 scopes mapped and verified. |
-| **`S7`** | `GEO_SEO_SYNC` | `GeoSeoSpecialist`| Route functional | `/llms.txt` and Schema.org JSON-LD updated. |
-| **`S8`** | `TERMINAL_HANDOFF` | Superagent | All gates passed | Clean Git diff ready for human review. |
-
----
-
-## 3. Step-by-Step Execution Protocol for Any Agent
-
-Every AI agent operating in this repository MUST execute strictly according to the following 8-step protocol:
-
-```
-+---------------------------------------------------------------------------------------------------+
-| STEP 1: VERIFY ENVIRONMENT ISOLATION (ZERO-HOST ENFORCEMENT)                                     |
-| -> Never run `php`, `composer`, or `artisan` on the host operating system.                       |
-| -> Local tools MUST use official `./vendor/bin/sail <command>`.                                  |
-+---------------------------------------------------------------------------------------------------+
-                                                  |
-                                                  v
-+---------------------------------------------------------------------------------------------------+
-| STEP 2: CONSULT STATIC ANCHORS & SPECS (SPEC-DRIVEN DESIGN)                                       |
-| -> Read `specs/templates/FEATURE_SPEC_TEMPLATE.md` before writing code.                          |
-| -> Define Algebraic Data Types & DTOs in `app/DTOs/` using immutable `readonly class`.           |
-+---------------------------------------------------------------------------------------------------+
-                                                  |
-                                                  v
-+---------------------------------------------------------------------------------------------------+
-| STEP 3: TDD RED-GREEN-REFACTOR HARNESS                                                            |
-| -> Author unit tests in `tests/Unit/Services/` and feature tests in `tests/Feature/`.             |
-| -> Verify test fails inside Sail: `./vendor/bin/sail pest --filter <TestName>`                      |
-+---------------------------------------------------------------------------------------------------+
-                                                  |
-                                                  v
-+---------------------------------------------------------------------------------------------------+
-| STEP 4: IMPLEMENT DOMAIN LOGIC (THIN CONTROLLERS, FAT SERVICES)                                   |
-| -> Controllers: Maximum 10 lines per action. No SQL queries, no business branching.               |
-| -> Services: Implement `App\Contracts\Services\*Interface`. Wrap in `DB::transaction()`.          |
-| -> Models: Pure Eloquent schema ($fillable, $casts, relationships). Zero business algorithms.     |
-+---------------------------------------------------------------------------------------------------+
-                                                  |
-                                                  v
-+---------------------------------------------------------------------------------------------------+
-| STEP 5: VERIFY RIGID STATIC ANALYSIS (PHPSTAN LEVEL 8)                                            |
-| -> Execute: `./vendor/bin/sail bin phpstan analyse`                                                             |
-| -> Zero errors allowed. No baseline ignores. Strict types: `declare(strict_types=1);`.           |
-+---------------------------------------------------------------------------------------------------+
-                                                  |
-                                                  v
-+---------------------------------------------------------------------------------------------------+
-| STEP 6: SECURE VIA PASSPORT OAUTH2 & SCOPES                                                       |
-| -> Protect routes in `routes/api.php` with `auth:api` and `scopes:read:*,write:*`.                |
-| -> Use typed `App\Enums\OAuthScope` constants. Never hardcode scope strings.                     |
-+---------------------------------------------------------------------------------------------------+
-                                                  |
-                                                  v
-+---------------------------------------------------------------------------------------------------+
-| STEP 7: GENERATE GEO & SEO SURFACES                                                               |
-| -> Update `/llms.txt` and `/llms-full.txt` via `App\Services\Geo\LlmsTxtGeneratorService`.        |
-| -> Provide Schema.org JSON-LD graphs via `App\Services\Seo\JsonLdSchemaService`.                 |
-+---------------------------------------------------------------------------------------------------+
-                                                  |
-                                                  v
-+---------------------------------------------------------------------------------------------------+
-| STEP 8: TOKEN OPTIMIZATION AUDIT                                                                  |
-| -> Apply changes using targeted contiguous chunks (`replace_file_content`).                       |
-| -> Never rewrite entire 200+ line files when modifying small methods.                             |
-+---------------------------------------------------------------------------------------------------+
-```
-
----
-
-## 4. Multi-Agent Delegation Matrix
-
-| Agent Role | Specialty & Subsystem | Primary Input | Output Artifacts | Strict Constraints |
-| :--- | :--- | :--- | :--- | :--- |
-| **`Superagent`** | Master Meta-Orchestrator | User Goals & Prompts | DAG Task Plan & Execution Logs | Maintains state machine, prevents hallucinations. |
-| **`SpecArchitect`** | Specification & DTOs | RFC Requirements | `specs/*.md`, `app/DTOs/*` | No implementation code; pure schemas & contracts. |
-| **`TddCraftsman`** | Pest Testing & Arch Tests | Formal Specs & DTOs | `tests/Unit/*`, `tests/Feature/*` | Tests must fail before implementation begins. |
-| **`DomainEngineer`**| Fat Domain Services | Failing Pest Tests | `app/Services/*`, `app/Contracts/*` | Controllers $\le 10$ lines; models schema-only. |
-| **`SecurityAuditor`**| Passport OAuth2 Security | Domain Routes & Auth | `config/passport.php`, Auth Tests | Zero plaintext secrets; scopes enforced. |
-| **`GeoSeoSpecialist`**| AI Indexing (GEO) & SEO | Domain Models & Content | `/llms.txt`, JSON-LD Schemas | Valid Schema.org; bounded token chunks. |
-| **`LtsWatchdog`** | LTS Upgrades & CVEs | `composer.json` / CVE DB | `docs/LTS_UPGRADE_PROPOSAL.md` | Proposes non-breaking LTS updates in Sail. |
-| **`TokenEconomist`**| Context & KV-Cache | Agent Transcripts | Diffs, Compressed Payloads | Caps agent turn budgets ($< 2,000$ tokens). |
-
----
-
-## 5. Token Economy & KV-Cache Preservation Rules
-
-To maximize KV-cache reuse in Large Language Model backends (Gemini, Claude, GPT-4o):
-
-1. **Static Prompt Header Invariance**: The contents of `AGENTS.md`, `.gemini/GEMINI.md`, and core DTO interfaces must remain unmodified across consecutive turns to guarantee cache hits ($C_{\text{read\_cache}} \approx 0.10 \times C_{\text{uncached}}$).
-2. **Progressive Skill Disclosure**: Detailed runbooks in `.agents/skills/*/SKILL.md` are mounted dynamically on-demand. Never inject all skills into the initial prompt.
-3. **Surgical Diff Mutations**: Use `replace_file_content` targeting small contiguous line chunks ($\le 40$ lines) instead of full-file overwrites.
-4. **Inter-Agent Message Compression**: Subagents pass structured JSON summaries with schema IDs rather than conversational prose.
-
----
-
-## 6. Proactive Startup Routine for the Superagent
-
-Whenever initializing a session in this repository:
-```bash
-# 1. Start the local runtime explicitly, then verify its health
-./vendor/bin/sail up -d
-./vendor/bin/sail artisan --version
-
-# 2. Run proactive LTS & CVE Watchdog scan
-./vendor/bin/sail artisan system:check-lts
-
-# 3. Verify clean baseline state
-./vendor/bin/sail pest tests/Architecture
-```
-If an LTS patch or security advisory is detected, the Superagent immediately presents the upgrade report from [`docs/LTS_UPGRADE_PROPOSAL.md`](file:///home/david/Proyectos/webs/dbcms/docs/LTS_UPGRADE_PROPOSAL.md) before accepting new feature work.
+- Every test must detect a concrete relevant failure. Reproduce a bug before its
+  fix when that provides useful coverage. Do not write tests for counts, comments,
+  incidental formatting or to justify unused abstractions.
+- `make test`: pure contracts, small core/extension journeys and frontend behavior.
+  `make test-integration`: isolated domain integration and static/build checks.
+  `make test-release`: full isolated checks including installation and real races.
+- Use minimal explicit fixtures. Seed the full showcase only when the showcase
+  itself is under test. Mock external boundaries, never the decision being tested.
+- Retain security, transaction and concurrency evidence; they are distinct
+  boundaries. A source/AST guard is useful when violating examples prove it works.
+- Make focused edits, inspect consumers including dynamic registration, and verify
+  the affected behavior. Report what changed, measured checks and remaining limits.
+  Do not claim a clean full suite from a filtered run.
+- Keep current docs concise. Historical reports live in `docs/archive/` and remain
+  evidence of their original date, not rules for the current implementation.

@@ -18,9 +18,12 @@ use App\Http\Middleware\CachePublicPage;
 use App\Http\Middleware\CanonicalModulePrefix;
 use App\Http\Middleware\EnsureSeoMeta;
 use App\Http\Middleware\ResolveMarketAndLocaleMiddleware;
+use App\Models\User;
+use App\Observers\ContentTranslationCacheObserver;
 use App\Services\Geo\PublicEntityWidgetContributor;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\View;
 use Modules\Shop\Blocks\ShopProductsBlock;
 use Modules\Shop\Capabilities\ShopResources;
 use Modules\Shop\Contracts\CartApplicationInterface;
@@ -38,7 +41,10 @@ use Modules\Shop\Http\Controllers\Front\InquiryPostController;
 use Modules\Shop\Http\Controllers\Front\OrderSuccessGetController;
 use Modules\Shop\Http\Controllers\ShopFrontController;
 use Modules\Shop\Models\Product;
+use Modules\Shop\Models\ProductCategory;
+use Modules\Shop\Models\ProductCategoryTranslation;
 use Modules\Shop\Models\ProductMarket;
+use Modules\Shop\Models\ProductSectionTranslation;
 use Modules\Shop\Models\ProductTranslation;
 use Modules\Shop\Observers\ProductMarketCacheObserver;
 use Modules\Shop\Schema\ShopEntitySchemas;
@@ -48,8 +54,11 @@ use Modules\Shop\Services\CartService;
 use Modules\Shop\Services\InquiryService;
 use Modules\Shop\Services\ShopAdministrationService;
 use Modules\Shop\Services\ShopCatalogueService;
+use Modules\Shop\Services\ShopCookieDisclosure;
+use Modules\Shop\Services\ShopDashboard;
 use Modules\Shop\Services\ShopDomainService;
 use Modules\Shop\Services\ShopEditorialService;
+use Modules\Shop\Services\ShopPublicSemanticContributor;
 use Modules\Shop\Services\ShopPurchaseWorkflow;
 use Modules\Shop\Widgets\FeaturedProductsWidget;
 
@@ -65,6 +74,10 @@ class ShopModuleServiceProvider extends BaseModuleServiceProvider
 
     public function register(): void
     {
+        $this->app->singleton(ShopCookieDisclosure::class);
+        $this->app->tag(ShopCookieDisclosure::class, 'cms.cookie-disclosures');
+        $this->mergeConfigFrom(__DIR__.'/Config/entity_search.php', 'entity_search.sources');
+        config(['cms.page_cache_models' => array_values(array_unique(array_merge((array) config('cms.page_cache_models', []), [Product::class, ProductCategory::class])))]);
         $this->app->bind(CartApplicationInterface::class, CartApplicationService::class);
         $this->app->singleton(ShopDomainService::class);
         $this->app->bind(ShopPurchaseWorkflowInterface::class, ShopPurchaseWorkflow::class);
@@ -73,13 +86,25 @@ class ShopModuleServiceProvider extends BaseModuleServiceProvider
         $this->app->singleton(CartService::class);
         $this->app->bind(InquiryServiceInterface::class, InquiryService::class);
         $this->app->bind(ShopAdministrationServiceInterface::class, ShopAdministrationService::class);
-        $this->app->bind('widget.shop.featured_products', fn () => FeaturedProductsWidget::class);
     }
 
     public function boot(): void
     {
+        $this->app->make(PublicSemanticRegistry::class)->register($this->app->make(ShopPublicSemanticContributor::class));
+        \Illuminate\Support\Facades\View::composer(['themes::*', '*.partials.*'], function (View $view): void {
+            $shop = $this->app->make(ShopDomainService::class);
+            $view->with([
+                'shopService' => $shop,
+                'isShopEnabled' => $shop->isShopEnabled(),
+                'cartCount' => $this->app->make(CartService::class)->count(),
+            ]);
+        });
+        $this->app->make(BlockRegistryInterface::class)->register($this->app->make(FeaturedProductsWidget::class));
+        ProductTranslation::observe(ContentTranslationCacheObserver::class);
+        ProductSectionTranslation::observe(ContentTranslationCacheObserver::class);
+        ProductCategoryTranslation::observe(ContentTranslationCacheObserver::class);
         $this->app->make(PublicSemanticRegistry::class)->registerWidget(
-            new PublicEntityWidgetContributor('shop', 'product', ['shop.featured_products', 'widget_products', 'products'])
+            new PublicEntityWidgetContributor('shop', 'product', ['shop.featured_products', 'widget_products'])
         );
         $this->app->make(CapabilityResourceRegistry::class)->register(ShopResources::descriptor());
         ProductMarket::observe(ProductMarketCacheObserver::class);
@@ -193,24 +218,29 @@ class ShopModuleServiceProvider extends BaseModuleServiceProvider
         });
     }
 
-    public function getWidgets(): array
+    public function getAdminDashboard(User $user): ?array
     {
-        return [
-            FeaturedProductsWidget::getKey() => FeaturedProductsWidget::class,
-        ];
+        return $this->app->make(ShopDashboard::class)->data($user);
     }
 
     public function getAdminNavigation(): array
     {
-        return [
+        $items = [
             [
                 'title' => 'Catálogo & Tienda',
                 'route' => 'admin.shop.products.index',
+                'createRoute' => 'admin.shop.products.create',
+                'activePattern' => 'admin.shop.products.*',
+                'children' => [['title' => __('admin.nav.items.shop_categories'), 'route' => 'admin.shop.categories.index', 'icon' => 'tags', 'permission' => 'manage:shop']],
                 'icon' => 'shopping-bag',
                 'permission' => 'manage:shop',
             ],
             ['title' => 'Solicitudes de presupuesto', 'route' => 'admin.shop.inquiries.index', 'icon' => 'envelope', 'permission' => 'manage:shop'],
-            ['title' => 'Conciliación de pagos históricos', 'route' => 'admin.shop.orders.legacy-payments', 'icon' => 'credit-card', 'permission' => 'manage:shop'],
         ];
+        if (! $this->app->make(ShopDomainService::class)->isCatalogOnly()) {
+            $items[] = ['title' => __('admin.nav.items.shop_orders'), 'route' => 'admin.shop.orders.index', 'icon' => 'box', 'permission' => 'manage:shop'];
+        }
+
+        return $items;
     }
 }

@@ -6,12 +6,11 @@ namespace Modules\Maintenance\Capabilities;
 
 use App\Core\Capabilities\CapabilityRegistry;
 use App\Core\Capabilities\Tools\Action\ActionTool;
-use App\Services\Capabilities\CmsActionService;
 
 /** Module-owned descriptions; handlers delegate to the existing shared service. */
 final class MaintenanceActionCatalog
 {
-    public static function register(CapabilityRegistry $registry, CmsActionService $service): void
+    public static function register(CapabilityRegistry $registry, MaintenanceActions $service): void
     {
         foreach (self::all($service) as $tool) {
             $registry->register($tool, module: 'maintenance', effect: $tool->name() === 'cms_maintenance_toggle' ? 'external' : 'read');
@@ -21,7 +20,7 @@ final class MaintenanceActionCatalog
     /**
      * @return list<ActionTool>
      */
-    public static function all(CmsActionService $service): array
+    public static function all(MaintenanceActions $service): array
     {
         return [
             new ActionTool(

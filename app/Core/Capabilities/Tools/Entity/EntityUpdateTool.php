@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Core\Capabilities\Tools\Entity;
 
 use App\Core\Capabilities\Tools\AbstractCapabilityTool;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityMutationService;
+use App\Services\Capabilities\EntityReadService;
 
 /**
  * Updates an entity and/or its translations.
@@ -13,7 +14,8 @@ use App\Services\Capabilities\EntityCrudService;
 class EntityUpdateTool extends AbstractCapabilityTool
 {
     public function __construct(
-        private readonly EntityCrudService $entities,
+        private readonly EntityMutationService $entities,
+        private readonly EntityReadService $reader,
     ) {}
 
     public function name(): string
@@ -36,7 +38,7 @@ class EntityUpdateTool extends AbstractCapabilityTool
             'market_ids' => ['type' => 'array', 'items' => ['type' => 'integer']],
             'audit_action' => ['type' => 'string', 'enum' => ['draft', 'submit_for_review'], 'description' => 'Save a private draft or submit it to editorial review; never grants publication authority'],
             'audit_notes' => ['type' => 'string', 'description' => 'Optional editorial review notes'],
-            'sections_json' => ['type' => ['object', 'array', 'string'], 'description' => 'Draft block sections as a locale-keyed object (es/en), a flat list, or a JSON string encoding either shape'],
+            'sections_json' => ['type' => ['object', 'string'], 'description' => 'Draft block sections as a locale-keyed object (es/en) or a JSON string encoding that object'],
             'publish' => ['type' => 'boolean', 'description' => 'Requires human approval of the current draft'],
         ];
     }
@@ -53,7 +55,7 @@ class EntityUpdateTool extends AbstractCapabilityTool
 
     public function permissionFor(array $args): ?string
     {
-        return $this->safePermission(fn (): ?string => $this->entities->schemaFor($this->string($args, 'type'))->permission);
+        return $this->safePermission(fn (): ?string => $this->reader->schemaFor($this->string($args, 'type'))->permission);
     }
 
     public function ability(): string

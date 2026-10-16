@@ -66,4 +66,12 @@ interface BlockTypeInterface
      * @param  array<string, mixed>  $payload
      */
     public function render(array $payload, ?Market $market = null, ?string $locale = null): string;
+
+    /** @return array<string,array<string,mixed>> */
+    public function getEditorSchema(): array;
+
+    public function getEditorView(): ?string;
+
+    /** @return array<string,mixed> */
+    public function getEditorData(): array;
 }

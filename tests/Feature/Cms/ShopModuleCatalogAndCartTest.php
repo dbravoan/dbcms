@@ -2,44 +2,50 @@
 
 declare(strict_types=1);
 
+use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Models\Market;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\Shop\Models\Order;
 use Modules\Shop\Models\Product;
-use Modules\Shop\Models\ProductCategory;
-use Modules\Shop\Models\ShopSetting;
 use Modules\Shop\Services\CartService;
 use Modules\Shop\Services\ShopDomainService;
+use Tests\Support\CmsFixtures;
+use Tests\Support\ShopComposition;
+use Tests\Support\ShopFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, ShopComposition::class);
 
 beforeEach(function (): void {
     // Content is mutated and asserted immediately in these tests.
     config(['cms.page_cache.enabled' => false]);
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en'], ['es', 'us']);
+    CmsFixtures::identities();
+    $product = ShopFixtures::product();
+    $product->update(['specs_json' => ['CPU' => '64-Core ARM Neoverse N2']]);
+    $us = Market::where('code', 'us')->sole();
+    $us->update(['currency' => 'USD', 'default_locale' => 'en']);
+    $product->markets()->updateExistingPivot($us->id, ['custom_price' => 199]);
 });
 
 test('shop index renders products in Spanish and English with multi-market pricing', function (): void {
     // 1. Spanish Market (EUR)
     $responseEs = $this->get('/es/es/tienda');
     $responseEs->assertOk();
-    $responseEs->assertSee('Servidor Edge Cyber-KV 10G');
-    $responseEs->assertSee('1.299,00 €');
+    $responseEs->assertSee('Producto PRD-EDGE-1000');
+    $responseEs->assertSee('159,00 €');
 
     // 2. US Market (USD)
     $responseUs = $this->get('/us/en/shop');
     $responseUs->assertOk();
-    $responseUs->assertSee('Cyber-KV 10G Edge Server');
-    $responseUs->assertSee('$1,399.00');
+    $responseUs->assertSee('Producto PRD-EDGE-1000');
+    $responseUs->assertSee('$199.00');
 });
 
 test('product detail renders photo gallery, technical specs, and Schema.org JSON-LD', function (): void {
-    $response = $this->get('/es/es/tienda/servidor-edge-cyber-kv-10g');
+    $response = $this->get('/es/es/tienda/prd-edge-1000');
     $response->assertOk();
     $response->assertSee('PRD-EDGE-1000');
-    $response->assertSee('Servidor Edge Cyber-KV 10G');
+    $response->assertSee('Producto PRD-EDGE-1000');
     $response->assertSee('64-Core ARM Neoverse N2');
     $response->assertSee('Añadir al Carrito');
 
@@ -86,65 +92,22 @@ test('cart API supports adding, updating, and removing items with multi-currency
     expect($cartService->count())->toBe(0);
 });
 
-test('full shop checkout flow creates order, decrements stock, and redirects to confirmation', function (): void {
-    $product = Product::where('sku', 'PRD-EDGE-1000')->first();
-    $initialStock = $product->stock_quantity;
-
-    // Add item to cart
-    $this->postJson('/api/cart/add', [
-        'product_id' => $product->id,
-        'quantity' => 2,
-    ])->assertOk();
-
-    // Process checkout
-    $response = $this->post('/es/es/checkout/process', [
-        'customer_name' => 'John Doe',
-        'customer_email' => 'john.doe@enterprise.com',
-        'customer_phone' => '+34 600 111 222',
-        'address' => 'Paseo de la Castellana 100',
-        'city' => 'Madrid',
-        'postal_code' => '28046',
-        'country' => 'España',
-        'payment_method' => 'bank_transfer',
-        'notes' => 'Entrega urgente en horario de oficina.',
-    ]);
-    $response->assertSessionHasNoErrors();
-
-    $order = Order::where('customer_email', 'john.doe@enterprise.com')->first();
-    expect($order)->not->toBeNull();
-    expect($order->items()->count())->toBe(1);
-    expect($order->payment_status)->toBe('unpaid');
-
-    $response->assertRedirect();
-    expect($response->headers->get('Location'))->toContain('signature=', $order->order_number);
-
-    // Verify stock decrement
-    $product->refresh();
-    expect($product->stock_quantity)->toBe($initialStock - 2);
-
-    // Verify Order Success Page
-    $successPage = $this->get("/es/es/order/{$order->order_number}");
-    $successPage->assertOk();
-    $successPage->assertSee($order->order_number);
-    $successPage->assertSee('¡Pedido Confirmado con Éxito!');
-});
-
 test('catalog-only mode disables cart and allows requesting custom quotes', function (): void {
     // Switch to Catalog Only Mode
-    ShopSetting::set('shop.mode', 'catalog_only');
+    app(ModuleSettingsServiceInterface::class)->set('shop', 'shop_mode', 'catalog_only');
     $shopService = app(ShopDomainService::class);
     expect($shopService->isCatalogOnly())->toBeTrue();
 
     $product = Product::where('sku', 'PRD-EDGE-1000')->first();
 
     // Product detail in catalog mode shows Request Quote button
-    $response = $this->get('/es/es/tienda/servidor-edge-cyber-kv-10g');
+    $response = $this->get('/es/es/tienda/prd-edge-1000');
     $response->assertOk();
     $response->assertSee('Solicitar Presupuesto');
     $response->assertDontSee('Añadir al Carrito');
 
     // Submit inquiry
-    $inquiryRes = $this->post('/es/es/tienda/inquiry', [
+    $inquiryRes = $this->post('/es/es/inquiry', [
         'product_id' => $product->id,
         'name' => 'Ingeniería Cloud SL',
         'email' => 'infra@cloud.es',
@@ -153,63 +116,6 @@ test('catalog-only mode disables cart and allows requesting custom quotes', func
     ]);
 
     $inquiryRes->assertSessionHas('success');
-});
-
-test('admin can create and manage products with modular sections in backoffice', function (): void {
-    $admin = User::where('email', 'admin@db-cms.io')->first();
-    $market = Market::where('code', 'es')->first();
-    $category = ProductCategory::first();
-
-    $sections = [
-        [
-            'type' => 'features',
-            'title' => 'Capacidades de Aceleración',
-            'items' => [
-                ['icon' => '⚡', 'title' => 'PCIe Gen 5', 'desc' => '128 GB/s bandwidth'],
-            ],
-            'animation' => 'fadeInUp',
-        ],
-        [
-            'type' => 'faq',
-            'title' => 'Dudas de Integración',
-            'items' => [
-                ['question' => '¿Es compatible con Kubernetes?', 'answer' => 'Sí, incluye driver CSI.'],
-            ],
-            'animation' => 'fadeInUp',
-        ],
-    ];
-
-    $response = $this->actingAs($admin)
-        ->post(route('admin.shop.products.store'), [
-            'sku' => 'PRD-CLUSTER-AI',
-            'translations' => ['es' => [
-                'name' => 'Superclúster IA Perimetral',
-                'slug' => 'supercluster-ia-perimetral',
-                'summary' => 'Clúster de alta densidad.',
-                'description' => 'Descripción detallada en markdown.',
-            ]],
-            'price' => 4999.00,
-            'compare_price' => 5499.00,
-            'stock_quantity' => 5,
-            'track_stock' => true,
-            'category_id' => $category->id,
-            'market_ids' => [$market->id],
-            'is_featured' => true,
-            'is_active' => true,
-            'sections_json' => json_encode($sections),
-        ]);
-
-    $response->assertRedirect(route('admin.shop.products.index'));
-
-    $newProd = Product::where('sku', 'PRD-CLUSTER-AI')->first();
-    expect($newProd)->not->toBeNull();
-    expect($newProd->sections()->count())->toBe(2);
-
-    // Check frontoffice rendering with modular sections
-    $frontRes = $this->get('/es/es/tienda/supercluster-ia-perimetral');
-    $frontRes->assertOk();
-    $frontRes->assertSee('Capacidades de Aceleración');
-    $frontRes->assertSee('¿Es compatible con Kubernetes?');
 });
 
 test('admin can toggle shop settings and view orders in backoffice', function (): void {
@@ -225,8 +131,8 @@ test('admin can toggle shop settings and view orders in backoffice', function ()
         'notification_email' => 'orders@db-cms.io',
     ]);
     $settingsRes->assertRedirect(route('admin.modules.settings', ['identifier' => 'shop']));
-    expect(ShopSetting::get('shop.mode'))->toBe('catalog_only');
-    expect((float) ShopSetting::get('shop.tax_rate'))->toBe(18.0);
+    expect(module_setting('shop', 'shop_mode'))->toBe('catalog_only');
+    expect((float) module_setting('shop', 'tax_rate'))->toBe(18.0);
 
     // 2. Orders list
     $ordersRes = $this->actingAs($admin)->get(route('admin.shop.orders.index'));

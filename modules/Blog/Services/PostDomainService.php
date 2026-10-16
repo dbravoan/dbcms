@@ -8,11 +8,13 @@ use App\Contracts\Services\LocalizationServiceInterface;
 use App\Core\Capabilities\ActorContext;
 use App\Core\Capabilities\CapabilityAuthorizer;
 use App\Core\Capabilities\ExecutionContext;
+use App\Core\Sections\SectionEditorService;
 use App\DTOs\Content\EntityMutationData;
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\User;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityMutationService;
+use App\Services\Capabilities\EntityReadService;
 use App\Services\Content\EditorialDraftService;
 use App\Services\Seo\ContentQualityAuditorService;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -23,7 +25,7 @@ use Modules\Blog\Models\Post;
 
 class PostDomainService implements PostDomainServiceInterface
 {
-    public function __construct(private readonly ?EntityCrudService $crud = null) {}
+    public function __construct(private readonly EntityMutationService $mutations, private readonly EntityReadService $reader) {}
 
     /** @param array<string,mixed> $data */
     public function createPost(array $data, ?User $actor = null): Post
@@ -31,8 +33,8 @@ class PostDomainService implements PostDomainServiceInterface
         $actor ??= Auth::user();
         $actor ??= app(CapabilityAuthorizer::class)->user(app(ExecutionContext::class)->actor ?? new ActorContext(null));
         abort_unless($actor instanceof User, 403);
-        $payload = $this->entities()->create('post', EntityMutationData::fromLegacy($data)->arguments, $actor);
-        $post = $this->entities()->resolveEntity('post', $payload['id']);
+        $payload = $this->mutations->create('post', EntityMutationData::fromForm($data)->arguments, $actor);
+        $post = $this->reader->resolveEntity('post', $payload['id']);
         assert($post instanceof Post);
 
         return $post->load(['translations', 'sections.translations', 'markets', 'category', 'author']);
@@ -43,22 +45,22 @@ class PostDomainService implements PostDomainServiceInterface
      */
     public function updatePost(Post $post, array $data): array
     {
-        $arguments = EntityMutationData::fromLegacy($data)->arguments;
+        $arguments = EntityMutationData::fromForm($data)->arguments;
         if ($post->is_published && ! empty($arguments['attributes']['is_published'])) {
             unset($arguments['attributes']['is_published'], $arguments['attributes']['published_at']);
         }
 
-        return $this->entities()->update('post', $post->getKey(), $arguments);
+        return $this->mutations->update('post', $post->getKey(), $arguments);
     }
 
     public function deletePost(Post $post): void
     {
-        $this->entities()->delete('post', $post->getKey());
+        $this->mutations->delete('post', $post->getKey());
     }
 
     public function syncSections(Post $post, string $sectionsJson): void
     {
-        $this->entities()->update('post', $post->getKey(), ['sections_json' => $sectionsJson]);
+        $this->mutations->update('post', $post->getKey(), ['sections_json' => $sectionsJson]);
     }
 
     /** @return array<string,mixed> */
@@ -69,19 +71,15 @@ class PostDomainService implements PostDomainServiceInterface
         assert($post instanceof Post);
         $data = [
             'post' => $post,
+            'sectionsData' => app(SectionEditorService::class)->payload($post),
             'markets' => Market::with('languages')->where('is_active', true)->get(),
             'languages' => Language::where('is_active', true)->get(),
         ];
         $translation = $post->translations->firstWhere('locale', app(LocalizationServiceInterface::class)->defaultLocale()) ?? $post->translations->first();
         $data['categories'] = Category::with('translations')->get();
-        $data['qualityReport'] = app(ContentQualityAuditorService::class)->auditPost((string) ($translation->title ?? ''), (string) ($translation->content ?? ''));
+        $data['qualityReport'] = app(ContentQualityAuditorService::class)->audit((string) ($translation->title ?? ''), (string) ($translation->content ?? ''));
 
         return $data;
-    }
-
-    private function entities(): EntityCrudService
-    {
-        return $this->crud ?? app(EntityCrudService::class);
     }
 
     /**
@@ -100,7 +98,7 @@ class PostDomainService implements PostDomainServiceInterface
             })
             ->with(['translations' => function ($q) use ($locale): void {
                 $q->where('locale', $locale);
-            }, 'author', 'category.translations'])
+            }, 'author', 'category' => fn ($category) => $category->where('is_active', true)->forMarket($market)->with('translations')])
             ->latest('published_at')
             ->paginate($perPage, ['*'], 'page', $page);
     }

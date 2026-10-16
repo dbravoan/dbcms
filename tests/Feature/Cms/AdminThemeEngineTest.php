@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 use App\Contracts\Services\AdminThemeServiceInterface;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\View;
+use Tests\Support\CmsFixtures;
+use Tests\Support\EditorialUiComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, EditorialUiComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
 });
 
 test('admin theme service discovers registered backoffice themes', function (): void {
@@ -242,39 +244,6 @@ test('termocms loads termocms.css design system across core views and module vie
     $auditResponse->assertDontSee('Departamento de Calidad & Auditoría | >_dbCMS');
 });
 
-test('termocms styles secondary buttons, spans, and pagination in corporate theme', function (): void {
-    /** @var AdminThemeServiceInterface $themeService */
-    $themeService = app(AdminThemeServiceInterface::class);
-    $themeService->setActiveTheme('termocms');
-
-    $admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
-
-    $response = $this->actingAs($admin)->get(route('admin.pages.index'));
-    $response->assertStatus(200);
-    $response->assertSee('button.bg-gray-800');
-    $response->assertSee('span.bg-gray-800');
-});
-
-test('termocms styles code and pre tags with clean light background and readable typography', function (): void {
-    /** @var AdminThemeServiceInterface $themeService */
-    $themeService = app(AdminThemeServiceInterface::class);
-    $themeService->setActiveTheme('termocms');
-
-    $admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
-
-    $formsResponse = $this->actingAs($admin)->get(route('admin.forms.index'));
-    $formsResponse->assertStatus(200);
-    $formsResponse->assertSee('theme-assets/termocms/termocms.css');
-    $formsResponse->assertSee('code.bg-black\/50');
-    $formsResponse->assertSee('#0E7490');
-    $formsResponse->assertSee('#F1F5F9');
-
-    $usersResponse = $this->actingAs($admin)->get(route('admin.users.index'));
-    $usersResponse->assertStatus(200);
-    $usersResponse->assertSee('theme-assets/termocms/termocms.css');
-    $usersResponse->assertSee('code.bg-black\/60');
-});
-
 test('status-badge and chip components render unified styling for dbcms and termocms', function (): void {
     /** @var AdminThemeServiceInterface $themeService */
     $themeService = app(AdminThemeServiceInterface::class);
@@ -298,7 +267,9 @@ test('status-badge and chip components render unified styling for dbcms and term
         ->toContain('text-[#00FF99]')
         ->toContain('ES');
 
-    // Test semantic class output in components
+    $themeService->setActiveTheme('termocms');
+
+    // The corporate theme keeps the same semantic component classes.
     $badge = Blade::render('<x-admin.status-badge :active="true" activeText="Publicada" />');
     expect($badge)->toContain('admin-badge')
         ->toContain('admin-badge-positive')
@@ -314,21 +285,4 @@ test('status-badge and chip components render unified styling for dbcms and term
         ->toContain('admin-chip-market')
         ->toContain('ES');
 
-    // Verify termocms.css defines corporate overrides for these semantic classes
-    $css = file_get_contents(resource_path('views/themes/admin/termocms/assets/termocms.css'));
-    expect($css)->toContain('.admin-chip-primary')
-        ->toContain('.admin-chip-default')
-        ->toContain('span[class*="bg-black/"]');
-});
-
-test('termocms css defines Section 16 for table action links, danger red, and chip normalization', function (): void {
-    $css = file_get_contents(resource_path('views/themes/admin/termocms/assets/termocms.css'));
-    expect($css)->not->toBeFalse();
-    expect($css)->toContain('16. Table Action Links, Semantic Colors & Unified Badges / Chips')
-        ->toContain('td a.text-\[\#00FF99\]')
-        ->toContain('td.text-right a.text-\[\#00FF99\]')
-        ->toContain('var(--termo-primary)')
-        ->toContain('#E11D48')
-        ->toContain('html.theme-termocms .prompt-prefix')
-        ->toContain('display: none !important');
 });

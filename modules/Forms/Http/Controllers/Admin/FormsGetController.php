@@ -32,7 +32,7 @@ final class FormsGetController extends Controller
             'desc'
         );
 
-        return view('admin.forms.index', [
+        return view('forms::admin.index', [
             'forms' => $forms,
         ]);
     }

@@ -20,7 +20,7 @@
     $defaultLocale = $defaultLocale ?? $allLangs->first()?->code ?? 'es';
     $translationsMap = [];
     foreach ($allLangs as $__lang) {
-        $translationsMap[$__lang->code] = ['name' => '', 'slug' => '', 'description' => '', 'slugTouched' => false];
+        $translationsMap[$__lang->code] = ['title' => '', 'slug' => '', 'description' => '', 'meta_title' => '', 'meta_description' => '', 'schema_type' => 'ImageGallery'];
     }
     if ($gallery) {
         foreach ($gallery->translations as $tr) {
@@ -32,6 +32,12 @@
                 'meta_description' => $tr->meta_description ?? '',
                 'schema_type' => $tr->schema_type ?? 'ImageGallery',
             ];
+        }
+    }
+    foreach ($translationsMap as $code => $translation) {
+        $submitted = old('translations.'.$code);
+        if (is_array($submitted)) {
+            $translationsMap[$code] = array_replace($translation, $submitted);
         }
     }
 
@@ -53,6 +59,10 @@
             ];
         }
     }
+    $submittedItems = json_decode((string) old('items_json', ''), true);
+    if (is_array($submittedItems) && array_is_list($submittedItems)) {
+        $initialItems = $submittedItems;
+    }
 @endphp
 
 @if(!empty($gallery?->getAttributes()['pending_revision_id']))
@@ -60,88 +70,7 @@
 @endif
 
 <form method="POST" action="{{ $actionUrl }}" class="space-y-8 font-mono text-xs" x-on:locale-tab-change="switchLocale($event.detail.locale)"
-      x-data="{
-    activeLocale: @js($defaultLocale),
-    defaultLocale: @js($defaultLocale),
-    translations: @js($translationsMap),
-    prefilledFromDefault: {},
-    allLanguages: @js($allLangs->pluck('code')),
-
-    items: @js($initialItems),
-    slugTouched: {},
-
-    init() {
-        for (const code of this.allLanguages) {
-            if (!this.translations[code]) {
-                this.translations[code] = {
-                    title: '',
-                    slug: '',
-                    description: '',
-                    meta_title: '',
-                    meta_description: '',
-                    schema_type: 'ImageGallery'
-                };
-            }
-        }
-    },
-
-
-    switchLocale(code) {
-        if (code !== this.defaultLocale && (!this.translations[code]?.title || this.translations[code]?.title.trim() === '')) {
-            if (this.translations[this.defaultLocale]?.title) {
-                this.translations[code].title = this.translations[this.defaultLocale].title;
-                this.translations[code].slug = this.translations[this.defaultLocale].slug ? this.translations[this.defaultLocale].slug + '-' + code : '';
-                this.translations[code].description = this.translations[this.defaultLocale].description || '';
-                this.prefilledFromDefault[code] = true;
-            }
-        }
-        this.activeLocale = code;
-    },
-
-    generateSlug(code) {
-        const title = this.translations[code]?.title || '';
-        const s = title.toLowerCase()
-            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/(^-|-$)+/g, '');
-        this.translations[code].slug = s;
-    },
-    openFileManagerForNewItem() {
-        const targetId = 'new_gallery_item_' + Date.now();
-        window.addEventListener('file-selected', (e) => {
-            if (e.detail?.target === targetId) {
-                this.items.push({
-                    id: 'item_' + Date.now(),
-                    image_url: e.detail.file.url,
-                    title: e.detail.file.title || e.detail.file.name || '',
-                    alt_text: e.detail.file.alt_text || '',
-                    caption: e.detail.file.caption || ''
-                });
-            }
-        }, { once: true });
-
-        window.dispatchEvent(new CustomEvent('open-filemanager', {
-            detail: { target: targetId }
-        }));
-    },
-    removeItem(idx) {
-        this.items.splice(idx, 1);
-    },
-    moveUp(idx) {
-        if (idx > 0) {
-            const temp = this.items[idx];
-            this.items[idx] = this.items[idx - 1];
-            this.items[idx - 1] = temp;
-        }
-    },
-    moveDown(idx) {
-        if (idx < this.items.length - 1) {
-            const temp = this.items[idx];
-            this.items[idx] = this.items[idx + 1];
-            this.items[idx + 1] = temp;
-        }
-    }
-}">
+      x-data="galleryEditor(@js($translationsMap), @js($initialItems), @js($allLangs->pluck('code')), @js($defaultLocale))">
     @csrf
     @if($isEdit)
         @method('PUT')
@@ -158,15 +87,6 @@
             <div class="cyber-card p-6 space-y-4">
                 <!-- Dynamic Language Switcher Bar -->
                 <x-admin.locale-tabs :languages="$allLangs" :flags="$flags ?? []" :active="$defaultLocale" group="gallery-form" />
-
-                <!-- Prefilled Notification Banner -->
-                <div x-show="prefilledFromDefault[activeLocale]" x-cloak class="p-2.5 rounded-lg bg-[#00FF99]/10 border border-[#00FF99]/30 text-[#00FF99] flex items-center justify-between text-xs">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-bolt"></i>
-                        <span>{{ __('admin.entity_form.preloaded') }}</span>
-                    </div>
-                    <button type="button" @click="prefilledFromDefault[activeLocale] = false" class="text-gray-400 hover:text-white">&times;</button>
-                </div>
 
                 <!-- Dynamic Language Inputs for Active Locale -->
                 <div class="space-y-4">
@@ -209,7 +129,7 @@
                     </div>
 
                     <!-- Todos los idiomas viajan con el contrato de traducciones. -->
-                    <template x-for="code in allLanguages" :key="'legacy-' + code">
+                    <template x-for="code in allLanguages" :key="'translation-' + code">
                         <div x-show="activeLocale === code">
                             <input type="hidden" :name="'translations[' + code + '][title]'" :value="translations[code]?.title || ''">
                             <input type="hidden" :name="'translations[' + code + '][slug]'" :value="translations[code]?.slug || ''">

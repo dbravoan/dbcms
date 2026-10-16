@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Ads;
 
 use App\Core\Modules\BaseModuleServiceProvider;
+use Modules\Ads\Services\AdsCookieDisclosure;
 use Modules\Ads\Services\AdSenseManagerService;
 
 class AdsModuleServiceProvider extends BaseModuleServiceProvider
@@ -19,6 +20,8 @@ class AdsModuleServiceProvider extends BaseModuleServiceProvider
 
     public function register(): void
     {
+        $this->app->singleton(AdsCookieDisclosure::class);
+        $this->app->tag(AdsCookieDisclosure::class, 'cms.cookie-disclosures');
         $this->app->singleton(AdSenseManagerService::class);
     }
 

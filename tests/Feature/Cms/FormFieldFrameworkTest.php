@@ -3,28 +3,31 @@
 declare(strict_types=1);
 
 use App\Core\Forms\SchemaFactory;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ViewErrorBag;
+use Tests\Support\CmsFixtures;
+use Tests\Support\FormsComposition;
+use Tests\Support\VisualContentFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, FormsComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    VisualContentFixtures::form();
     config(['cms.theme' => 'db-cyber', 'cms.admin_theme' => 'dbcms', 'cms.page_cache.enabled' => false]);
     view()->share('errors', new ViewErrorBag);
 });
 
-test('the shared renderer renders a database-backed form (seeded contact page)', function (): void {
-    $response = $this->get('/es/es/contacto');
+test('the shared renderer renders a database-backed form', function (): void {
+    $html = Blade::render('<x-forms::form-engine slug="contacto" />');
 
-    $response->assertOk()
-        ->assertSee('name="nombre"', false)
-        ->assertSee('name="email"', false)
-        ->assertSee('name="empresa"', false)
-        ->assertSee('name="mensaje"', false)
-        ->assertSee('_hp_check', false);
+    expect($html)
+        ->toContain('name="nombre"')
+        ->toContain('name="email"')
+        ->toContain('name="empresa"')
+        ->toContain('name="mensaje"')
+        ->toContain('_hp_check');
 });
 
 test('the same renderer renders an inline array schema defined in blade', function (): void {

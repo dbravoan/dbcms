@@ -1,54 +1,55 @@
 {
-  "identifier": "creative-studio",
-  "name": "Creative Studio",
-  "version": "1.0.0",
-  "description": "Campañas, revisiones inmutables y producción privada de texto, imagen, carrusel y vídeo con configuración guiada.",
-  "provider": "Modules\\CreativeStudio\\CreativeStudioModuleServiceProvider",
-  "is_pageable": false,
-  "has_dedicated_panel": false,
-  "widgets": {},
-  "permissions": [
-    "manage:creative-studio"
-  ],
-  "settings": {
-    "installation_budget": {
-      "type": "number",
-      "label": "Presupuesto de generación de la instalación (céntimos)",
-      "description": "0 desactiva la generación de pago. Las reservas inciertas se conservan.",
-      "default": 0
+    "identifier": "creative-studio",
+    "name": "Creative Studio",
+    "version": "1.0.0",
+    "description": "Campañas, revisiones inmutables y producción privada de texto, imagen, carrusel y vídeo con configuración guiada.",
+    "provider": "Modules\\CreativeStudio\\CreativeStudioModuleServiceProvider",
+    "is_pageable": false,
+    "has_dedicated_panel": false,
+    "widgets": {},
+    "permissions": [
+        "manage:creative-studio"
+    ],
+    "settings": {
+        "installation_budget": {
+            "type": "number",
+            "label": "Presupuesto de generación de la instalación (céntimos)",
+            "description": "0 desactiva la generación de pago. Las reservas inciertas se conservan.",
+            "default": 0
+        },
+        "currency": {
+            "type": "select",
+            "label": "Moneda del presupuesto",
+            "options": {
+                "USD": "USD",
+                "EUR": "EUR"
+            },
+            "default": "USD"
+        },
+        "estimate_text": {
+            "type": "number",
+            "label": "Estimación máxima por llamada de texto (céntimos)",
+            "default": 0
+        },
+        "estimate_image": {
+            "type": "number",
+            "label": "Estimación máxima por imagen (céntimos)",
+            "default": 0
+        },
+        "estimate_video": {
+            "type": "number",
+            "label": "Estimación máxima por clip de 10 segundos (céntimos)",
+            "default": 0
+        },
+        "concurrency": {
+            "type": "number",
+            "label": "Generaciones simultáneas en la instalación",
+            "default": 2
+        }
     },
-    "currency": {
-      "type": "select",
-      "label": "Moneda del presupuesto",
-      "options": {
-        "USD": "USD",
-        "EUR": "EUR"
-      },
-      "default": "USD"
-    },
-    "estimate_text": {
-      "type": "number",
-      "label": "Estimación máxima por llamada de texto (céntimos)",
-      "default": 0
-    },
-    "estimate_image": {
-      "type": "number",
-      "label": "Estimación máxima por imagen (céntimos)",
-      "default": 0
-    },
-    "estimate_video": {
-      "type": "number",
-      "label": "Estimación máxima por clip de 10 segundos (céntimos)",
-      "default": 0
-    },
-    "concurrency": {
-      "type": "number",
-      "label": "Generaciones simultáneas en la instalación",
-      "default": 2
+    "default_active": false,
+    "requires": {
+        "core": ">=1.0.0",
+        "marketing": "^1.0"
     }
-  },
-  "default_active": false,
-  "requires": {
-    "core": ">=1.0.0"
-  }
 }

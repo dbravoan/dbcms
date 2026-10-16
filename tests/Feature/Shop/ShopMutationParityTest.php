@@ -11,12 +11,15 @@ use App\Models\Market;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
+use Modules\ContentAudit\Services\EditorialWorkflow;
 use Modules\Shop\Models\Product;
 use Modules\Shop\Models\ProductCategory;
 use Modules\Shop\Schema\ShopEntitySchemas;
 use Modules\Shop\ShopModuleServiceProvider;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Tests\Support\BlogShopAuditComposition;
+
+uses(BlogShopAuditComposition::class);
 
 beforeEach(function (): void {
     foreach (ShopEntitySchemas::all() as $schema) {
@@ -71,7 +74,7 @@ it('stages published product price translations and pivots while preserving live
     expect($product->fresh()->stock_quantity)->toBe(4);
     expect($product->fresh()->load('markets')->getPriceForMarket($this->market))->toBe(9.0);
     $this->get(route('admin.shop.products.edit', $product))->assertOk()->assertViewHas('product', fn (Product $draft): bool => $draft->price === 30.0 && $draft->getPriceForMarket($this->market) === 0.0 && $draft->translations->first()->name === 'Pending product');
-    app(ContentAuditServiceInterface::class)->approve($product->fresh(), $this->user);
+    app(EditorialWorkflow::class)->approve($product->fresh(), $this->user);
     expect($product->fresh()->price)->toBe(30.0);
     expect($product->fresh()->load('markets')->getPriceForMarket($this->market))->toBe(0.0);
 });
@@ -82,7 +85,7 @@ it('rejects approval if live inventory changed after the draft was staged', func
     $result = app(CapabilityExecutor::class)->execute('cms_entity_update', ['type' => 'product', 'id' => $product->id, 'attributes' => ['price' => 30]], $this->actor);
     expect($result['live_preserved'] ?? false)->toBeTrue();
     Model::withoutEvents(fn () => $product->refresh()->decrement('stock_quantity'));
-    expect(fn () => app(ContentAuditServiceInterface::class)->approve($product->fresh(), $this->user))->toThrow(HttpException::class);
+    expect(fn () => app(EditorialWorkflow::class)->approve($product->fresh(), $this->user))->toThrow(HttpException::class);
     expect($product->fresh()->stock_quantity)->toBe(3);
     expect($product->fresh()->price)->toBe(20.0);
 });

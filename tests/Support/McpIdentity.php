@@ -7,11 +7,13 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Passport\AccessToken;
 use Laravel\Passport\ClientRepository;
-use Modules\Mcp\Services\McpServerService;
+use Tests\Support\McpProtocolClient;
+use Tests\Support\PassportTestKeys;
 
 /** @param list<string> $scopes */
 function mcpTestBindIdentity(?User $user = null, array $scopes = ['mcp:access', 'mcp:read', 'mcp:write', 'mcp:destructive']): User
 {
+    PassportTestKeys::configure();
     $user ??= User::where('email', 'admin@db-cms.io')->firstOrFail();
     app(ClientRepository::class)->createPersonalAccessGrantClient('MCP regression fixture');
     $result = $user->createToken('MCP regression fixture', $scopes);
@@ -43,7 +45,7 @@ function mcpTestHumanApproval(array $payload, User $human): array
     $execution = Execution::findOrFail($payload['id']);
     $step = $execution->steps()->firstOrFail();
     expect($step->status)->toBe('approval_required');
-    test()->withHeaders(['Authorization' => ''])->actingAs($human, 'web')->postJson(route('admin.orchestration.approve', $execution->getKey()), [
+    test()->withHeaders(['Authorization' => ''])->actingAs($human, 'web')->postJson(route('admin.executions.approve', $execution->getKey()), [
         'step' => $step->key, 'binding_hash' => $step->binding_hash,
     ])->assertSuccessful();
     $step->refresh();
@@ -56,7 +58,7 @@ function mcpTestHumanApproval(array $payload, User $human): array
 function mcpHumanApprovedRequest(array $request): array
 {
     $human = mcpTestBindIdentity(Auth::user());
-    $response = app(McpServerService::class)->handle($request);
+    $response = app(McpProtocolClient::class)->handle($request);
     if (isset($response['result']['content'][0]['text'])) {
         $payload = (array) json_decode($response['result']['content'][0]['text'], true);
         $response['result']['content'][0]['text'] = json_encode(mcpTestHumanApproval($payload, $human), JSON_THROW_ON_ERROR);

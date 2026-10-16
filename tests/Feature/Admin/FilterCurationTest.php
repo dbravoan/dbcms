@@ -5,15 +5,20 @@ declare(strict_types=1);
 use App\Models\FilterPage;
 use App\Models\Market;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Models\Post;
 use Modules\Blog\Models\Tag;
+use Tests\Support\BlogShopComposition;
+use Tests\Support\CmsFixtures;
+use Tests\Support\FilterFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, BlogShopComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    FilterFixtures::blog();
+    FilterFixtures::shop();
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
     config(['cms.theme' => 'db-cyber', 'cms.admin_theme' => 'dbcms', 'cms.page_cache.enabled' => false]);
 });
@@ -33,7 +38,7 @@ test('an admin can curate a filter landing from its friendly path', function ():
         'module' => 'blog',
         'market_code' => 'es',
         'locale' => 'es',
-        'path' => 'etiqueta/laravel',
+        'path' => 'laravel',
         'title' => 'Artículos sobre Laravel',
         'heading' => 'Laravel',
         'meta_description' => 'Todos nuestros artículos sobre Laravel.',
@@ -50,12 +55,12 @@ test('an admin can curate a filter landing from its friendly path', function ():
         ->and($page->is_indexable)->toBeTrue();
 });
 
-test('an invalid or ambiguous path is rejected', function (): void {
+test('an unknown intermediate filter segment is rejected instead of becoming a search', function (): void {
     $this->actingAs($this->admin, 'web')->post('/admin/seo/filters', [
         'module' => 'blog',
         'market_code' => 'es',
         'locale' => 'es',
-        'path' => 'etiqueta/no-existe',
+        'path' => 'etiqueta-no-existe/recientes',
         'is_indexable' => '1',
     ])->assertSessionHasErrors(['path']);
 
@@ -63,15 +68,16 @@ test('an invalid or ambiguous path is rejected', function (): void {
 });
 
 test('a curated landing becomes indexable with its own text and canonical', function (): void {
-    $post = Post::published()->firstOrFail();
     $tag = Tag::create(['name' => 'Laravel', 'slug' => 'laravel']);
-    $post->tags()->attach($tag->getKey());
+    foreach (Post::published()->get() as $post) {
+        $post->tags()->attach($tag->getKey());
+    }
 
     $this->actingAs($this->admin, 'web')->post('/admin/seo/filters', [
         'module' => 'blog',
         'market_code' => 'es',
         'locale' => 'es',
-        'path' => 'etiqueta/laravel',
+        'path' => 'laravel',
         'title' => 'Artículos sobre Laravel',
         'heading' => 'Laravel',
         'meta_description' => 'Todos nuestros artículos sobre Laravel.',
@@ -82,13 +88,14 @@ test('a curated landing becomes indexable with its own text and canonical', func
 
     expect($html)->toContain('index, follow')
         ->and($html)->toContain('Artículos sobre Laravel')
-        ->and($html)->toContain('rel="canonical" href="'.url('/es/es/blog/laravel').'"');
+        ->and($html)->toContain('rel="canonical" href="'.url('/es/blog/laravel').'"');
 });
 
 test('an uncurated filter landing stays noindex', function (): void {
-    $post = Post::published()->firstOrFail();
     $tag = Tag::create(['name' => 'Laravel', 'slug' => 'laravel']);
-    $post->tags()->attach($tag->getKey());
+    foreach (Post::published()->get() as $post) {
+        $post->tags()->attach($tag->getKey());
+    }
 
     $html = (string) $this->get('/es/es/blog/laravel')->assertOk()->getContent();
 
@@ -107,22 +114,22 @@ test('curated indexable landings are published in the sitemap and llms.txt', fun
         'module' => 'blog',
         'market_code' => 'es',
         'locale' => 'es',
-        'path' => 'etiqueta/laravel',
+        'path' => 'laravel',
         'heading' => 'Laravel',
         'meta_description' => 'Artículos sobre Laravel.',
         'is_indexable' => '1',
     ]);
 
     $sitemap = (string) $this->get('/es/es/sitemap.xml')->getContent();
-    expect($sitemap)->toContain('/es/es/blog/laravel');
+    expect($sitemap)->toContain('/es/blog/laravel');
 
     // The segmented sitemap index (what crawlers actually read) exposes it too.
     expect((string) $this->get('/sitemap.xml')->getContent())->toContain('sitemaps/filters.xml');
-    expect((string) $this->get('/sitemaps/filters.xml')->getContent())->toContain('/es/es/blog/laravel');
+    expect((string) $this->get('/sitemaps/filters.xml')->getContent())->toContain('/es/blog/laravel');
 
     $llms = (string) $this->get('/es/es/llms.txt')->getContent();
     expect($llms)->toContain('Curated Filters & Collections')
-        ->and($llms)->toContain('/es/es/blog/laravel');
+        ->and($llms)->toContain('/es/blog/laravel');
 });
 
 test('a curated landing can be updated and removed', function (): void {
@@ -131,7 +138,7 @@ test('a curated landing can be updated and removed', function (): void {
         'market_code' => 'es',
         'locale' => 'es',
         'signature' => 'tag=laravel',
-        'path' => 'etiqueta/laravel',
+        'path' => 'laravel',
         'is_indexable' => false,
     ]);
 
@@ -156,12 +163,12 @@ test('the resolved canonical path is stored for a hierarchical category', functi
         'module' => 'blog',
         'market_code' => $market->code,
         'locale' => 'es',
-        'path' => 'categoria/arquitectura',
+        'path' => 'arquitectura',
         'title' => 'Arquitectura',
         'is_indexable' => '1',
     ]);
 
-    // The explicit marker is normalized to the entity's canonical bare path.
+    // Persist the resolved path of the declared category.
     expect(FilterPage::firstOrFail()->path)->toBe('arquitectura');
 });
 
@@ -171,19 +178,19 @@ test('the screen renders the curated rows with their google state and site link'
         'market_code' => 'es',
         'locale' => 'es',
         'signature' => 'sort=recientes',
-        'path' => 'orden/recientes',
+        'path' => 'recientes',
         'title' => 'Artículos recientes',
         'is_indexable' => true,
     ]);
 
     $html = (string) $this->actingAs($this->admin, 'web')->get('/admin/seo/filters')->assertOk()->getContent();
 
-    expect($html)->toContain('orden/recientes')
+    expect($html)->toContain('recientes')
         ->toContain('Artículos recientes')
         ->toContain('Sí')
         // Search/sort rows carry Google's recommendation notice.
         ->toContain('Google recomienda no indexar')
-        ->toContain('/es/es/blog/orden/recientes');
+        ->toContain('/es/es/blog/recientes');
 });
 
 test('the screen speaks plain spanish and drops the old wording', function (): void {
@@ -210,7 +217,7 @@ test('the screen opens pre-filled when the editor presses index in google on the
     }
 
     $html = (string) $this->actingAs($this->admin, 'web')
-        ->get('/admin/seo/filters?module=blog&market_code=es&locale=es&path=etiqueta/laravel')
+        ->get('/admin/seo/filters?module=blog&market_code=es&locale=es&path=laravel')
         ->assertOk()
         ->getContent();
 
@@ -225,7 +232,7 @@ test('the screen opens pre-filled when the editor presses index in google on the
 
 test('indexing a search or sort page shows the google recommendation notice', function (): void {
     $html = (string) $this->actingAs($this->admin, 'web')
-        ->get('/admin/seo/filters?module=blog&market_code=es&locale=es&path=orden/recientes')
+        ->get('/admin/seo/filters?module=blog&market_code=es&locale=es&path=recientes')
         ->assertOk()
         ->getContent();
 
@@ -254,7 +261,7 @@ test('the intro of a curated filter is composed with blocks and rendered on the 
         'module' => 'blog',
         'market_code' => 'es',
         'locale' => 'es',
-        'path' => 'etiqueta/laravel',
+        'path' => 'laravel',
         'title' => 'Laravel',
         'heading' => 'Laravel',
         'meta_description' => 'Guías de Laravel.',

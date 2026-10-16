@@ -6,7 +6,7 @@ La comprobación autenticada inicial confirmó un repositorio privado con
 publicación; antes de copiarla se debe comprobar que cada etiqueta estable conserva
 su commit original. No hay secretos ni variables de repositorio y el despliegue VPS
 sigue deshabilitado.
-Conservar la visibilidad privada. El [informe de publicación](RELEASE_VALIDATION_2026-10-13.md)
+Conservar la visibilidad privada. El [informe de publicación](archive/RELEASE_VALIDATION_2026-10-13.md)
 separa estos datos de los resultados posteriores del push y de Actions.
 En esta entrega sólo se publica dbCMS: no se crean el blog personal ni RegulaSE.
 
@@ -122,7 +122,6 @@ DB_DATABASE=regulase
 CMS_BRAND=dbcms
 CMS_THEME=db-cyber
 CMS_QUICK_LOGIN=false
-CMS_ORCHESTRATION_ENABLED=false
 APP_LOCALE=es
 APP_FALLBACK_LOCALE=es
 GEO_SITE_NAME="RegulaSE"

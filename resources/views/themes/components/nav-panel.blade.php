@@ -17,14 +17,14 @@
      x-show="$store.nav.open"
      x-cloak
      class="{{ $class ?? '' }}{{ $onDesktop ? '' : ' md:hidden' }}">
-    @include('themes.components.nav-items', [
+    @include('themes::components.nav-items', [
         'items' => $items ?? [],
         'fallback' => $fallback ?? [],
         'class' => $navClass ?? 'flex flex-col',
         'linkClass' => $linkClass ?? 'block py-2',
     ])
 
-    @include('themes.components.nav-admin', [
+    @include('themes::components.nav-admin', [
         'frontNav' => $nav,
         'class' => $adminClass ?? '',
     ])

@@ -8,7 +8,6 @@ use App\Core\Capabilities\CapabilityAuthorizer;
 use App\Models\User;
 use App\Services\Auth\OAuthScopeGrantService;
 use Modules\AiAssistant\Services\AiAuthorizationPolicy;
-use Modules\Mcp\Services\McpAccessPolicy;
 use PHPUnit\Framework\TestCase;
 
 final class SecurityBoundaryTest extends TestCase
@@ -19,9 +18,6 @@ final class SecurityBoundaryTest extends TestCase
         $user->method('isAdmin')->willReturn(false);
         $user->method('hasPermission')->willReturn(false);
 
-        $decision = (new McpAccessPolicy)->decide($user, ['mcp:write'], 'write', 'manage:users', true);
-
-        self::assertFalse($decision['allowed']);
         self::assertFalse((new CapabilityAuthorizer)->allowsUser($user, ['mcp:write'], 'write', 'manage:users', 'mcp'));
     }
 

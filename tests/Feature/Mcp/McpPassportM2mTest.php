@@ -5,27 +5,22 @@ declare(strict_types=1);
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Auth\ServiceAccountProvisioningService;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Artisan;
 use Laravel\Passport\Client;
 use Laravel\Passport\ClientRepository;
+use Tests\Support\McpEditorialComposition;
+use Tests\Support\McpFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, McpEditorialComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    McpFixtures::identities();
 
     // Create personal access client for testing
-    Artisan::call('passport:client', [
-        '--personal' => true,
-        '--name' => 'Feature Test Personal Client',
-        '--no-interaction' => true,
-    ]);
 
     // Create M2M client for testing
     $clientRepository = app(ClientRepository::class);
-    $this->m2mClient = app(ServiceAccountProvisioningService::class)->create('MCP service regression fixture', ['mcp:access', 'mcp:read', 'mcp:write', 'mcp:publish', 'mcp:destructive'], (int) Role::where('slug', 'author')->firstOrFail()->getKey());
+    $this->m2mClient = app(ServiceAccountProvisioningService::class)->create('MCP service regression fixture', ['mcp:access', 'mcp:read', 'mcp:write', 'mcp:destructive'], (int) Role::where('slug', 'author')->firstOrFail()->getKey());
     $this->m2mSecret = $this->m2mClient->plainSecret;
 });
 
@@ -55,8 +50,8 @@ test('mcp endpoint accepts M2M token and returns tools manifest', function (): v
     ]);
     $token = $tokenResponse->json('access_token');
 
-    // 2. Call /api/mcp
-    $response = $this->withToken($token)->postJson('/api/mcp', [
+    // 2. Call /mcp/cms
+    $response = $this->withToken($token)->postJson('/mcp/cms', [
         'jsonrpc' => '2.0',
         'id' => 1,
         'method' => 'tools/list',
@@ -68,8 +63,8 @@ test('mcp endpoint accepts M2M token and returns tools manifest', function (): v
     expect($result['result']['tools'])->toBeArray();
 });
 
-test('mcp endpoint enforces mcp:publish scope on mutating tools', function (): void {
-    // Token with ONLY mcp:access (no mcp:publish)
+test('mcp endpoint enforces mcp:write scope on mutating tools', function (): void {
+    // Token with ONLY mcp:access (no mcp:write)
     $tokenResponse = $this->post('/oauth/token', [
         'grant_type' => 'client_credentials',
         'client_id' => $this->m2mClient->id,
@@ -79,42 +74,47 @@ test('mcp endpoint enforces mcp:publish scope on mutating tools', function (): v
     $readToken = $tokenResponse->json('access_token');
 
     // Attempt to publish post
-    $forbiddenResponse = $this->withToken($readToken)->postJson('/api/mcp', [
+    $forbiddenResponse = $this->withToken($readToken)->postJson('/mcp/cms', [
         'jsonrpc' => '2.0',
         'id' => 2,
         'method' => 'tools/call',
         'params' => [
-            'name' => 'cms_publish_post',
+            'name' => 'cms_entity_create',
             'arguments' => [
-                'title' => 'Post Denegado',
-                'content' => 'Contenido que debe ser rechazado',
+                'type' => 'post', 'publish' => true,
+                'translations' => ['es' => [
+                    'title' => 'Post Denegado',
+                    'content' => 'Contenido que debe ser rechazado',
+                ]],
             ],
         ],
     ]);
 
-    $forbiddenResponse->assertOk();
-    expect(json_decode((string) $forbiddenResponse->json('result.content.0.text'), true)['denied'])->toBeTrue();
+    $forbiddenResponse->assertStatus(400);
+    expect($forbiddenResponse->json('error.code'))->toBe(-32602);
 
-    // Now request token WITH mcp:publish
+    // Now request token WITH mcp:write
     $publishTokenResponse = $this->post('/oauth/token', [
         'grant_type' => 'client_credentials',
         'client_id' => $this->m2mClient->id,
         'client_secret' => $this->m2mSecret,
-        'scope' => 'mcp:access mcp:publish',
+        'scope' => 'mcp:access mcp:write',
     ]);
     $publishToken = $publishTokenResponse->json('access_token');
 
-    $successResponse = $this->withToken($publishToken)->postJson('/api/mcp', [
+    $successResponse = $this->withToken($publishToken)->postJson('/mcp/cms', [
         'jsonrpc' => '2.0',
         'id' => 3,
         'method' => 'tools/call',
         'params' => [
-            'name' => 'cms_publish_post',
+            'name' => 'cms_entity_create',
             'arguments' => [
-                'title' => 'Post Autorizado M2M',
-                'content' => 'Contenido redactado con variedad métrica y cadencia humana en castellano.',
-                'summary' => 'Resumen de prueba para verificar autorización de publicación.',
-                'locale' => 'es',
+                'type' => 'post', 'publish' => true,
+                'translations' => ['es' => [
+                    'title' => 'Post Autorizado M2M',
+                    'content' => 'Contenido redactado con variedad métrica y cadencia humana en castellano.',
+                    'summary' => 'Resumen de prueba para verificar autorización de publicación.',
+                ]],
             ],
         ],
     ]);
@@ -123,32 +123,6 @@ test('mcp endpoint enforces mcp:publish scope on mutating tools', function (): v
     $data = json_decode($successResponse->json('result.content.0.text'), true);
     expect($data['confirmation_required'])->toBeTrue();
     expect($data['execution']['status'])->toBe('approval_required');
-});
-
-test('mcp sse endpoint yields streaming event-stream handshake', function (): void {
-    $tokenResponse = $this->post('/oauth/token', [
-        'grant_type' => 'client_credentials',
-        'client_id' => $this->m2mClient->id,
-        'client_secret' => $this->m2mSecret,
-        'scope' => 'mcp:access',
-    ]);
-    $token = $tokenResponse->json('access_token');
-
-    $response = $this->withToken($token)->get('/api/mcp/sse');
-
-    $response->assertStatus(200);
-    $response->assertHeader('Content-Type', 'text/event-stream; charset=utf-8');
-});
-
-test('mcp tools manifest requires authenticated identity', function (): void {
-    $this->getJson('/api/mcp/tools')->assertUnauthorized();
-    $admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
-    $response = $this->withToken($admin->createToken('tools', ['mcp:access', 'mcp:read'])->accessToken)->getJson('/api/mcp/tools');
-
-    $response->assertStatus(200);
-    expect($response->json('tools'))->toBeArray();
-    expect($response->json('transport.http'))->toBeString();
-    expect($response->json('transport.sse'))->toBeString();
 });
 
 test('backoffice token management full crud workflow', function (): void {
@@ -171,7 +145,7 @@ test('backoffice token management full crud workflow', function (): void {
         'name' => 'Admin Test Personal Token',
         'subject_type' => 'users',
         'subject_id' => $admin->id,
-        'scopes' => ['mcp:access', 'mcp:publish'],
+        'scopes' => ['mcp:access', 'mcp:write'],
     ]);
     $storePersonal->assertRedirect(route('admin.tokens.index'));
     $storePersonal->assertSessionHas('issued_token');

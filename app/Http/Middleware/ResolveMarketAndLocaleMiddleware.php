@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class ResolveMarketAndLocaleMiddleware
@@ -39,13 +40,11 @@ class ResolveMarketAndLocaleMiddleware
 
         App::setLocale($language->code);
 
-        // Configure dynamic URL defaults for route helpers
-        URL::defaults([
-            'market' => $market->code,
-            'locale' => $language->code,
-            'shopPrefix' => $this->localization->getModulePrefix('shop', $language->code),
-            'blogPrefix' => $this->localization->getModulePrefix('blog', $language->code),
-        ]);
+        $routeDefaults = ['market' => $market->code, 'locale' => $language->code];
+        foreach (array_unique($this->localization->moduleAliases()) as $identifier) {
+            $routeDefaults[Str::camel($identifier).'Prefix'] = $this->localization->getModulePrefix($identifier, $language->code);
+        }
+        URL::defaults($routeDefaults);
 
         // Bind singletons into container for domain services
         app()->instance('current.market', $market);

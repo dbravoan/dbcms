@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Http\Controllers\FrontPageController;
 use Modules\Blog\Http\Controllers\BlogFrontController;
-use Modules\Pages\Http\Controllers\FrontPageController;
 
 it('keeps public content actions thin and delegates persistence and filtering', function (string $controller): void {
     $class = new ReflectionClass($controller);

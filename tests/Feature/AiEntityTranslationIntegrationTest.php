@@ -6,7 +6,6 @@ use App\Contracts\Services\LocalizationServiceInterface;
 use App\Core\Capabilities\ActorContext;
 use App\Core\Capabilities\CapabilityExecutor;
 use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
-use App\Core\Modules\ModuleManager;
 use App\Core\Sections\SectionEditorService;
 use App\Enums\OAuthScope;
 use App\Http\Middleware\EnsureCmsIsInstalled;
@@ -16,7 +15,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Capabilities\ActorContextFactory;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityMutationService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Passport\ClientRepository;
@@ -24,11 +23,15 @@ use Modules\AiAssistant\Jobs\ProcessAiGeneration;
 use Modules\AiAssistant\Models\AiGenerationTask;
 use Modules\AiAssistant\Services\AiTaskService;
 use Modules\Blog\Models\Post;
+use Tests\Support\AiContentComposition;
+use Tests\Support\PassportTestKeys;
+
+uses(AiContentComposition::class);
 
 beforeEach(function (): void {
+    PassportTestKeys::configure();
     Http::preventStrayRequests();
     config(['services.gemini.key' => 'fake-translation-key', 'queue.default' => 'sync']);
-    app(ModuleManager::class)->discoverModules();
     $role = Role::firstOrCreate(['slug' => 'translation-editor'], ['name' => 'Translation editor']);
     foreach (['access:admin', 'manage:posts', 'use:ai'] as $slug) {
         $permission = Permission::firstOrCreate(['slug' => $slug], ['name' => $slug]);
@@ -56,9 +59,6 @@ beforeEach(function (): void {
 
         return Http::response(['candidates' => [['content' => ['parts' => [['text' => json_encode(['segments' => $segments], JSON_THROW_ON_ERROR)]]]]], 'usageMetadata' => ['promptTokenCount' => 10, 'candidatesTokenCount' => 10]]);
     });
-    // Exercise the actual HTTP adapter instead of the legacy testing synthesizer.
-    // Database isolation is supplied and checked by the QA runner before Pest.
-    app()->instance('env', 'translation-http-fixture');
     // Installation has its own integration suite. The HTTP adapter fixture must
     // work with a fresh checkout, independently of an installation marker.
     $this->withoutMiddleware(EnsureCmsIsInstalled::class);
@@ -208,11 +208,11 @@ test('a translated preview saves through the owner service preserving the source
 
         return $columns;
     };
-    $sections = [['type' => 'text', 'column_layout' => '2', 'animation' => 'fadeInUp', 'columns' => [
+    $sections = [['type' => 'text', 'columns_layout' => '2', 'animation' => 'fadeInUp', 'columns' => [
         ['id' => 'left-column', 'blocks' => [['id' => 'text-child', 'type' => 'text', 'content' => '<strong>Contenido original.</strong>', 'image_url' => '/storage/unchanged.webp']]],
         ['id' => 'right-column', 'blocks' => [['id' => 'link-child', 'type' => 'cta', 'title' => 'Contacto', 'cta_text' => 'Consultar', 'cta_url' => 'https://example.com/contact']]],
     ]]];
-    $crud = app(EntityCrudService::class);
+    $crud = app(EntityMutationService::class);
     $created = $crud->create($type, [
         'attributes' => $type === 'product' ? ['sku' => 'translation-persistence-product', 'price' => 12, 'stock_quantity' => 4] : [],
         'translations' => ['es' => $toColumns($fields) + ['slug' => 'translation-source-'.$type]],
@@ -253,7 +253,7 @@ test('a translated preview saves through the owner service preserving the source
 test('saving a translated structure cannot reuse a section belonging to another item', function (): void {
     $foreign = $this->translationPost->sections()->create(['type' => 'text', 'order' => 1, 'is_active' => true, 'status' => 'published', 'styling_json' => ['type' => 'text', 'content' => 'Original ajeno']]);
     $foreign->translations()->create(['locale' => 'es', 'content_json' => ['type' => 'text', 'content' => 'Original ajeno']]);
-    $crud = app(EntityCrudService::class);
+    $crud = app(EntityMutationService::class);
     $created = $crud->create('post', ['translations' => ['es' => ['title' => 'Otro borrador', 'content' => 'Contenido propio']], 'market_ids' => [$this->translationMarket->id]], $this->translationEditor);
     $crud->update('post', $created['id'], ['sections_json' => ['es' => [['id' => $foreign->id, 'type' => 'text', 'content' => 'Texto propio']], 'en' => [['id' => $foreign->id, 'type' => 'text', 'content' => 'Own text']]]]);
     $other = Post::findOrFail($created['id'])->fresh(['sections.translations']);
@@ -264,8 +264,8 @@ test('saving a translated structure cannot reuse a section belonging to another 
     Http::assertNothingSent();
 });
 
-test('saving an editor structure retains the kept section id and removes only omitted sections', function (bool $legacyId): void {
-    $crud = app(EntityCrudService::class);
+test('saving an editor structure retains the kept section id and removes only omitted sections', function (): void {
+    $crud = app(EntityMutationService::class);
     $created = $crud->create('post', [
         'translations' => ['es' => ['title' => 'Borrador de secciones', 'content' => 'Contenido propio']],
         'market_ids' => [$this->translationMarket->id],
@@ -274,12 +274,9 @@ test('saving an editor structure retains the kept section id and removes only om
     $entity = Post::findOrFail($created['id']);
     $source = app(SectionEditorService::class)->payload($entity)['es'];
     $keptId = $source[0]['id'];
-    if ($legacyId) {
-        $source[0]['id'] = 'sec_'.$keptId;
-    }
     $crud->update('post', $created['id'], ['sections_json' => ['es' => [$source[0]]]]);
     $saved = $entity->fresh(['sections.translations']);
     expect($saved->sections()->pluck('id')->all())->toBe([$keptId]);
     expect($saved->sections()->whereKey($source[1]['id'])->exists())->toBeFalse();
     Http::assertNothingSent();
-})->with(['numeric id' => [false], 'legacy id' => [true]]);
+});

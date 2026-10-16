@@ -7,20 +7,6 @@ use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 
-beforeEach(function (): void {
-    $this->originalEnvironmentPath = app()->environmentPath();
-    $this->originalStorage = app()->storagePath();
-    $this->privateStorage = sys_get_temp_dir().'/dbcms-web-install-'.bin2hex(random_bytes(8));
-    File::ensureDirectoryExists($this->privateStorage, 0700);
-    File::put($this->privateStorage.'/.env', (string) File::get(app()->environmentFilePath()));
-    app()->useEnvironmentPath($this->privateStorage)->useStoragePath($this->privateStorage);
-});
-
-afterEach(function (): void {
-    app()->useEnvironmentPath($this->originalEnvironmentPath)->useStoragePath($this->originalStorage);
-    File::deleteDirectory($this->privateStorage);
-});
-
 function safeInstallerPayload(): array
 {
     return ['name' => 'QA Admin', 'email' => 'new-admin@example.invalid', 'password' => 'private-password', 'password_confirmation' => 'private-password', 'site_name' => 'RegulaSE "Europa"', 'admin_path' => 'control'];
@@ -31,12 +17,17 @@ test('web installer rejects DSN controls and malformed database names before con
 });
 
 test('web installer does not save failed database credentials or pretend connection success', function (): void {
-    $this->postJson(route('install.save-db'), ['host' => env('DB_HOST'), 'port' => '3306', 'database' => 'testing', 'username' => 'sail', 'password' => 'incorrect-qa-password', 'auto_create' => false])->assertUnprocessable();
+    $this->postJson(route('install.save-db'), ['host' => env('DB_HOST'), 'port' => '3306', 'database' => env('DB_DATABASE'), 'username' => 'sail', 'password' => 'incorrect-qa-password', 'auto_create' => false])->assertUnprocessable();
 });
 
 test('web migration exit failure does not claim provisioning success', function (): void {
-    Artisan::shouldReceive('call')->with('migrate', ['--force' => true], Mockery::any())->once()->andReturn(1);
-    $this->postJson(route('install.run-migrations'), ['with_demo' => false])->assertStatus(500)->assertJson(['success' => false]);
+    $kernel = Artisan::getFacadeRoot();
+    try {
+        Artisan::shouldReceive('call')->with('migrate', ['--force' => true], Mockery::any())->once()->andReturn(1);
+        $this->postJson(route('install.run-migrations'), ['with_demo' => false])->assertStatus(500)->assertJson(['success' => false]);
+    } finally {
+        Artisan::swap($kernel);
+    }
     expect(File::exists(storage_path('installed')))->toBeFalse();
 });
 
@@ -47,9 +38,20 @@ test('web installer never overwrites an existing user account', function (): voi
 });
 
 test('web admin finalization rolls back account creation when installation cannot be sealed', function (): void {
-    File::ensureDirectoryExists(storage_path('installed'));
-    $this->postJson(route('install.store-admin'), safeInstallerPayload())->assertServerError();
-    expect(User::where('email', 'new-admin@example.invalid')->exists())->toBeFalse();
+    $filesystem = File::getFacadeRoot();
+    $failingFilesystem = Mockery::mock($filesystem);
+    $failingFilesystem->shouldReceive('replace')->withAnyArgs()->andReturnUsing(fn (...$arguments) => $filesystem->replace(...$arguments))->byDefault();
+    $failingFilesystem->shouldReceive('replace')->with(storage_path('installed'), Mockery::type('string'), 0600)->once()->andThrow(new RuntimeException('Installation seal cannot be written'));
+    File::swap($failingFilesystem);
+    $originalEnvironment = File::get(app()->environmentFilePath());
+    try {
+        $this->postJson(route('install.store-admin'), safeInstallerPayload())->assertServerError();
+        expect(User::where('email', 'new-admin@example.invalid')->exists())->toBeFalse()
+            ->and(File::exists(storage_path('installed')))->toBeFalse()
+            ->and(File::get(app()->environmentFilePath()))->toBe($originalEnvironment);
+    } finally {
+        File::swap($filesystem);
+    }
 });
 
 test('web admin finalization restores configuration and rolls back after a late environment failure', function (): void {

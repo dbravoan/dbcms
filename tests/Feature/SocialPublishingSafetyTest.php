@@ -2,9 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Core\Capabilities\ActorContext;
-use App\DTOs\Marketing\ArtifactDescriptor;
-use App\DTOs\Marketing\CreativePackage;
 use App\Models\CmsModule;
 use App\Models\Role;
 use App\Models\User;
@@ -15,6 +14,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Passport\Passport;
+use Modules\Marketing\DTOs\ArtifactDescriptor;
+use Modules\Marketing\DTOs\CreativePackage;
 use Modules\SocialPublishing\Contracts\DestinationValidatorInterface;
 use Modules\SocialPublishing\DTOs\PublicationSnapshot;
 use Modules\SocialPublishing\Models\SocialAccount;
@@ -25,22 +26,24 @@ use Modules\SocialPublishing\Services\PublicationService;
 use Modules\SocialPublishing\Services\ScheduleTime;
 use Modules\SocialPublishing\Services\SocialGuides;
 use Modules\SocialPublishing\Services\SocialOAuthService;
-use Modules\SocialPublishing\SocialPublishingModuleServiceProvider;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Tests\Support\SocialAccountFixture;
+use Tests\Support\SocialComposition;
+
+uses(SocialComposition::class);
 
 function socialSafetyActor(): ActorContext
 {
     $user = User::factory()->create();
     $user->roles()->attach(Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Admin'])->id);
     Auth::guard('web')->login($user);
-    CmsModule::updateOrCreate(['identifier' => 'social-publishing'], ['name' => 'SocialPublishing', 'provider' => SocialPublishingModuleServiceProvider::class, 'version' => '1.0.0', 'is_installed' => true, 'is_active' => true, 'settings' => ['is_enabled' => true]]);
 
     return new ActorContext($user->id);
 }
 
 function socialSafetyAccount(): SocialAccount
 {
-    return SocialAccount::create(['provider' => 'facebook', 'remote_id' => '123', 'identity' => 'facebook:123', 'label' => 'Página aislada', 'status' => 'connected', 'grants' => ['pages_show_list', 'pages_manage_posts', 'pages_read_engagement'], 'access_token' => 'isolated-token', 'metadata' => [], 'expires_at' => now()->addDay()]);
+    return SocialAccount::create(['provider' => 'facebook', 'remote_id' => '123', 'identity' => 'facebook:123', 'label' => 'Página aislada', 'status' => 'connected', 'grants' => ['pages_show_list', 'pages_manage_posts', 'pages_read_engagement'], 'access_token' => 'isolated-token', 'metadata' => SocialAccountFixture::metadata('facebook'), 'expires_at' => now()->addDay()]);
 }
 
 function socialSafetyPackage(string $text = 'Texto revisado', ?string $url = null): CreativePackage
@@ -116,7 +119,7 @@ it('does not replay an expired mutation claim', function (): void {
 
 it('keeps callback state session bound and single use with provider-discovered account selection', function (): void {
     $actor = socialSafetyActor();
-    config(['modules.social-publishing.facebook_client_id' => 'client', 'modules.social-publishing.facebook_client_secret' => 'secret']);
+    app(ModuleSettingsServiceInterface::class)->setMany('social-publishing', ['facebook_client_id' => 'client', 'facebook_client_secret' => 'secret']);
     $oauth = app(SocialOAuthService::class);
     $url = $oauth->begin('facebook', $actor, 'browser-session');
     parse_str((string) parse_url($url, PHP_URL_QUERY), $query);

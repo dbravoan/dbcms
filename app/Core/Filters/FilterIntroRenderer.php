@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Core\Filters;
 
+use App\Core\Sections\SectionRendererService;
 use App\Models\FilterPage;
 use App\Models\Market;
-use Modules\Pages\Services\SectionRendererService;
 
 /**
  * Renders the curated intro of a filter page.

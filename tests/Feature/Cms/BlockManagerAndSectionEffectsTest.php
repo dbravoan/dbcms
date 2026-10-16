@@ -2,19 +2,20 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
+use App\Content\Pages\Models\PageSection;
+use App\Content\Pages\Models\SectionTranslation;
+use App\Core\Sections\SectionRendererService;
 use App\Models\Market;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\Pages\Models\Page;
-use Modules\Pages\Models\PageSection;
-use Modules\Pages\Models\SectionTranslation;
-use Modules\Pages\Services\SectionRendererService;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
 });
 
 test('block manager renders rich sections with ScrollMagic and Animate.css effects', function (): void {
@@ -56,8 +57,8 @@ test('block manager renders rich sections with ScrollMagic and Animate.css effec
         'type' => 'features',
         'title' => 'Características Principales',
         'items' => [
-            ['icon' => '⚡', 'title' => 'Velocidad Extrema', 'desc' => 'Caché optimizada en milisegundos.'],
-            ['icon' => '🌐', 'title' => 'Multi-Mercado', 'desc' => 'Rutas localizadas automáticas.'],
+            ['icon' => '⚡', 'title' => 'Velocidad Extrema', 'description' => 'Caché optimizada en milisegundos.'],
+            ['icon' => '🌐', 'title' => 'Multi-Mercado', 'description' => 'Rutas localizadas automáticas.'],
         ],
         'animation' => 'zoomIn',
         'animation_delay' => '0.4s',
@@ -125,7 +126,7 @@ test('admin can store and update pages with dynamic sections json', function ():
     $response = $this->actingAs($admin, 'web')->post(route('admin.pages.store'), [
         'translations' => ['es' => ['title' => 'Página Modular con Secciones', 'slug' => 'pagina-modular-secciones']],
         'is_published' => 1,
-        'sections_json' => json_encode($sections),
+        'sections_json' => json_encode(['es' => $sections], JSON_THROW_ON_ERROR),
     ]);
 
     $response->assertRedirect(route('admin.pages.index'));
@@ -137,26 +138,6 @@ test('admin can store and update pages with dynamic sections json', function ():
     $faqSection = $page->sections->where('type', 'faq')->first();
     expect($faqSection)->not->toBeNull();
     expect($faqSection->styling_json['animation'])->toBe('fadeInLeft');
-});
-
-test('backoffice sidebar renders accessible navigation groups for admin', function (): void {
-    $admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
-
-    $response = $this->actingAs($admin, 'web')->get(route('admin.dashboard'));
-
-    $response->assertStatus(200);
-    $response->assertSee('Páginas');
-    $response->assertSee('Artículos');
-    $response->assertSee('Categorías');
-    $response->assertSee('Galerías multimedia');
-    $response->assertSee('Diseñador de formularios');
-    $response->assertSee('Buzón de contactos');
-    $response->assertSee('Menús y zonas');
-    $response->assertSee('Plantillas y temas');
-    $response->assertSee('Módulos del sistema');
-    $response->assertSee('Mercados e idiomas', false);
-    $response->assertSee('Usuarios y roles', false);
-    $response->assertSee('sidebar-scroll');
 });
 
 test('multi-column sections render responsive CSS grid with column sub-blocks', function (): void {

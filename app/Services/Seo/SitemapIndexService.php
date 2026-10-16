@@ -13,7 +13,6 @@ use App\Services\Cms\PageCacheService;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
-use Modules\Pages\Models\Page;
 
 /**
  * Segmented sitemap index: /sitemap.xml lists one child sitemap per content type
@@ -107,12 +106,15 @@ final class SitemapIndexService
      */
     public function segmentEntries(string $segment): ?array
     {
+        if (! isset($this->segments()[$segment])) {
+            return null;
+        }
         try {
             return Cache::remember(
                 sprintf('cms:sitemap:%s:%s', $this->pageCache->visibilityVersion(), $segment),
                 $this->pageCache->ttl(),
                 function () use ($segment): array {
-                    return $this->build($segment) ?? [];
+                    return $this->build($segment);
                 }
             );
         } catch (\Throwable) {
@@ -125,7 +127,13 @@ final class SitemapIndexService
      */
     private function segments(): array
     {
-        $segments = ['pages' => true, 'posts' => true, 'products' => true, 'galleries' => true];
+        $segments = [];
+        foreach (app(PublicContentDiscoveryInterface::class)->schemas() as $schema) {
+            if ($schema->publicContent === null) {
+                continue;
+            }
+            $segments[$schema->publicContent->segment] = true;
+        }
 
         // Only advertise the curated filter landings segment when it actually
         // has content: an empty child sitemap is a crawl-quality smell.
@@ -146,44 +154,24 @@ final class SitemapIndexService
     }
 
     /**
-     * @return array<int, array{loc: string, lastmod: string|null, changefreq: string, priority: string}>|null
-     */
-    private function build(string $segment): ?array
-    {
-        return match ($segment) {
-            'pages' => $this->pages(),
-            'posts' => $this->posts(),
-            'products' => $this->products(),
-            'galleries' => $this->galleries(),
-            'filters' => $this->filters(),
-            default => null,
-        };
-    }
-
-    /**
      * @return array<int, array{loc: string, lastmod: string|null, changefreq: string, priority: string}>
      */
-    private function pages(): array
+    private function build(string $segment): array
     {
-        return $this->publicEntries('page');
-    }
+        if ($segment === 'filters') {
+            return $this->filters();
+        }
+        $entries = [];
+        foreach (app(PublicContentDiscoveryInterface::class)->schemas() as $schema) {
+            if ($schema->publicContent === null) {
+                continue;
+            }
+            if ($schema->publicContent->segment === $segment) {
+                array_push($entries, ...$this->publicEntries($schema->type));
+            }
+        }
 
-    /** @return array<int, array{loc: string, lastmod: string|null, changefreq: string, priority: string}> */
-    private function posts(): array
-    {
-        return $this->publicEntries('post');
-    }
-
-    /** @return array<int, array{loc: string, lastmod: string|null, changefreq: string, priority: string}> */
-    private function products(): array
-    {
-        return $this->publicEntries('product');
-    }
-
-    /** @return array<int, array{loc: string, lastmod: string|null, changefreq: string, priority: string}> */
-    private function galleries(): array
-    {
-        return $this->publicEntries('gallery');
+        return $entries;
     }
 
     /** @return array<int, array{loc: string, lastmod: string|null, changefreq: string, priority: string}> */
@@ -198,7 +186,7 @@ final class SitemapIndexService
                     if (! $translation instanceof Model) {
                         continue;
                     }
-                    $location = $discovery->url($type, $market, $language->code, (string) $translation->getAttribute('slug'));
+                    $location = $discovery->entityUrl($type, $entity, $market, $language->code);
                     $updated = app(PublicContentModifiedService::class)->forEntity($entity);
                     $entries[$location] = ['loc' => $location, 'lastmod' => $updated instanceof CarbonInterface ? $updated->toAtomString() : null, 'changefreq' => 'weekly', 'priority' => '0.7'];
                 }

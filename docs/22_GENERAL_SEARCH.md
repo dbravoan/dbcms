@@ -233,7 +233,7 @@ information in a search term; do not describe arbitrary entered text as anonymou
 
 | Surface | How |
 | :--- | :--- |
-| Theme header | `@include('themes.components.search-box', ['variant' => 'dark'\|'light'])` — already wired in `db-cyber` and `default-clean`; the box targets the current market + locale automatically |
+| Theme header | `@include('themes::components.search-box', ['variant' => 'dark'\|'light'])` — already wired in `db-cyber` and `default-clean`; the box targets the current market + locale automatically |
 | Any composed page | "Buscador general" block (`SearchBoxBlock`, requires the `search` module) |
 | Any custom markup | `<x-cms-search.box :variant="'dark'\|'light'" size="md\|lg" />` |
 

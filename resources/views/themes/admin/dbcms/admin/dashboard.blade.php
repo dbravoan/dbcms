@@ -27,13 +27,7 @@
 
             <!-- Header Action Buttons -->
             <div class="flex flex-wrap items-center gap-3">
-                <a href="{{ route('admin.ai.download-prompt') }}"
-                   class="px-4 py-2.5 bg-[#1A1A1A] hover:bg-gray-800 border border-[#00FF99]/40 text-[#00FF99] font-mono font-bold rounded-lg text-xs transition-all flex items-center gap-2 shadow-sm hover:shadow-[0_0_15px_rgba(0,255,153,0.15)]"
-                   title="{{ __('admin.dashboard.ai_prompt_tooltip') }}">
-                    <i class="fa-solid fa-robot"></i>
-                    <span>{{ __('admin.dashboard.ai_prompt') }}</span>
-                    <span class="text-gray-400">&darr;</span>
-                </a>
+                @stack('admin_dashboard_actions')
                 <button type="button"
                         data-dispatch="start-onboarding-tour"
                         class="btn-neon text-xs py-2.5 px-4 shadow-sm"
@@ -80,56 +74,13 @@
             </a>
             @endif
 
-            <!-- Artículos -->
-            @if(!empty($hasBlog) && Route::has('admin.blog.posts.index'))
-            <a href="{{ route('admin.blog.posts.index') }}" class="cyber-card p-5 min-w-0 hover:border-[#00FF99]/40 hover:shadow-[0_0_20px_rgba(0,255,153,0.12)] transition-all duration-200 group flex flex-col justify-between">
-                <div>
-                    <div class="flex items-center justify-between text-gray-400 mb-2">
-                        <span class="text-[11px] font-mono uppercase font-semibold group-hover:text-gray-300">{{ __('admin.dashboard.posts') }}</span>
-                        <span class="p-1.5 rounded bg-[#1A1A1A] border border-gray-800 flex items-center justify-center text-[#00FF99]"><i class="fa-solid fa-pen-to-square text-xs"></i></span>
-                    </div>
-                    <div class="text-2xl sm:text-3xl font-black text-white font-mono group-hover:text-[#00FF99] transition-colors">{{ $stats['total_posts'] }}</div>
-                </div>
-                <div class="text-[10px] text-[#00FF99] font-mono mt-3 pt-2.5 border-t border-gray-800/80 flex items-center justify-between">
-                    <span>{{ __('admin.dashboard.posts_hint') }}</span>
-                    <span class="text-gray-500 group-hover:text-[#00FF99]">&rarr;</span>
-                </div>
-            </a>
-            @endif
+            @foreach($moduleDashboard as $contribution)
+                @if(isset($contribution['views']['metrics']))
+                    @include($contribution['views']['metrics'], $contribution['data'])
+                @endif
+            @endforeach
 
-            <!-- Productos -->
-            @if(!empty($hasShop) && Route::has('admin.shop.products.index'))
-            <a href="{{ route('admin.shop.products.index') }}" class="cyber-card p-5 min-w-0 hover:border-[#00FF99]/40 hover:shadow-[0_0_20px_rgba(0,255,153,0.12)] transition-all duration-200 group flex flex-col justify-between">
-                <div>
-                    <div class="flex items-center justify-between text-gray-400 mb-2">
-                        <span class="text-[11px] font-mono uppercase font-semibold group-hover:text-gray-300">{{ __('admin.dashboard.products') }}</span>
-                        <span class="p-1.5 rounded bg-[#1A1A1A] border border-gray-800 flex items-center justify-center text-[#00FF99]"><i class="fa-solid fa-bag-shopping text-xs"></i></span>
-                    </div>
-                    <div class="text-2xl sm:text-3xl font-black text-white font-mono group-hover:text-[#00FF99] transition-colors">{{ $stats['total_products'] }}</div>
-                </div>
-                <div class="text-[10px] text-[#00FF99] font-mono mt-3 pt-2.5 border-t border-gray-800/80 flex items-center justify-between">
-                    <span>{{ __('admin.dashboard.products_hint') }}</span>
-                    <span class="text-gray-500 group-hover:text-[#00FF99]">&rarr;</span>
-                </div>
-            </a>
-            @endif
 
-            <!-- Leads Web -->
-            @if(!empty($hasForms) && Route::has('admin.forms.submissions'))
-            <a href="{{ route('admin.forms.submissions') }}" class="cyber-card p-5 min-w-0 hover:border-[#00FF99]/40 hover:shadow-[0_0_20px_rgba(0,255,153,0.12)] transition-all duration-200 group flex flex-col justify-between">
-                <div>
-                    <div class="flex items-center justify-between text-gray-400 mb-2">
-                        <span class="text-[11px] font-mono uppercase font-semibold group-hover:text-gray-300">{{ __('admin.dashboard.leads') }}</span>
-                        <span class="p-1.5 rounded bg-[#1A1A1A] border border-gray-800 flex items-center justify-center text-[#00FF99]"><i class="fa-solid fa-inbox text-xs"></i></span>
-                    </div>
-                    <div class="text-2xl sm:text-3xl font-black text-[#00FF99] font-mono">{{ $stats['total_submissions'] }}</div>
-                </div>
-                <div class="text-[10px] text-[#00FF99] font-mono mt-3 pt-2.5 border-t border-gray-800/80 flex items-center justify-between">
-                    <span>{{ __('admin.dashboard.leads_hint') }}</span>
-                    <span class="text-gray-500 group-hover:text-[#00FF99]">&rarr;</span>
-                </div>
-            </a>
-            @endif
 
             <!-- Módulos -->
             @if(!empty($canManageModules))
@@ -204,27 +155,12 @@
             </a>
             @endif
 
-            @if(!empty($hasBlog) && Route::has('admin.blog.posts.create'))
-            <a href="{{ route('admin.blog.posts.create') }}" class="cyber-card p-5 hover:border-[#00FF99]/50 hover:bg-[#1A1A1A] transition-all duration-200 group block">
-                <div class="flex items-center justify-between mb-3">
-                    <span class="w-10 h-10 rounded-lg bg-[#1F1F1F] border border-gray-800 group-hover:border-[#00FF99]/40 transition-colors flex items-center justify-center text-[#00FF99] text-base"><i class="fa-solid fa-pen-nib"></i></span>
-                    <span class="text-gray-500 group-hover:text-[#00FF99] text-xs font-mono transition-colors">&rarr;</span>
-                </div>
-                <h3 class="font-bold text-white text-sm group-hover:text-[#00FF99] transition-colors">{{ __('admin.dashboard.write_post') }}</h3>
-                <p class="text-xs text-gray-400 mt-1 leading-relaxed">{{ __('admin.dashboard.write_post_desc') }}</p>
-            </a>
-            @endif
+            @foreach($moduleDashboard as $contribution)
+                @if(isset($contribution['views']['actions']))
+                    @include($contribution['views']['actions'], $contribution['data'])
+                @endif
+            @endforeach
 
-            @if(!empty($hasForms) && Route::has('admin.forms.index'))
-            <a href="{{ route('admin.forms.index') }}" class="cyber-card p-5 hover:border-[#00FF99]/50 hover:bg-[#1A1A1A] transition-all duration-200 group block">
-                <div class="flex items-center justify-between mb-3">
-                    <span class="w-10 h-10 rounded-lg bg-[#1F1F1F] border border-gray-800 group-hover:border-[#00FF99]/40 transition-colors flex items-center justify-center text-[#00FF99] text-base"><i class="fa-solid fa-inbox"></i></span>
-                    <span class="text-gray-500 group-hover:text-[#00FF99] text-xs font-mono transition-colors">&rarr;</span>
-                </div>
-                <h3 class="font-bold text-white text-sm group-hover:text-[#00FF99] transition-colors">{{ __('admin.dashboard.manage_forms') }}</h3>
-                <p class="text-xs text-gray-400 mt-1 leading-relaxed">{{ __('admin.dashboard.manage_forms_desc') }}</p>
-            </a>
-            @endif
 
             @if(!empty($hasSeo) && Route::has('admin.seo.audit'))
             <a href="{{ route('admin.seo.audit') }}" class="cyber-card p-5 hover:border-[#00FF99]/50 hover:bg-[#1A1A1A] transition-all duration-200 group block">
@@ -253,114 +189,15 @@
     </div>
 
     <!-- Two Column Detail Section -->
-    @if((!empty($hasForms) && Route::has('admin.forms.submissions')) || (!empty($hasBlog) && Route::has('admin.blog.posts.index')))
+    @if($moduleDashboard !== [])
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-        <!-- Recent Leads Submissions -->
-        @if(!empty($hasForms) && Route::has('admin.forms.submissions'))
-        <div class="cyber-card p-6 sm:p-7 flex flex-col justify-between">
-            <div>
-                <div class="flex items-center justify-between pb-4 border-b border-gray-800">
-                    <div class="flex items-center gap-2.5">
-                        <i class="fa-solid fa-inbox text-[#00FF99] text-base"></i>
-                        <h3 class="font-mono text-sm font-bold text-white flex items-center gap-2">
-                            <span class="text-[#00FF99]">&gt;</span> {{ __('admin.dashboard.recent_leads') }}
-                        </h3>
-                    </div>
-                    <a href="{{ route('admin.forms.submissions') }}" class="text-xs font-mono text-[#00FF99] hover:underline flex items-center gap-1">
-                        <span>{{ __('admin.dashboard.view_all') }}</span>
-                        <span>&rarr;</span>
-                    </a>
-                </div>
 
-                @if($recentSubmissions->isEmpty())
-                    <div class="text-center py-12 text-xs font-mono text-gray-500">
-                        <div class="text-2xl mb-2 opacity-50"><i class="fa-solid fa-inbox"></i></div>
-                        &gt; {{ __('admin.dashboard.no_submissions') }}
-                    </div>
-                @else
-                    <div class="divide-y divide-gray-800/80 font-mono text-xs mt-3">
-                        @foreach($recentSubmissions as $sub)
-                            <div class="py-3.5 flex items-center justify-between hover:bg-gray-800/30 px-2 rounded-lg transition-colors">
-                                <div class="truncate max-w-[70%]">
-                                    <div class="font-bold text-white flex items-center gap-2">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-[#00FF99]"></span>
-                                        <span class="truncate">{{ $sub->form->name ?? __('admin.dashboard.contact_form') }}</span>
-                                    </div>
-                                    <div class="text-gray-400 text-[11px] mt-0.5 pl-3.5 truncate">
-                                        {{ $sub->payload['email'] ?? $sub->payload['nombre'] ?? __('admin.dashboard.anonymous_contact') }}
-                                    </div>
-                                </div>
-                                <span class="text-[10px] text-gray-500 shrink-0 bg-[#1A1A1A] px-2 py-1 rounded border border-gray-800">
-                                    {{ $sub->created_at->diffForHumans() }}
-                                </span>
-                            </div>
-                        @endforeach
-                    </div>
+            @foreach($moduleDashboard as $contribution)
+                @if(isset($contribution['views']['details']))
+                    @include($contribution['views']['details'], $contribution['data'])
                 @endif
-            </div>
+            @endforeach
 
-            <div class="pt-4 mt-4 border-t border-gray-800/80 flex items-center justify-between text-[11px] font-mono text-gray-400">
-                <span>{{ __('admin.dashboard.total_received') }} <strong class="text-[#00FF99]">{{ $stats['total_submissions'] }}</strong></span>
-                <a href="{{ route('admin.forms.submissions') }}" class="hover:text-[#00FF99] transition-colors">{{ __('admin.dashboard.full_inbox') }} &nearr;</a>
-            </div>
-        </div>
-        @endif
-
-        <!-- Recent Blog Posts -->
-        @if(!empty($hasBlog) && Route::has('admin.blog.posts.index'))
-        <div class="cyber-card p-6 sm:p-7 flex flex-col justify-between">
-            <div>
-                <div class="flex items-center justify-between pb-4 border-b border-gray-800">
-                    <div class="flex items-center gap-2.5">
-                        <i class="fa-solid fa-pen-to-square text-[#00FF99] text-base"></i>
-                        <h3 class="font-mono text-sm font-bold text-white flex items-center gap-2">
-                            <span class="text-[#00FF99]">&gt;</span> {{ __('admin.dashboard.published_posts') }}
-                        </h3>
-                    </div>
-                    <a href="{{ route('admin.blog.posts.index') }}" class="text-xs font-mono text-[#00FF99] hover:underline flex items-center gap-1">
-                        <span>{{ __('admin.dashboard.view_all') }}</span>
-                        <span>&rarr;</span>
-                    </a>
-                </div>
-
-                @if($recentPosts->isEmpty())
-                    <div class="text-center py-12 text-xs font-mono text-gray-500">
-                        <div class="text-2xl mb-2 opacity-50"><i class="fa-solid fa-newspaper"></i></div>
-                        &gt; {{ __('admin.dashboard.no_posts') }}
-                    </div>
-                @else
-                    <div class="divide-y divide-gray-800/80 font-mono text-xs mt-3">
-                        @foreach($recentPosts as $post)
-                            <div class="py-3.5 flex items-center justify-between hover:bg-gray-800/30 px-2 rounded-lg transition-colors">
-                                <div class="truncate max-w-[70%]">
-                                    <div class="font-bold text-white truncate hover:text-[#00FF99] transition-colors">
-                                        <a href="{{ route('admin.blog.posts.edit', $post) }}">
-                                            {{ $post->translations->first()?->title ?? __('admin.dashboard.untitled_post') }}
-                                        </a>
-                                    </div>
-                                    <div class="text-[11px] text-gray-400 mt-0.5">
-                                        {{ __('admin.dashboard.by') }} <span class="text-gray-300">{{ $post->author->name ?? 'Admin' }}</span>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2 shrink-0">
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#00FF99]/10 text-[#00FF99] border border-[#00FF99]/30">
-                                        {{ $post->is_published ? __('admin.dashboard.published') : __('admin.status.draft') }}
-                                    </span>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
-            </div>
-
-            <div class="pt-4 mt-4 border-t border-gray-800/80 flex items-center justify-between text-[11px] font-mono text-gray-400">
-                <span>{{ __('admin.dashboard.total_posts') }} <strong class="text-white">{{ $stats['total_posts'] }}</strong></span>
-                @if(Route::has('admin.blog.posts.create'))
-                <a href="{{ route('admin.blog.posts.create') }}" class="text-[#00FF99] hover:underline font-bold">{{ __('admin.dashboard.new_post') }}</a>
-                @endif
-            </div>
-        </div>
-        @endif
     </div>
     @else
     <!-- Zero Modules Clean Install Notice -->

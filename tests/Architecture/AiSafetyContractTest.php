@@ -11,6 +11,8 @@ use App\Core\Content\EntitySchema;
 use App\Services\Media\MediaManagerService;
 use App\Services\Media\RemoteMediaUrlPolicy;
 use Illuminate\Http\Client\Factory;
+use Illuminate\Support\Sleep;
+use Modules\AiAssistant\AiAssistantModuleServiceProvider;
 use Modules\AiAssistant\Contracts\AiConfigBridgeInterface;
 use Modules\AiAssistant\Contracts\AiModelCatalogInterface;
 use Modules\AiAssistant\Contracts\AiProviderRegistryInterface;
@@ -31,6 +33,11 @@ use Modules\AiAssistant\Services\AiProviderRegistry;
 use Modules\AiAssistant\Services\AiProviderSettings;
 use Modules\AiAssistant\Services\AiResearchService;
 
+beforeEach(function (): void {
+    (new AiAssistantModuleServiceProvider(app()))->register();
+    Sleep::fake();
+});
+
 test('remote media policy rejects private and ambiguous destinations', function (string $url): void {
     expect(fn () => (new RemoteMediaUrlPolicy)->resolve($url))->toThrow(InvalidArgumentException::class);
 })->with(['http://127.0.0.1/a.png', 'https://[::1]/a.png', 'http://169.254.169.254/latest/meta-data/', 'https://user:pass@example.com/a.png', 'file:///etc/passwd', 'https://2130706433/a.png', 'https://100.64.0.1/a.png', 'https://[2001::a00:1]/a.png', 'https://[2002:7f00:1::]/a.png']);
@@ -38,10 +45,13 @@ test('remote media policy rejects private and ambiguous destinations', function 
 test('AI provider manifest declares every shared credential and modality setting', function (): void {
     $manifest = json_decode(file_get_contents(base_path('modules/AiAssistant/module.json')), true);
     foreach (['vllm', 'magnific', 'higgsfield', 'openai', 'gemini'] as $provider) {
-        foreach (['api_key', 'model', 'base_url'] as $field) {
+        foreach (['model', 'base_url'] as $field) {
             expect($manifest['settings'])->toHaveKey("{$provider}_{$field}");
         }
-        expect($manifest['settings']["{$provider}_api_key"]['secret'])->toBeTrue();
+        $credentials = $provider === 'higgsfield' ? ['api_key_id', 'api_key_secret'] : ['api_key'];
+        foreach ($credentials as $credential) {
+            expect($manifest['settings']["{$provider}_{$credential}"]['secret'])->toBeTrue();
+        }
     }
     foreach (['text', 'image', 'video'] as $modality) {
         expect($manifest['settings'])->toHaveKey("default_{$modality}_provider");
@@ -97,7 +107,7 @@ test('documented visual catalogs never imply a verified account connection', fun
     expect($catalog->connectionState('magnific'))->toBe(['state' => 'configured', 'verified' => false]);
 });
 
-test('production text generation fails clearly when no shared credential exists', function (): void {
+test('text generation in the test environment fails clearly when no shared credential exists', function (): void {
     $storage = Mockery::mock(ModuleSettingsServiceInterface::class);
     $storage->shouldReceive('get')->andReturn(null);
     $registry = app(AiProviderRegistryInterface::class);
@@ -105,13 +115,7 @@ test('production text generation fails clearly when no shared credential exists'
     $catalog = Mockery::mock(AiModelCatalogInterface::class);
     $bridge = new AiConfigBridge($registry, $catalog, $settings, $storage);
     config(['services.openai.key' => null]);
-    $previous = app()['env'];
-    app()['env'] = 'production';
-    try {
-        expect(fn () => $bridge->generateCompletion('System', 'User', 'openai', ['model' => 'gpt-4o']))->toThrow(AiProviderException::class, 'not configured');
-    } finally {
-        app()['env'] = $previous;
-    }
+    expect(fn () => $bridge->generateCompletion('System', 'User', 'openai', ['model' => 'gpt-4o']))->toThrow(AiProviderException::class, 'not configured');
 });
 
 test('a pending visual task resumes polling without submitting twice', function (): void {
@@ -219,8 +223,6 @@ test('text generation honors the provider and model of the server execution cont
     $previousArguments = $context->arguments;
     $previousActor = $context->actor;
     $previousName = $context->capabilityName;
-    $previousEnvironment = app()['env'];
-    app()['env'] = 'production';
     $context->actor = new ActorContext(userId: 5);
     $context->capabilityName = 'cms_ai_draft_article';
     try {
@@ -236,7 +238,6 @@ test('text generation honors the provider and model of the server execution cont
         $context->arguments = $previousArguments;
         $context->actor = $previousActor;
         $context->capabilityName = $previousName;
-        app()['env'] = $previousEnvironment;
     }
 });
 

@@ -127,7 +127,13 @@ Puede generar la clave dentro de la imagen sin arrancar servicios:
 docker run --rm --entrypoint php ghcr.io/dbravoan/dbcms:<version> artisan key:generate --show
 ```
 
-La clave debe mantenerse al sustituir imágenes: rotarla invalida sesiones y datos cifrados. Los volúmenes `app_storage`, `app_uploads`, `mysql_data` y `redis_data` conservan el estado. Realice copias verificadas de la base de datos, archivos y claves antes de migrar.
+La clave debe mantenerse al sustituir imágenes: rotarla invalida sesiones y datos cifrados. Los volúmenes `app_storage`, `app_uploads` y `mysql_data` conservan el estado; `redis_data` pertenece al perfil opcional Redis. Realice copias verificadas de la base de datos, archivos y claves antes de migrar.
+
+Los paquetes visuales ZIP se instalan en `storage/app/extensions/blocks` y se
+conservan con `app_storage`. Los módulos de negocio pertenecen al código de la
+composición: en Docker se incorporan a la imagen antes de instalarlos desde el
+panel. La carga ZIP de módulos necesita un directorio `modules/` escribible y no
+sustituye la construcción de una imagen con código inmutable.
 
 Variables principales:
 
@@ -139,17 +145,16 @@ Variables principales:
 | `DB_PASSWORD`, `DB_ROOT_PASSWORD` | Contraseñas propias, obligatorias |
 | `APP_PORT` | Puerto publicado, por defecto 80 |
 | `CMS_THEME`, `CMS_BRAND`, `ADMIN_PATH` | Tema, marca y ruta de administración |
-| `CMS_ORCHESTRATION_ENABLED` | Habilita la orquestación nativa cuando se configura true |
 | `MAIL_*` | Transporte SMTP; por defecto el contenedor usa log |
 | `RUN_MIGRATIONS` | Por defecto false; las migraciones se ejecutan como tarea única |
 
-Compose usa Redis para sesiones, caché y colas. Supervisor mantiene PHP-FPM, Nginx, cinco workers de cola (general y cuatro de marketing) y scheduler; los procesos de aplicación se ejecutan como usuario `dbcms`. Los jobs de IA y orquestación tienen timeout de 1200 s; la reserva de la cola dura 1500 s para evitar que otro worker ejecute el mismo job antes de que termine.
+Compose usa archivos persistentes para sesiones y caché (también durante el instalador), y la base de datos para colas. Después de instalar puede seleccionar los drivers de base de datos para sesiones y caché. Redis se añade con `--profile redis`; configure los drivers correspondientes si esa composición lo requiere. Supervisor mantiene PHP-FPM, Nginx, el worker general y scheduler; los cuatro workers de marketing solo arrancan con sus módulos habilitados. Todos los procesos de aplicación se ejecutan como usuario `dbcms`. Los jobs de IA y orquestación tienen timeout de 1200 s; la reserva de la cola dura 1500 s para evitar que otro worker ejecute el mismo job antes de que termine.
 
 ## Instalación inicial
 
 ```bash
 docker compose -f docker-compose.prod.yml config --quiet
-docker compose -f docker-compose.prod.yml up -d --wait mysql redis
+docker compose -f docker-compose.prod.yml up -d --wait mysql
 docker compose -f docker-compose.prod.yml run --rm app php artisan cms:install \
   --db-host=mysql \
   --without-demo \

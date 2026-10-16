@@ -1,6 +1,6 @@
 # Crear, desplegar y actualizar proyectos derivados
 
-Este recorrido se incorpora en dbCMS 1.3.0. Los comandos de creación deben usar una
+Este recorrido se incorpora en dbCMS 2.0.0. Los comandos de creación deben usar una
 release publicada que ya incluya estos archivos. Cambiar `VERSION` localmente no
 publica una versión en GitHub, Packagist ni GHCR.
 
@@ -95,7 +95,7 @@ docker run --rm \
   --volume "$PWD:/workspace" --workdir /workspace \
   laravelsail/php83-composer:latest \
   composer create-project --no-install --no-scripts --remove-vcs \
-  dbravoan/dbcms mi-web 1.3.0
+  dbravoan/dbcms mi-web 2.0.0
 
 cd mi-web
 ./bin/project-init mi-web --brand=dbcms --theme=db-minimal --deploy=rsync

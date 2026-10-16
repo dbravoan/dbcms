@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin\Settings;
 
+use App\Content\Pages\Models\Page;
 use App\Contracts\Services\GeneralSettingsServiceInterface;
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\View\View;
-use Modules\Pages\Models\Page;
 
 final class SettingsGetController extends Controller
 {

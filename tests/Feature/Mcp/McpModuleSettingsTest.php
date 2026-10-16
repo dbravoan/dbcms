@@ -7,14 +7,15 @@ namespace Tests\Feature\Mcp;
 use App\Core\Modules\ModuleManager;
 use App\Models\CmsModule;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Passport\ClientRepository;
+use Tests\Support\McpCoreComposition;
+use Tests\Support\McpFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, McpCoreComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    McpFixtures::identities();
     app(ClientRepository::class)->createPersonalAccessGrantClient('Testing Personal Client');
 });
 
@@ -70,7 +71,7 @@ test('disabling mcp module returns 503 on mcp endpoints', function (): void {
     $admin = User::first();
     $token = $admin->createToken('Test Agent', ['mcp:access'])->accessToken;
 
-    $response = $this->withToken($token)->postJson('/api/mcp', [
+    $response = $this->withToken($token)->postJson('/mcp/cms', [
         'jsonrpc' => '2.0',
         'method' => 'tools/list',
         'id' => 1,

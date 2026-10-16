@@ -1,4 +1,4 @@
-@extends('themes.db-editorial.layouts.app')
+@extends('themes::db-editorial.layouts.app')
 
 @section('title', __('Artículos & Publicaciones - dbCMS'))
 @section('meta_description', __('Ensayos, reflexiones y artículos de fondo sobre diseño, tecnología y arquitectura digital.'))

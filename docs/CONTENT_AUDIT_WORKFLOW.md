@@ -12,7 +12,7 @@ La cola, su contador de pendientes, los diffs y el historial respetan permisos, 
 
 - **Guardar borrador** conserva una versión privada y permite retirarla de la cola.
 - **Enviar a revisión** sitúa esa versión en la cola. También funciona al modificar una entidad ya publicada: el visitante sigue viendo la versión vigente.
-- Las nuevas instantáneas conservan atributos, traducciones completas, bloques, mercados y relaciones que declare el módulo. El historial creado antes de esta corrección puede tener instantáneas parciales; no se reconstruyen datos históricos que ya no existen.
+- Las nuevas instantáneas conservan atributos, traducciones completas, bloques, mercados y relaciones que declare el módulo.
 - El comparador de un borrador pendiente usa la versión pública como referencia. La revisión muestra traducciones, datos específicos y bloques. El editor permite inspeccionar la estructura completa.
 
 Cada decisión web se vincula al auditor, entidad y versión mostrada. Los tokens de revisión caducan a los 30 minutos. Aprobar, rechazar o restaurar desde una pantalla anterior devuelve un conflicto si el contenido cambió. Hay que abrir la revisión actual; reenviar el mismo formulario no autoriza una versión nueva. Restaurar añade además la versión histórica elegida a esa vinculación.
@@ -47,7 +47,7 @@ Guardar un borrador o aprobarlo sin publicarlo no cambia `dateModified` ni `last
 
 ## Contrato con el núcleo
 
-`EntityCrudService`, `CmsActionService`, el adaptador de compatibilidad `LegacyCmsService`, navegación y dashboard dependen de `App\Core\Content\Contracts\EditorialWorkflowInterface`, sin importar clases del módulo. ContentAudit registra `EditorialWorkflowAdapter`, que delega sus reglas al servicio editorial existente y la visibilidad de contadores y revisores al contrato propietario. `PendingEditorialDraft` transporta el identificador y la instantánea privada; `EditorialDecision` devuelve estado, versión y referencia pendiente opcional, sin exponer modelos del módulo.
+`EntityMutationService`, `ContentSectionActions`, navegación y dashboard dependen de `App\Core\Content\Contracts\EditorialWorkflowInterface`, sin importar clases del módulo. ContentAudit registra `EditorialWorkflowAdapter`, que delega sus reglas al servicio editorial existente y la visibilidad de contadores y revisores al contrato propietario. `PendingEditorialDraft` transporta el identificador y la instantánea privada; `EditorialDecision` devuelve estado, versión y referencia pendiente opcional, sin exponer modelos del módulo.
 
 Si el módulo no está registrado, `NoEditorialWorkflow` permite que los servicios comunes creen, actualicen y eliminen entidades sin consultar tablas editoriales. No concede aprobación: preparar una revisión, aprobar, rechazar o restaurar devuelve denegación. Los permisos de la entidad y las confirmaciones de efectos sensibles siguen aplicándose por separado.
 

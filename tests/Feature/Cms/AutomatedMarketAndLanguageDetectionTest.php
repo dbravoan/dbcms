@@ -2,20 +2,21 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Contracts\PageDomainServiceInterface;
+use App\Content\Pages\Models\Page;
+use App\Content\Pages\Models\PageSection;
+use App\Content\Pages\Models\PageTranslation;
+use App\Content\Pages\Models\SectionTranslation;
 use App\Core\Sections\SectionEditorService;
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
-use Modules\Pages\Contracts\PageDomainServiceInterface;
-use Modules\Pages\Models\Page;
-use Modules\Pages\Models\PageSection;
-use Modules\Pages\Models\PageTranslation;
-use Modules\Pages\Models\SectionTranslation;
+use Modules\ContentAudit\Services\EditorialWorkflow;
+use Tests\Support\ContentAuditComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, ContentAuditComposition::class);
 
 beforeEach(function (): void {
     $this->spanish = Language::firstOrCreate(['code' => 'es'], [
@@ -148,8 +149,8 @@ test('frontoffice resolves authentic catalan content on localized market route',
         'page_section_id' => $hero->id,
         'locale' => 'es',
         'content_json' => [
-            'headline' => 'Titular en Castellano',
-            'subheadline' => 'Subtítulo en Castellano',
+            'title' => 'Titular en Castellano',
+            'content' => 'Subtítulo en Castellano',
         ],
     ]);
 
@@ -157,8 +158,8 @@ test('frontoffice resolves authentic catalan content on localized market route',
         'page_section_id' => $hero->id,
         'locale' => 'ca',
         'content_json' => [
-            'headline' => 'Titular en Català Autèntic',
-            'subheadline' => 'Subtítol en Català Autèntic',
+            'title' => 'Titular en Català Autèntic',
+            'content' => 'Subtítol en Català Autèntic',
         ],
     ]);
 
@@ -177,7 +178,7 @@ test('frontoffice resolves authentic catalan content on localized market route',
         ->assertDontSee('Titular en Català Autèntic');
 });
 
-test('saving a page via admin automatically creates shared block layout translations for all active languages', function (): void {
+test('saving explicit localized layouts preserves every requested language through review', function (): void {
     $page = Page::create([
         'template' => 'default',
         'layout' => 'app',
@@ -190,25 +191,16 @@ test('saving a page via admin automatically creates shared block layout translat
     $payload = [
         'template' => 'default',
         'layout' => 'app',
-        'markets' => [$this->marketEs->id],
-        'title_es' => 'Página Multilingüe',
-        'slug_es' => 'pagina-multi',
+        'market_ids' => [$this->marketEs->id],
         'translations' => [
             'es' => ['title' => 'Página Multilingüe', 'slug' => 'pagina-multi'],
             'en' => ['title' => 'Multilingual Page', 'slug' => 'multilingual-page'],
             'ca' => ['title' => 'Pàgina Multilingüe', 'slug' => 'pagina-multilingue'],
         ],
-        'sections_json' => json_encode([
-            [
-                'type' => 'hero',
-                'headline' => 'Hero Compartido',
-                'subheadline' => 'Subtítulo base',
-            ],
-            [
-                'type' => 'features',
-                'title' => 'Características Base',
-            ],
-        ]),
+        'sections_json' => json_encode(array_fill_keys(['es', 'en', 'ca'], [
+            ['type' => 'hero', 'title' => 'Hero Compartido', 'content' => 'Subtítulo base'],
+            ['type' => 'features', 'title' => 'Características Base'],
+        ]), JSON_THROW_ON_ERROR),
     ];
 
     $response = $this->actingAs($this->admin, 'web')->put(route('admin.pages.update', $page), $payload);
@@ -232,7 +224,7 @@ test('saving a page via admin automatically creates shared block layout translat
     expect($featuresSection)->not->toBeNull();
     expect($featuresSection->translations)->toHaveCount(3);
     expect($featuresSection->translations->pluck('locale')->all())->toEqualCanonicalizing(['es', 'en', 'ca']);
-    app(ContentAuditServiceInterface::class)->approve($live, $this->admin);
+    app(EditorialWorkflow::class)->approve($live, $this->admin);
     expect(app(SectionEditorService::class)->payload($live->fresh()))->toBe($pendingSections);
     expect($live->fresh()->is_published)->toBeTrue();
 });

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Blog\Schema;
 
 use App\Core\Content\EntitySchema;
+use App\Core\Content\PublicContentDefinition;
 use Modules\Blog\Models\Category;
 use Modules\Blog\Models\Post;
 use Modules\Blog\Services\CategoryMutationHandler;
@@ -28,6 +29,7 @@ final class BlogEntitySchemas
     {
         return new EntitySchema(
             type: 'post',
+            publicContent: new PublicContentDefinition('posts', 'fa-solid fa-newspaper', includeHub: true),
             label: 'Artículo de blog',
             model: Post::class,
             sectionable: true,
@@ -36,6 +38,7 @@ final class BlogEntitySchemas
             permission: 'manage:posts',
             urlPrefix: 'blog',
             createView: 'admin.blog.posts.create',
+            adminFormView: 'admin.blog.posts._form',
             editView: 'admin.blog.posts.edit',
             fields: [
                 'schema_type' => ['input' => 'translations[{locale}][schema_type]', 'label' => 'Tipo de schema'],
@@ -53,6 +56,7 @@ final class BlogEntitySchemas
     {
         return new EntitySchema(
             type: 'blog_category',
+            publicContent: new PublicContentDefinition('categories', 'fa-solid fa-folder', slugPathMethod: 'getSlugPath'),
             uniqueSlugs: false,
             mutationHandler: CategoryMutationHandler::class,
             label: 'Categoría del blog',

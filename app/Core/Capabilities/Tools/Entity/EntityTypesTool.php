@@ -7,7 +7,7 @@ namespace App\Core\Capabilities\Tools\Entity;
 use App\Core\Capabilities\AvailableCapabilities;
 use App\Core\Capabilities\ExecutionContext;
 use App\Core\Capabilities\Tools\AbstractCapabilityTool;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityReadService;
 
 /**
  * Catalog of the entities an agent can manage (posts, pages, products,
@@ -16,7 +16,7 @@ use App\Services\Capabilities\EntityCrudService;
 class EntityTypesTool extends AbstractCapabilityTool
 {
     public function __construct(
-        private readonly EntityCrudService $entities,
+        private readonly EntityReadService $entities,
     ) {}
 
     public function name(): string

@@ -12,15 +12,13 @@ it('installs a physically pruned clone and renders its public and administrative
     if (getenv('RUN_DERIVED_CLONE_SMOKE') !== '1') {
         $this->markTestSkipped('Enable RUN_DERIVED_CLONE_SMOKE in an isolated CI testing database.');
     }
-    if ($deployment === '') {
-        $this->markTestSkipped('Legacy profiles require an explicit deployment selection before clone projection.');
-    }
+
     $source = dirname(__DIR__, 2);
     $files = new Filesystem;
     $clone = sys_get_temp_dir().'/dbcms-derived-clone-'.bin2hex(random_bytes(8));
     $files->makeDirectory($clone, 0755, true);
     try {
-        foreach (['app', 'bootstrap', 'config', 'database', 'routes', 'resources', 'themes', 'modules', 'lang', 'tests', 'bin', 'stubs', '.github', 'docker', 'specs', 'docs'] as $directory) {
+        foreach (['app', 'bootstrap', 'config', 'database', 'routes', 'resources', 'themes', 'block-packages', 'modules', 'lang', 'tests', 'bin', 'stubs', '.github', 'docker', 'specs', 'docs'] as $directory) {
             if (is_dir($source.'/'.$directory)) {
                 $files->copyDirectory($source.'/'.$directory, $clone.'/'.$directory);
             }
@@ -132,7 +130,7 @@ it('installs a physically pruned clone and renders its public and administrative
     if (is_file($manifest)) {
         $profile = json_decode((string) file_get_contents($manifest), true, 512, JSON_THROW_ON_ERROR);
 
-        return [[$profile['brand'], $profile['default_theme'], $profile['deployment'] ?? '']];
+        return [[$profile['brand'], $profile['default_theme'], $profile['deployment']]];
     }
 
     return [['dbcms', 'db-minimal', 'github-actions'], ['termocms', 'db-editorial', 'docker']];

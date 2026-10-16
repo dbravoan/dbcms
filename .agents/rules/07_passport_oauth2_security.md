@@ -6,4 +6,4 @@ Apply, do not restate:
 
 - Protect API routes with `auth:api` + scopes from `App\Enums\OAuthScope` (never hardcoded strings).
 - `storage/oauth-private.key` must stay `0600`; never log secrets or PII.
-- MCP write tools require `mcp:publish`.
+- MCP write tools require `mcp:write`.

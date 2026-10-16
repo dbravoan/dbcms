@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Core\Modules\ModuleManager;
-use App\Models\CmsModule;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -13,8 +11,9 @@ use Modules\AiAssistant\Contracts\AiAssistantDomainServiceInterface;
 use Modules\AiAssistant\Contracts\AiConfigBridgeInterface;
 use Modules\AiAssistant\DTOs\ChatRequest;
 use Modules\AiAssistant\Providers\OllamaProvider;
+use Tests\Support\AiComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, AiComposition::class);
 
 const OLLAMA_BASE = 'http://host.docker.internal:11434/v1';
 
@@ -23,9 +22,6 @@ beforeEach(function (): void {
     $role = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Administrator']);
     $user = User::factory()->create(['email' => 'admin@db-cms.io']);
     $user->roles()->syncWithoutDetaching([$role->id]);
-
-    app(ModuleManager::class)->discoverModules();
-    CmsModule::updateOrCreate(['identifier' => 'ai_assistant'], ['is_active' => true, 'is_installed' => true]);
 
     Cache::forget('ai_assistant:models:ollama');
 });

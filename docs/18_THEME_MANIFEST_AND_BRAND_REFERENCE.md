@@ -179,11 +179,11 @@ Full token list: `--admin-bar-bg`, `--admin-bar-panel`, `--admin-bar-panel-alt`,
 Every front layout must include:
 
 ```blade
-@include('themes.components.seo-head')
-@include('themes.components.visitor-geo-modal')
-@include('themes.components.cookie-consent-modal')
+@include('themes::components.seo-head')
+@include('themes::components.visitor-geo-modal')
+@include('themes::components.cookie-consent-modal')
 @include('components.frontoffice-admin-bar')
-@include('themes.components.scroll-magic')
+@include('themes::components.scroll-magic')
 ```
 
 ---

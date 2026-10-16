@@ -1,4 +1,4 @@
-@extends('themes.db-enterprise.layouts.app')
+@extends('themes::db-enterprise.layouts.app')
 
 @section('title', __('Insights & Whitepapers - dbCMS Enterprise'))
 @section('meta_description', __('Publicaciones de ingeniería, análisis de arquitectura cloud, gobernanza multi-mercado y optimización de rendimiento empresarial.'))

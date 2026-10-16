@@ -1,4 +1,4 @@
-@extends('themes.default-clean.layouts.app')
+@extends('themes::default-clean.layouts.app')
 
 @section('title', $translation->meta_title ?? $translation->title ?? '')
 @section('meta_description', $translation->meta_description ?? '')

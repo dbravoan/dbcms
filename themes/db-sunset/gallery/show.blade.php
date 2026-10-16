@@ -1,7 +1,7 @@
-@extends('themes.db-sunset.layouts.app')
+@extends('themes::db-sunset.layouts.app')
 
 @section('title', ($translation->meta_title ?? $translation->title ?? $gallery->title) . ' - dbCMS Sunset')
-@section('meta_description', $translation->meta_description ?? $translation->description ?? $gallery->description)
+@section('meta_description', $translation->meta_description ?? $translation->description ?? $gallery->description ?? '')
 
 @section('content')
 <div class="space-y-12" x-data="{ lightboxImage: null, lightboxTitle: '' }">

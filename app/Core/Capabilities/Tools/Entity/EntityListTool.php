@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Capabilities\Tools\Entity;
 
 use App\Core\Capabilities\Tools\AbstractCapabilityTool;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityReadService;
 
 /**
  * Listings for every registered entity, filtered like the backoffice lists.
@@ -13,7 +13,7 @@ use App\Services\Capabilities\EntityCrudService;
 class EntityListTool extends AbstractCapabilityTool
 {
     public function __construct(
-        private readonly EntityCrudService $entities,
+        private readonly EntityReadService $entities,
     ) {}
 
     public function name(): string

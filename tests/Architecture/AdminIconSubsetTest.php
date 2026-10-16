@@ -29,6 +29,7 @@ test('every font awesome icon used in the project exists in the self-hosted subs
     $directories = [
         base_path('themes'),
         base_path('modules'),
+        base_path('block-packages'),
         base_path('app'),
         resource_path('views'),
     ];

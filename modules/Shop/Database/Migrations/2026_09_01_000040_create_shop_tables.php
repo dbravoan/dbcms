@@ -97,7 +97,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('product_id')->constrained('products')->cascadeOnDelete();
             $table->string('type', 40);
-            $table->string('widget_key')->nullable();
             $table->unsignedSmallInteger('order')->default(0);
             $table->json('styling_json')->nullable();
             $table->boolean('is_active')->default(true);

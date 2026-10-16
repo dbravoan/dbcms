@@ -6,14 +6,19 @@ use App\Core\Filters\FilterSet;
 use App\Http\Middleware\CachePublicPage;
 use App\Models\Market;
 use App\Services\Cms\PageCacheService;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Support\Facades\Cache;
 use Modules\Shop\Filters\ShopFilters;
 use Modules\Shop\Models\Product;
 use Modules\Shop\Services\CartService;
+use Tests\Support\CmsFixtures;
+use Tests\Support\ShopComposition;
+use Tests\Support\ShopFixtures;
+
+uses(ShopComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    ShopFixtures::product();
     config(['cms.theme' => 'db-cyber', 'cms.page_cache.enabled' => false]);
     Cache::flush();
     $this->market = Market::where('code', 'es')->firstOrFail();

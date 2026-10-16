@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Core\Capabilities\ActorContext;
 use App\Core\Capabilities\CapabilityAuthorizer;
 use App\Core\Capabilities\CapabilityExecutor;
-use App\Core\Modules\ModuleManager;
+use App\Core\Capabilities\Resources\CapabilityResourceRegistry;
 use App\Http\Middleware\AuthenticateMcpPassport;
 use App\Models\CapabilityAuditLog;
 use App\Models\Menu;
@@ -16,21 +16,23 @@ use App\Models\SystemNotification;
 use App\Models\User;
 use App\Services\Auth\ServiceAccountProvisioningService;
 use App\Services\Capabilities\ActorContextFactory;
+use App\Services\Capabilities\PlatformResourceCatalog;
+use App\Services\Capabilities\ResourceCrudService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Passport\Client;
 use Laravel\Passport\ClientRepository;
 use Laravel\Passport\Passport;
-use Modules\Mcp\Http\Controllers\Api\PostController;
-use Modules\Mcp\Resources\McpResourceCatalog;
-use Modules\Mcp\Resources\McpResourceRegistry;
-use Modules\Mcp\Services\ResourceCrudService;
+use Tests\Support\McpCoreComposition;
+use Tests\Support\PassportTestKeys;
+
+uses(McpCoreComposition::class);
 
 beforeEach(function (): void {
+    PassportTestKeys::configure();
     app(ClientRepository::class)->createPersonalAccessGrantClient('Security isolation personal client');
     $this->authorRole = Role::firstOrCreate(['slug' => 'author'], ['name' => 'Author']);
     foreach (['access:admin', 'manage:posts', 'manage:media', 'use:ai'] as $slug) {
@@ -43,7 +45,7 @@ test('a personal token with a missing user is rejected rather than becoming a ma
     $user = User::factory()->create();
     $token = $user->createToken('orphan', ['mcp:access'])->accessToken;
     User::withoutEvents(fn () => $user->delete());
-    $request = Request::create('/api/mcp', 'POST');
+    $request = Request::create('/mcp/cms', 'POST');
     $request->headers->set('Authorization', 'Bearer '.$token);
     $response = app(AuthenticateMcpPassport::class)->handle($request, fn () => response('unexpected'), 'mcp:access');
 
@@ -60,7 +62,7 @@ test('client credentials resolve the explicit service account instead of a numer
         'client_secret' => $client->plainSecret, 'scope' => 'mcp:access mcp:read',
     ]);
     $response->assertOk();
-    $request = Request::create('/api/mcp', 'POST');
+    $request = Request::create('/mcp/cms', 'POST');
     $request->headers->set('Authorization', 'Bearer '.$response->json('access_token'));
     $result = app(AuthenticateMcpPassport::class)->handle($request, function (Request $request) use ($binding, $human) {
         expect($request->user()->getKey())->toBe($binding->user->getKey())->not->toBe($human->getKey());
@@ -78,7 +80,7 @@ test('unbound machine clients are rejected', function (): void {
         'client_secret' => $client->plainSecret, 'scope' => 'mcp:access',
     ]);
     $response->assertOk();
-    $request = Request::create('/api/mcp', 'POST');
+    $request = Request::create('/mcp/cms', 'POST');
     $request->headers->set('Authorization', 'Bearer '.$response->json('access_token'));
     expect(app(AuthenticateMcpPassport::class)->handle($request, fn () => response('unexpected'), 'mcp:access')->getStatusCode())->toBe(401);
 });
@@ -88,7 +90,7 @@ test('machine tokens are denied when their scopes exceed the current explicit bi
     $response = $this->post('/oauth/token', ['grant_type' => 'client_credentials', 'client_id' => $client->getKey(),
         'client_secret' => $client->plainSecret, 'scope' => 'mcp:access mcp:write']);
     $response->assertOk();
-    $request = Request::create('/api/mcp', 'POST');
+    $request = Request::create('/mcp/cms', 'POST');
     $request->headers->set('Authorization', 'Bearer '.$response->json('access_token'));
     expect(app(AuthenticateMcpPassport::class)->handle($request, fn () => response('unexpected'), 'mcp:access')->getStatusCode())->toBe(401);
 });
@@ -146,8 +148,8 @@ test('MCP notification CRUD cannot read update or delete another user private no
     $other = User::factory()->create();
     $own = SystemNotification::create(['uuid' => (string) Str::uuid(), 'user_id' => $user->getKey(), 'module' => 'test', 'type' => 'alert', 'title' => 'Own', 'message' => 'Own']);
     $private = SystemNotification::create(['uuid' => (string) Str::uuid(), 'user_id' => $other->getKey(), 'module' => 'test', 'type' => 'alert', 'title' => 'Private', 'message' => 'Private']);
-    $registry = new McpResourceRegistry;
-    $registry->registerMany(McpResourceCatalog::all());
+    $registry = new CapabilityResourceRegistry;
+    $registry->registerMany(PlatformResourceCatalog::all());
     $crud = new ResourceCrudService($registry);
     Auth::login($user);
     expect($crud->listing('notification')['total'])->toBe(1);
@@ -156,24 +158,6 @@ test('MCP notification CRUD cannot read update or delete another user private no
     expect(fn () => $crud->delete('notification', $private->getKey()))->toThrow(ValidationException::class);
     $crud->update('notification', $own->getKey(), ['is_read' => true]);
     expect($own->fresh()->read_at)->not->toBeNull();
-});
-
-test('SSE message sessions cannot substitute cached authority for another token', function (): void {
-    $user = User::factory()->create();
-    $this->actingAs($user);
-    Cache::put('mcp:session:security-session', ['user_id' => $user->getKey(), 'client_id' => 'client', 'token_id' => 'original-token', 'scopes' => ['*']], 60);
-    $request = Request::create('/api/mcp/message?sessionId=security-session', 'POST');
-    $request->attributes->set('oauth_user_id', $user->getKey());
-    $request->attributes->set('oauth_client_id', 'client');
-    $request->attributes->set('oauth_token_id', 'different-token');
-    $request->attributes->set('oauth_scopes', ['mcp:access']);
-    $manager = Mockery::mock(ModuleManager::class);
-    $manager->shouldReceive('isModuleEnabled')->with('mcp')->andReturnTrue();
-    $handle = app(PostController::class);
-    $controller = new Modules\Mcp\Http\Controllers\Api\Message\PostController($handle, $manager);
-
-    expect($controller($request)->getStatusCode())->toBe(403);
-    expect($request->attributes->get('oauth_scopes'))->toBe(['mcp:access']);
 });
 
 it('requires an explicit service account role without creating any identity', function (): void {

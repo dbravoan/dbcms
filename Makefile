@@ -1,4 +1,4 @@
-.PHONY: up down restart test test-filter phpstan pint pint-test migrate seed passport-keys lts-check geo-generate shell
+.PHONY: up down restart test test-integration test-release test-filter phpstan pint pint-test migrate seed passport-keys lts-check geo-generate shell
 
 SAIL = ./vendor/bin/sail
 
@@ -12,10 +12,16 @@ restart:
 	$(SAIL) restart
 
 test:
-	$(SAIL) test
+	$(SAIL) shell -c 'bash bin/test-suite fast'
+
+test-integration:
+	docker compose -p dbcms-quality -f docker/ci/compose.yml run --build --rm app bash bin/ci-check integration
+
+test-release:
+	docker compose -p dbcms-quality -f docker/ci/compose.yml run --build --rm app bash bin/ci-check release
 
 test-filter:
-	$(SAIL) test --filter $(FILTER)
+	$(SAIL) pest --configuration=phpunit.fast.xml --filter '$(FILTER)'
 
 phpstan:
 	$(SAIL) bin phpstan analyse --memory-limit=2G

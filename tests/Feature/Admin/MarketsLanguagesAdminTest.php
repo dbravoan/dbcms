@@ -5,15 +5,19 @@ declare(strict_types=1);
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Forms\Models\CustomForm;
 use Modules\Forms\Models\FormSubmission;
+use Tests\Support\CmsFixtures;
+use Tests\Support\FormsComposition;
 
 uses(RefreshDatabase::class);
 
+uses(FormsComposition::class);
+
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en', 'it', 'pt'], ['es', 'us', 'mx']);
+    CmsFixtures::identities();
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
 });
 
@@ -119,7 +123,7 @@ test('the default market and markets with content cannot be removed', function (
     ]);
 
     FormSubmission::create([
-        'custom_form_id' => CustomForm::query()->firstOrFail()->id,
+        'custom_form_id' => CustomForm::create(['slug' => 'market-reference', 'is_active' => true])->id,
         'payload' => ['foo' => 'bar'],
         'locale' => 'es',
         'market_id' => $market->id,

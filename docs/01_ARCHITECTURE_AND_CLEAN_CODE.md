@@ -1,6 +1,6 @@
 # Arquitectura y código mantenible de dbCMS
 
-Actualización: 12 de octubre de 2026. Esta guía describe las fronteras del código
+Actualización: 15 de octubre de 2026. Esta guía describe las fronteras del código
 actual y las reglas para extenderlo. La [guía de mantenimiento](ARCHITECTURE_MAINTENANCE_GUIDE.md)
 explica decisiones, recorridos, verificaciones y límites heredados.
 
@@ -52,11 +52,14 @@ frontera editorial y la de mantenimiento tienen implementaciones neutras para
 instalaciones donde no exista el módulo; una operación ausente nunca concede
 aprobación o anuncia un cambio realizado.
 
-Hay adaptadores heredados que conocen entidades incorporadas. Su presencia no
-acredita independencia de toda combinación de carpetas. Las pruebas de arquitectura
-comprueban fronteras explícitas, mientras las pruebas funcionales comprueban
-permisos, efectos y disponibilidad. Al cambiar un área heredada se extrae su
-responsabilidad conservando rutas, formatos y reglas comunes.
+Pages es núcleo en `app/Content/Pages`; `App\Core\Sections\SectionRendererService`
+renderiza secciones. Los módulos opcionales se seleccionan explícitamente:
+descubrir manifiestos no escribe en la base ni instala directorios. Charts,
+KPI/ROI y BeforeAfter son paquetes visuales del registro común de bloques/widgets.
+El contrato completo está en [Core and extensions](../specs/CORE_AND_EXTENSIONS.md).
+Esta versión de desarrollo admite romper contratos antiguos sin adaptadores ni
+migraciones de instalaciones previas. Se conservan las garantías de autorización,
+publicación, transacciones y aislamiento del contrato vigente.
 
 ## Verificación
 

@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 use App\Contracts\Services\AdminThemeServiceInterface;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
 });
 
 test('login page adapts branding according to the active backoffice theme', function (string $brand, string $expectedBrandText, string $expectedSubtext): void {

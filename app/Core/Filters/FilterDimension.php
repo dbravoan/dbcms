@@ -18,7 +18,7 @@ final class FilterDimension
     /**
      * @param  array<string, string>  $markers  locale => marker (defaults to config)
      * @param  array<string, array<string, string>>  $options  option => [locale => label] (enum)
-     * @param  Closure(string): array<string, array{label: string, key: string|int}>|null  $vocabulary
+     * @param  Closure(string, string): array<string, array{label: string, key: string|int}>|null  $vocabulary
      * @param  array<string, string>  $units  locale => unit label (range)
      * @param  list<string>  $reserved
      */
@@ -92,11 +92,11 @@ final class FilterDimension
      *
      * @return array<string, string>
      */
-    public function labels(string $locale): array
+    public function labels(string $locale, string $marketCode): array
     {
         $labels = [];
 
-        foreach ($this->vocabulary($locale) as $slug => $entry) {
+        foreach ($this->vocabulary($locale, $marketCode) as $slug => $entry) {
             $labels[$slug] = $entry['label'];
         }
 
@@ -108,21 +108,21 @@ final class FilterDimension
      *
      * @return array<string, array{label: string, key: string|int}>
      */
-    public function vocabulary(string $locale): array
+    public function vocabulary(string $locale, string $marketCode): array
     {
         if ($this->vocabulary === null) {
             return [];
         }
 
-        return ($this->vocabulary)($locale);
+        return ($this->vocabulary)($locale, $marketCode);
     }
 
     /**
      * Resolve the slug of a shared value key in another locale (hreflang).
      */
-    public function slugForKey(string|int $key, string $locale): ?string
+    public function slugForKey(string|int $key, string $locale, string $marketCode): ?string
     {
-        foreach ($this->vocabulary($locale) as $slug => $entry) {
+        foreach ($this->vocabulary($locale, $marketCode) as $slug => $entry) {
             if ((string) $entry['key'] === (string) $key) {
                 return $slug;
             }
@@ -134,9 +134,9 @@ final class FilterDimension
     /**
      * Resolve the shared value key for a slug in a given locale (hreflang).
      */
-    public function keyForSlug(string $slug, string $locale): string|int|null
+    public function keyForSlug(string $slug, string $locale, string $marketCode): string|int|null
     {
-        return $this->vocabulary($locale)[$slug]['key'] ?? null;
+        return $this->vocabulary($locale, $marketCode)[$slug]['key'] ?? null;
     }
 
     /**

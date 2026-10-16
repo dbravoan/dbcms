@@ -6,12 +6,12 @@ namespace Modules\ContentAudit\Capabilities;
 
 use App\Core\Capabilities\CapabilityRegistry;
 use App\Core\Capabilities\Tools\Action\ActionTool;
-use App\Services\Capabilities\CmsActionService;
+use App\Services\Capabilities\EntityReadService;
 
 /** Module-owned descriptions; handlers delegate to the existing shared service. */
 final class EditorialActionCatalog
 {
-    public static function register(CapabilityRegistry $registry, CmsActionService $service): void
+    public static function register(CapabilityRegistry $registry, EditorialActions $service): void
     {
         foreach (self::all($service) as $tool) {
             $registry->register($tool, module: 'content_audit', effect: 'publish');
@@ -21,7 +21,7 @@ final class EditorialActionCatalog
     /**
      * @return list<ActionTool>
      */
-    public static function all(CmsActionService $service): array
+    public static function all(EditorialActions $service): array
     {
         $entity = [
             'type' => ['type' => 'string', 'description' => 'Entity type: post, page, product…'],
@@ -37,7 +37,7 @@ final class EditorialActionCatalog
                 toolPermission: 'access:admin',
                 toolAbility: ActionTool::ABILITY_WRITE,
                 handler: static fn (array $args): array => $service->auditApprove($args),
-                permissionResolver: static fn (array $args): ?string => $service->entityPermission($args),
+                permissionResolver: static fn (array $args): ?string => empty($args['type']) ? null : app(EntityReadService::class)->schemaFor((string) $args['type'])->permission,
             ),
             new ActionTool(
                 toolName: 'cms_audit_reject',
@@ -50,7 +50,7 @@ final class EditorialActionCatalog
                 toolPermission: 'access:admin',
                 toolAbility: ActionTool::ABILITY_WRITE,
                 handler: static fn (array $args): array => $service->auditReject($args),
-                permissionResolver: static fn (array $args): ?string => $service->entityPermission($args),
+                permissionResolver: static fn (array $args): ?string => empty($args['type']) ? null : app(EntityReadService::class)->schemaFor((string) $args['type'])->permission,
             ),
             new ActionTool(
                 toolName: 'cms_audit_rollback',
@@ -60,7 +60,7 @@ final class EditorialActionCatalog
                 toolPermission: 'access:admin',
                 toolAbility: ActionTool::ABILITY_DESTRUCTIVE,
                 handler: static fn (array $args): array => $service->auditRollback($args),
-                permissionResolver: static fn (array $args): ?string => $service->entityPermission($args),
+                permissionResolver: static fn (array $args): ?string => empty($args['type']) ? null : app(EntityReadService::class)->schemaFor((string) $args['type'])->permission,
             ),
         ];
     }

@@ -3,41 +3,13 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
-
-uses(RefreshDatabase::class);
-
-$originalInstalledLock = null;
-
-beforeEach(function () use (&$originalInstalledLock): void {
-    $this->seed(PlatformShowcaseSeeder::class);
-    if (File::exists(storage_path('installed'))) {
-        $originalInstalledLock = (string) File::get(storage_path('installed'));
-        File::delete(storage_path('installed'));
-    }
-});
-
-afterEach(function () use (&$originalInstalledLock): void {
-    if ($originalInstalledLock !== null) {
-        File::put(storage_path('installed'), $originalInstalledLock);
-    } else {
-        File::put(storage_path('installed'), (string) json_encode([
-            'installed_at' => now()->toIso8601String(),
-            'admin_email' => 'admin@db-cms.io',
-            'admin_path' => 'admin',
-            'version' => '1.0.0',
-            'platform' => 'dbCMS Enterprise',
-        ], JSON_PRETTY_PRINT));
-    }
-});
 
 test('cli command cms:install executes unattended installation with options', function (): void {
     $exitCode = $this->artisan('cms:install', [
         '--db-host' => env('DB_HOST', 'mysql'),
         '--db-port' => (string) env('DB_PORT', '3306'),
-        '--db-database' => 'testing',
+        '--db-database' => env('DB_DATABASE'),
         '--db-username' => env('DB_USERNAME', 'sail'),
         '--db-password' => env('DB_PASSWORD', 'secret'),
         '--without-demo' => true,

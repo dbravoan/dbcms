@@ -13,8 +13,6 @@ use App\Services\Cms\PageCacheService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\View\View;
-use Modules\Shop\Services\CartService;
-use Modules\Shop\Services\ShopDomainService;
 
 class FrontendLayoutComposer
 {
@@ -47,13 +45,10 @@ class FrontendLayoutComposer
 
         $currentLocale = app()->getLocale();
         $marketCode = $currentMarket->code ?? 'es';
-        $galleryPrefix = $this->localization->getModulePrefix('gallery', $currentLocale);
 
         $view->with(array_merge(
             $this->chrome->for($currentLocale),
             [
-                'shopService' => $shopService = $this->shopService(),
-                'isShopEnabled' => $shopService !== null && $this->isShopEnabled($shopService),
                 'allActiveMarkets' => $allMarkets,
                 'allMarkets' => $allMarkets,
                 'currentMarket' => $currentMarket,
@@ -64,10 +59,7 @@ class FrontendLayoutComposer
                 'footerLegal' => $this->menuService->getMenu('footer_legal', $currentMarket, $currentLocale),
                 'hasMarkets' => $allMarkets->count() > 1,
                 'hasLangs' => $currentMarket !== null && $currentMarket->languages->count() > 1,
-                'galleryPrefix' => $galleryPrefix,
-                'galPrefix' => $galleryPrefix,
                 'localization' => $this->localization,
-                'cartCount' => $this->cartCount(),
                 'flags' => $this->flags(),
                 'frontNav' => $this->frontNav(),
             ]
@@ -131,41 +123,6 @@ class FrontendLayoutComposer
             );
         } catch (\Throwable) {
             return $this->activeMarkets = new Collection;
-        }
-    }
-
-    private function cartCount(): int
-    {
-        if (! class_exists(CartService::class) || ! app()->bound(CartService::class)) {
-            return 0;
-        }
-
-        try {
-            return app(CartService::class)->count();
-        } catch (\Throwable) {
-            return 0;
-        }
-    }
-
-    private function shopService(): ?ShopDomainService
-    {
-        if (! class_exists(ShopDomainService::class)) {
-            return null;
-        }
-
-        try {
-            return app(ShopDomainService::class);
-        } catch (\Throwable) {
-            return null;
-        }
-    }
-
-    private function isShopEnabled(ShopDomainService $shopService): bool
-    {
-        try {
-            return $shopService->isShopEnabled();
-        } catch (\Throwable) {
-            return false;
         }
     }
 

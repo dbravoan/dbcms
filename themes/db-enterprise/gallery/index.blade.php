@@ -1,4 +1,4 @@
-@extends('themes.db-enterprise.layouts.app')
+@extends('themes::db-enterprise.layouts.app')
 
 @section('title', app()->getLocale() === 'es' ? 'Galerías de Infraestructura & Esquemas' : (app()->getLocale() === 'ca' ? 'Galeries d\'Infraestructura & Esquemes' : 'Infrastructure & Technical Media'))
 

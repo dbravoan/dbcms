@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Core\Blocks\Contracts\BlockRegistryInterface;
 use App\Core\Blocks\Contracts\BlockTypeInterface;
 use App\Core\Sections\SectionLayout;
-use Modules\Pages\Services\SectionRendererService;
+use App\Core\Sections\SectionRendererService;
 
 /**
  * Carousel block + background behaviour (parallax / fixed) on sections and

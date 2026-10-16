@@ -1,4 +1,4 @@
-@extends('themes.db-sunset.layouts.app')
+@extends('themes::db-sunset.layouts.app')
 
 @php
     $currentLocale = app()->getLocale();

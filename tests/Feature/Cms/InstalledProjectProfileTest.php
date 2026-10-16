@@ -27,8 +27,8 @@ it('resolves the installed administrative brand and every selected frontend', fu
     expect($available)->toBe($selected);
     foreach ($profile['themes'] as $theme) {
         $manager->setActiveTheme($theme);
-        expect(app(FrontViewResolver::class)->layout())->toBe('themes.'.$theme.'.layouts.app');
-        expect(View::exists('themes.'.$theme.'.layouts.app'))->toBeTrue();
+        expect(app(FrontViewResolver::class)->layout())->toBe('themes::'.$theme.'.layouts.app');
+        expect(View::exists('themes::'.$theme.'.layouts.app'))->toBeTrue();
         expect(cms_asset_entries(true))->toContain('themes/'.$theme.'/theme.css');
         foreach (array_diff($profile['themes'], [$theme]) as $other) {
             expect(cms_asset_entries(true))->not->toContain('themes/'.$other.'/theme.css');

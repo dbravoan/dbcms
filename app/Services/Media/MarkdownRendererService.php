@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Media;
 
-use App\Core\Widgets\WidgetComponentInterface;
+use App\Core\Blocks\Contracts\BlockRegistryInterface;
 use App\Services\Content\SafeContentRenderer;
 
 class MarkdownRendererService
@@ -42,7 +42,7 @@ class MarkdownRendererService
                 $attributesRaw = $matches[2];
                 $parameters = $this->parseShortcodeAttributes($attributesRaw);
 
-                return $this->resolveWidget($widgetKey, $parameters);
+                return app(BlockRegistryInterface::class)->render($widgetKey, $parameters);
             },
             $html
         );
@@ -63,27 +63,5 @@ class MarkdownRendererService
         }
 
         return $attributes;
-    }
-
-    /**
-     * Resolves a widget by key from active modules.
-     *
-     * @param  array<string, mixed>  $parameters
-     */
-    protected function resolveWidget(string $widgetKey, array $parameters = []): string
-    {
-        // Check container or module widget registry
-        if (app()->bound("widget.{$widgetKey}")) {
-            $widgetClass = app("widget.{$widgetKey}");
-            if (is_string($widgetClass) && class_exists($widgetClass)) {
-                /** @var WidgetComponentInterface $instance */
-                $instance = app($widgetClass);
-                $rendered = $instance->render($parameters);
-
-                return is_string($rendered) ? $rendered : $rendered->render();
-            }
-        }
-
-        return "<!-- widget: {$widgetKey} -->";
     }
 }

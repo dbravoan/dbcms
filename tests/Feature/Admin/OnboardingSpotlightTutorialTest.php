@@ -3,16 +3,18 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
 });
 
-test('backoffice dashboard includes onboarding tutorial with spotlight highlighting elements and DOM targets', function (): void {
+test('core backoffice onboarding targets rendered navigation in both brands', function (string $brand): void {
+    config(['cms.admin_theme' => $brand]);
     $admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
 
     $response = $this->actingAs($admin, 'web')
@@ -20,21 +22,20 @@ test('backoffice dashboard includes onboarding tutorial with spotlight highlight
 
     $response->assertStatus(200);
 
-    // Verify tutorial component is rendered
     $response->assertSee('start-onboarding-tour');
-    $response->assertSee('spotlight');
-    $response->assertSee('recalculateSpotlight');
+    $response->assertSee("target: '#nav-pages'", false);
 
-    // Verify all DOM targets exist in the layout
-    $response->assertSee('id="nav-persona-switcher"', false);
-    $response->assertSee('id="nav-modules"', false);
-    $response->assertSee('id="nav-pages"', false);
-    $response->assertSee('id="nav-blog"', false);
-    $response->assertSee('id="nav-forms"', false);
-    $response->assertSee('id="nav-adminer"', false);
-
-    // Verify spotlight effects and cyber styling
-    $response->assertSee('animate-ping');
-    $response->assertSee('box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.82)');
-    $response->assertSee('#00FF99');
-});
+    $html = (string) $response->getContent();
+    preg_match_all("/target:\\s*'(#nav-[^']+)'/", $html, $targets);
+    $document = new DOMDocument;
+    $previous = libxml_use_internal_errors(true);
+    try {
+        $document->loadHTML($html);
+    } finally {
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+    }
+    foreach ($targets[1] as $target) {
+        expect($document->getElementById(substr($target, 1)))->not->toBeNull("Missing onboarding target: {$target}");
+    }
+})->with(['dbcms', 'termocms']);

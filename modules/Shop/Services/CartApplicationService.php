@@ -9,7 +9,6 @@ use Illuminate\Validation\ValidationException;
 use Modules\Shop\Contracts\CartApplicationInterface;
 use Modules\Shop\DTOs\CartMutationResult;
 use Modules\Shop\Models\Product;
-use Modules\Shop\Models\ShopSetting;
 
 final class CartApplicationService implements CartApplicationInterface
 {
@@ -77,6 +76,6 @@ final class CartApplicationService implements CartApplicationInterface
 
     private function exceedsStock(Product $product, int $quantity): bool
     {
-        return (bool) ShopSetting::get('shop.enable_stock', true) && $product->track_stock && $product->stock_quantity < $quantity;
+        return (bool) module_setting('shop', 'enable_stock', true) && $product->track_stock && $product->stock_quantity < $quantity;
     }
 }

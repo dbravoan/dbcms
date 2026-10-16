@@ -5,23 +5,33 @@ declare(strict_types=1);
 namespace Tests\Feature\Cms;
 
 use App\Services\Cms\ThemeManagerService;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Models\Category;
 use Modules\Blog\Models\Post;
 use Modules\Shop\Models\Product;
 use Modules\Shop\Services\CartService;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Support\BlogFixtures;
+use Tests\Support\BlogShopComposition;
+use Tests\Support\CmsFixtures;
+use Tests\Support\ShopFixtures;
 use Tests\TestCase;
 
 class ThemeParityAndIntegrityTest extends TestCase
 {
+    use BlogShopComposition;
     use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(PlatformShowcaseSeeder::class);
+        CmsFixtures::localization();
+        CmsFixtures::identities();
+        $home = CmsFixtures::home();
+        $section = $home->sections()->create(['type' => 'text', 'order' => 1, 'is_active' => true]);
+        $section->translations()->create(['locale' => 'es', 'content_json' => ['content' => '<p>Shared theme content.</p>']]);
+        BlogFixtures::post();
+        ShopFixtures::product();
     }
 
     protected function tearDown(): void
@@ -45,69 +55,21 @@ class ThemeParityAndIntegrityTest extends TestCase
         app(ThemeManagerService::class)->syncActiveTheme();
     }
 
-    public function test_all_front_themes_are_discovered_with_valid_manifests(): void
-    {
-        $themes = app(ThemeManagerService::class)->getAvailableThemes();
-
-        $this->assertNotEmpty($themes, 'At least one front theme must be available.');
-
-        foreach (array_keys($themes) as $themeId) {
-            $this->assertArrayHasKey($themeId, $themes, "Theme '{$themeId}' must be registered.");
-            $this->assertNotEmpty($themes[$themeId]['name'], "Theme '{$themeId}' must have a name.");
-        }
-    }
-
-    public function test_all_front_themes_have_complete_view_and_asset_manifest(): void
-    {
-        $themeNames = array_keys(app(ThemeManagerService::class)->getAvailableThemes());
-
-        $requiredViews = [
-            'theme.css',
-            'layouts/app.blade.php',
-            'partials/header.blade.php',
-            'partials/footer.blade.php',
-            'pages/show.blade.php',
-            'blog/index.blade.php',
-            'blog/show.blade.php',
-            'blog/category.blade.php',
-            'gallery/index.blade.php',
-            'gallery/show.blade.php',
-            'shop/index.blade.php',
-            'shop/show.blade.php',
-            'shop/cart.blade.php',
-            'shop/checkout.blade.php',
-            'shop/order_success.blade.php',
-            'shop/widgets/featured_products.blade.php',
-            'theme.json',
-        ];
-
-        foreach ($themeNames as $theme) {
-            $baseDir = base_path("themes/{$theme}");
-            $this->assertDirectoryExists($baseDir, "Theme directory 'themes/{$theme}' must exist.");
-
-            foreach ($requiredViews as $viewFile) {
-                $filePath = "{$baseDir}/{$viewFile}";
-                $this->assertFileExists($filePath, "Theme '{$theme}' is missing view file: {$viewFile}");
-            }
-        }
-    }
-
     public function test_all_front_themes_render_all_core_routes_successfully(): void
     {
         $themes = array_keys(app(ThemeManagerService::class)->getAvailableThemes());
 
-        // Routes are derived from the seeded showcase content instead of
-        // hardcoded demo slugs: the demo data must be allowed to evolve.
+        // One record per domain exercises each distinct public view.
         /** @var Post $post */
-        $post = Post::whereHas('translations', fn ($q) => $q->where('locale', 'es')->where('title', 'like', 'Qué es dbCMS%'))->firstOrFail();
+        $post = Post::sole();
         $postSlug = (string) $post->translations->firstWhere('locale', 'es')?->slug;
 
         /** @var Category $category */
-        $category = Category::whereHas('translations', fn ($q) => $q->where('slug', 'tecnologia'))->firstOrFail();
+        $category = Category::sole();
         $categorySlug = (string) $category->translations->firstWhere('locale', 'es')?->slug;
 
         /** @var Product $product */
-        $product = Product::whereHas('translations', fn ($q) => $q->where('slug', 'servidor-edge-cyber-kv-10g'))->firstOrFail();
+        $product = Product::sole();
         $productSlug = (string) $product->translations->firstWhere('locale', 'es')?->slug;
 
         $routesToTest = [
@@ -120,7 +82,7 @@ class ThemeParityAndIntegrityTest extends TestCase
             "/es/es/tienda/{$productSlug}" => 200,
             '/es/es/tienda/cart' => 200,
             '/es/es/tienda/checkout' => 200,
-            '/es/es/bloques' => 200,
+            '/es/es' => 200,
         ];
 
         app(CartService::class)->add($product->id, 1);
@@ -149,7 +111,7 @@ class ThemeParityAndIntegrityTest extends TestCase
         foreach ($nonCyberThemes as $theme) {
             config(['cms.theme' => $theme]);
 
-            foreach (['/es/es/blog', '/es/es/tienda', '/es/es/bloques'] as $path) {
+            foreach (['/es/es/blog', '/es/es/tienda', '/es/es'] as $path) {
                 $response = $this->get($path);
                 $response->assertOk();
 

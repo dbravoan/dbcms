@@ -10,8 +10,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Models\Category;
 use Modules\Blog\Models\CategoryTranslation;
 use Modules\Blog\Services\PostDomainService;
+use Tests\Support\BlogComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, BlogComposition::class);
 
 beforeEach(function (): void {
     $this->spanish = Language::firstOrCreate(['code' => 'es'], ['name' => 'Spanish', 'native_name' => 'Español', 'is_default' => true, 'is_active' => true]);
@@ -32,7 +33,7 @@ beforeEach(function (): void {
     $admin = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Admin']);
     $this->user->roles()->attach($admin->getKey());
     $this->actingAs($this->user);
-    $this->postService = new PostDomainService;
+    $this->postService = app(PostDomainService::class);
 });
 
 test('it serves a blog post natively on its localized market route without dummy CMS page', function (): void {

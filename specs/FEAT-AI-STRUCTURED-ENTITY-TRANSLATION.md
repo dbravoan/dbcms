@@ -91,7 +91,7 @@ La respuesta usa los errores comunes: `needs_input`, `denied`, `unavailable`, `c
 
 ### Declaración de texto de bloques
 
-Cada definición de bloque puede implementar el contrato core opcional `TranslatableBlockInterface` para exponer rutas textuales dot-path, con `*` para elementos existentes. El consumidor preserva segmentos de HTML/Markdown y sólo cambia texto permitido. El registro base también admite declaraciones explícitas y conservadoras para bloques core. No se extiende obligatoriamente `BlockTypeInterface` ni se exige a los módulos una dependencia de IA. Rutas ausentes, desconocidas o de tipo no textual se conservan sin enviarse como unidades de traducción. Ejemplos constatados:
+Cada definición de bloque puede implementar el contrato core opcional `TranslatableBlockInterface` para exponer rutas textuales dot-path, con `*` para elementos existentes. El consumidor preserva segmentos de HTML/Markdown y sólo cambia texto permitido. Las definiciones de los paquetes y módulos son la única fuente de rutas; no existe un registro paralelo de tipos en IA. No se extiende obligatoriamente `BlockTypeInterface` ni se exige a los módulos una dependencia de IA. Rutas ausentes, desconocidas o de tipo no textual se conservan sin enviarse como unidades de traducción. Ejemplos constatados:
 
 | Bloque | Rutas textuales | Valores que permanecen |
 | --- | --- | --- |
@@ -159,7 +159,7 @@ Se extienden las operaciones existentes de generación sin cambiar acciones ni f
 
 ### Compatibilidad y permisos
 
-Los parámetros de traducción son aditivos. Acciones legacy mantienen sus contratos. Los roles personalizados no reciben nuevos permisos automáticamente. La herramienta es visible sólo con módulo y actor autorizados; la visibilidad del botón no sustituye autorización del backend. La aplicación de preview tampoco envía un guardado automático escondido.
+Los parámetros de traducción siguen el contrato canónico de la acción; no se mantienen aliases históricos. Los roles personalizados no reciben nuevos permisos automáticamente. La herramienta es visible sólo con módulo y actor autorizados; la visibilidad del botón no sustituye autorización del backend. La aplicación de preview tampoco envía un guardado automático escondido.
 
 ## 5. Generative & Traditional SEO Specification
 

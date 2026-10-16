@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Tests\Regression;
+
 use App\Services\Geo\ContextChunkingService;
 use PHPUnit\Framework\TestCase;
 

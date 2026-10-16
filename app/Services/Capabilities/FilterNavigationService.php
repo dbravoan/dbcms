@@ -47,6 +47,10 @@ class FilterNavigationService
         $market = $this->market($marketCode);
         $locale = $this->locale($market, $locale);
 
+        if ($market === null || ! $market->languages()->where('code', $locale)->where('is_active', true)->exists()) {
+            return ['error' => 'The market or language is unavailable.'];
+        }
+
         $modules = $moduleKey !== null
             ? array_filter([$moduleKey => $this->modules->get($moduleKey)])
             : $this->modules->all();
@@ -56,7 +60,7 @@ class FilterNavigationService
         }
 
         $out = [
-            'market' => $market?->code,
+            'market' => $market->code,
             'locale' => $locale,
             'modules' => [],
         ];
@@ -71,7 +75,7 @@ class FilterNavigationService
                     'marker' => $dimension->marker($locale),
                     'implicit' => $dimension->implicit,
                     'required' => $dimension->key === 'search' ? false : null,
-                    'values' => $this->values($dimension, $locale),
+                    'values' => $this->values($dimension, $locale, $market),
                 ];
             }
 
@@ -79,7 +83,7 @@ class FilterNavigationService
 
             $out['modules'][$key] = [
                 'label' => $module->filterModuleLabel($locale),
-                'base_url' => url("/{$market?->code}/{$locale}/{$prefix}"),
+                'base_url' => url("/{$market->code}/{$locale}/{$prefix}"),
                 'path_template' => '{market}/{locale}/'.$prefix.'/{dimension}/{value}/…',
                 'dimensions' => $dimensions,
             ];
@@ -99,8 +103,8 @@ class FilterNavigationService
         $market = $this->market($marketCode);
         $locale = $this->locale($market, $locale);
 
-        if ($market === null) {
-            return ['error' => 'No market available.'];
+        if ($market === null || ! $market->languages()->where('code', $locale)->where('is_active', true)->exists()) {
+            return ['error' => 'The market or language is unavailable.'];
         }
 
         // Accept a full URL as well as a path.
@@ -161,8 +165,8 @@ class FilterNavigationService
         $market = $this->market(isset($args['market']) ? (string) $args['market'] : null);
         $locale = $this->locale($market, isset($args['locale']) ? (string) $args['locale'] : null);
 
-        if ($market === null) {
-            return ['error' => 'No market available.'];
+        if ($market === null || ! $market->languages()->where('code', $locale)->where('is_active', true)->exists()) {
+            return ['error' => 'The market or language is unavailable.'];
         }
 
         $module = $this->modules->get($moduleKey);
@@ -210,7 +214,7 @@ class FilterNavigationService
     /**
      * @return array<int, array<string, string>>
      */
-    private function values(FilterDimension $dimension, string $locale): array
+    private function values(FilterDimension $dimension, string $locale, ?Market $market): array
     {
         if ($dimension->type === 'enum') {
             $values = [];
@@ -222,13 +226,13 @@ class FilterNavigationService
             return $values;
         }
 
-        if ($dimension->type !== 'terms') {
+        if ($dimension->type !== 'terms' || $market === null) {
             return [];
         }
 
         $values = [];
 
-        foreach (array_slice($dimension->labels($locale), 0, 30, true) as $slug => $label) {
+        foreach (array_slice($dimension->labels($locale, (string) $market->code), 0, 30, true) as $slug => $label) {
             $values[] = ['value' => (string) $slug, 'label' => $label];
         }
 
@@ -257,7 +261,7 @@ class FilterNavigationService
             return Market::query()->where('code', $code)->where('is_active', true)->first();
         }
 
-        return Market::query()->where('is_default', true)->first()
+        return Market::query()->where('is_default', true)->where('is_active', true)->first()
             ?? Market::query()->where('is_active', true)->orderBy('id')->first();
     }
 

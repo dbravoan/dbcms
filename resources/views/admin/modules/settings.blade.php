@@ -32,7 +32,7 @@
         </div>
 
         <div class="shrink-0 flex items-center gap-3">
-            @if($module->isConfigured())
+            @if($configured)
                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#00FF99]/10 text-[#00FF99] border border-[#00FF99]/30">
                     <span class="w-1.5 h-1.5 rounded-full bg-[#00FF99]"></span>
                     Requisitos configurados

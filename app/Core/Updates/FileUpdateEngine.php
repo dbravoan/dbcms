@@ -296,13 +296,7 @@ final class FileUpdateEngine
     /** @return array<int|string, string> */
     private function journal(): array
     {
-        // Read the original snapshot format as well, so interrupted pre-upgrade
-        // recovery snapshots retain their durable intent.
-        $legacy = $this->private.'/journal.json';
-        $data = is_file($legacy) ? json_decode((string) file_get_contents($legacy), true, 512, JSON_THROW_ON_ERROR) : [];
-        if (! is_array($data)) {
-            throw new RuntimeException('Registro de recuperación inválido.');
-        }
+        $data = [];
         $path = $this->private.'/journal.ndjson';
         if (! is_file($path)) {
             return $data;

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Content\Pages\Models\Page;
+use App\Content\Pages\Models\SectionTranslation;
+use App\Models\Market;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\Pages\Models\Page;
-use Modules\Pages\Models\SectionTranslation;
+use Tests\Support\CmsFixtures;
+use Tests\Support\VisualContentFixtures;
 use Tests\TestCase;
 
 class BlockManagerColumnBufferTest extends TestCase
@@ -20,7 +22,9 @@ class BlockManagerColumnBufferTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(PlatformShowcaseSeeder::class);
+        CmsFixtures::localization();
+        CmsFixtures::identities();
+        VisualContentFixtures::home();
 
         /** @var User $admin */
         $admin = User::where('email', 'admin@db-cms.io')->first();
@@ -42,26 +46,26 @@ class BlockManagerColumnBufferTest extends TestCase
                     'id' => 'section-1',
                     'title' => 'Sección de Prueba',
                     'type' => 'features',
-                    'layout' => '2-cols',
+                    'columns_layout' => '2',
                     'columns' => [
                         [
                             'id' => 'col-1',
-                            'widgets' => [
-                                ['type' => 'text', 'content' => ['body' => 'Columna 1']],
+                            'blocks' => [
+                                ['type' => 'text', 'content' => 'Columna 1'],
                             ],
                         ],
                         [
                             'id' => 'col-2',
-                            'widgets' => [
-                                ['type' => 'text', 'content' => ['body' => 'Columna 2']],
+                            'blocks' => [
+                                ['type' => 'text', 'content' => 'Columna 2'],
                             ],
                         ],
                     ],
                     '_col_buffer' => [
                         [
                             'id' => 'col-3-stashed',
-                            'widgets' => [
-                                ['type' => 'text', 'content' => ['body' => 'Columna 3 stashed']],
+                            'blocks' => [
+                                ['type' => 'text', 'content' => 'Columna 3 stashed'],
                             ],
                         ],
                     ],
@@ -72,13 +76,13 @@ class BlockManagerColumnBufferTest extends TestCase
         // Perform page update via standard Admin PutController
         $response = $this->actingAs($this->adminUser, 'web')
             ->put(route('admin.pages.update', $page->id), [
-                'title' => 'Página Actualizada',
-                'is_active' => true,
+                'translations' => ['es' => ['title' => 'Página Actualizada', 'slug' => 'home']],
+                'is_published' => true,
                 'sections_json' => json_encode($payloadWithBuffer),
-                'markets' => [1],
+                'market_ids' => Market::pluck('id')->all(),
             ]);
 
-        $response->assertRedirect();
+        $response->assertRedirect()->assertSessionHasNoErrors();
 
         // Reload page and check stored sections
         $page->refresh();
@@ -91,5 +95,6 @@ class BlockManagerColumnBufferTest extends TestCase
             )->pluck('content_json')->all()
         );
         $this->assertStringNotContainsString('_col_buffer', (string) $allTranslationsJson);
+        $this->assertStringContainsString('Columna 1', (string) $allTranslationsJson);
     }
 }

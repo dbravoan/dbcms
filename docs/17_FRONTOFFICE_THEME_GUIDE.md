@@ -16,17 +16,17 @@
 - `App\Services\Cms\ThemeManagerService` discovers them by directory and reads `theme.json`.
 - The active theme is `config('cms.theme')` (env `CMS_THEME`, default `db-cyber`), switchable from
   the backoffice **Themes** page (`admin.themes.index`).
-- Views resolve as **`themes.{id}.{module}.{view}`** (e.g. `themes.db-cyber.blog.show`). If a theme
+- Views resolve as **`themes::{id}.{module}.{view}`** (e.g. `themes::db-cyber.blog.show`). If a theme
   lacks a view, the module fallback is used (`pages::show`, `blog::show`, `shop::show`,
   `gallery::show`, …).
 - Themes are **independent and self-contained**: a theme must never reference another theme's views.
-- A **complete** theme ships 16 files (layout, partials, pages/blog/gallery/shop views and the
-  `theme.json`); coverage is enforced dynamically by `ThemeSystemIntegrityTest` /
-  `ThemeParityAndIntegrityTest`, which discover themes from disk.
+- A theme supplies its manifest, layout, partials and the public views needed by its
+  composition. `ThemeSystemIntegrityTest` and `ThemeParityAndIntegrityTest` discover
+  themes from disk and verify generated themes and rendered public routes.
 
 ---
 
-## 2. File structure (16 required files)
+## 2. File structure
 
 ```
 themes/{id}/
@@ -53,7 +53,8 @@ themes/{id}/
     └── widgets/featured_products.blade.php
 ```
 
-`tests/Feature/Cms/ThemeSystemIntegrityTest.php` enforces this list.
+This source-distribution example includes Blog, Gallery and Shop views. A derived
+project keeps the themes and optional modules selected for its composition.
 
 ---
 
@@ -81,10 +82,10 @@ themes/{id}/
 | `@stack('scripts')` | Scripts pushed by blocks/widgets. |
 | `@stack('admin_scripts')` | Scripts required by the embedded section editor (search-select, block manager). |
 | `@include('components.frontoffice-admin-bar')` | Admin bar + SEO/GEO drawer + section editor. |
-| `@include('themes.components.cookie-consent-modal')` | GDPR banner. |
-| `@include('themes.components.visitor-geo-modal')` | First-visit geo/locale modal. |
-| `@include('themes.components.scroll-magic')` | Scroll animations / video scrub engine. |
-| `@include('themes.components.seo-head')` | Meta/OG/JSON-LD. |
+| `@include('themes::components.cookie-consent-modal')` | GDPR banner. |
+| `@include('themes::components.visitor-geo-modal')` | First-visit geo/locale modal. |
+| `@include('themes::components.scroll-magic')` | Scroll animations / video scrub engine. |
+| `@include('themes::components.seo-head')` | Meta/OG/JSON-LD. |
 | `class="theme-{{ $adminTheme }}"` on `<html>` | Adapts the admin bar to the active backoffice theme. |
 
 The `FrontendLayoutComposer` shares the chrome variables: `$localization`, `$currentMarket`,
@@ -130,10 +131,12 @@ The `FrontendLayoutComposer` shares the chrome variables: `$localization`, `$cur
 
 ## 7. Widgets
 
-Theme widget overrides resolve as **`themes.{id}.{module}.widgets.{view}`**, e.g.
-`themes/db-cyber/shop/widgets/featured_products.blade.php`. The legacy
-`themes/{id}/widgets/{module}/{view}` path is still supported, then the module default
-`{module}::widgets.{view}`.
+Theme widget overrides resolve as **`themes::{id}.{module}.widgets.{view}`**, e.g.
+`themes/db-cyber/shop/widgets/featured_products.blade.php`. In the source
+distribution the resolver next tries the bundled `db-cyber` widget, then the
+module default `{module}::widgets.{view}`. Derived projects skip that bundled
+fallback and use their selected theme followed by the module default. There is
+no alternate widget directory layout.
 
 ---
 
@@ -221,19 +224,20 @@ tokens) and `$theme`.
 ./vendor/bin/sail artisan make:front-theme acme
 ```
 
-Creates a complete, renderable skeleton (16 files) under `themes/acme`. Activate it from the
+Creates a renderable skeleton under `themes/acme`. Activate it from the
 backoffice **Themes** page or with `CMS_THEME=acme`.
 
 ---
 
 ## 10. Checklist
 
-- [ ] All 16 files present + `filter.json` with the panel skin.
-- [ ] Layout exposes the 4 hooks + includes the 5 shared components + `theme-{{ $adminTheme }}`.
-- [ ] No references to other themes (`themes.db-<other>`).
+- [ ] Manifest, layout and views for the selected composition render successfully;
+  `filter.json` defines the panel skin.
+- [ ] Layout exposes the hooks and shared components above, including `theme-{{ $adminTheme }}`.
+- [ ] No references to other themes (`themes::db-<other>`).
 - [ ] Uses `$localization->url()` with the localized prefix for internal links.
-- [ ] Renders in `es`, `en` and `ca` (home + module views).
+- [ ] Renders in every configured locale (home and installed module views).
 - [ ] `theme.json` present with `name`/`identifier`.
 - [ ] The filter panel is included in `blog/index`, `blog/category` and `shop/index`.
 - [ ] The panel renders in the theme's own look (`data-filter-panel="{id}"`) and its tokens are in the compiled CSS (`npm run build`).
-- [ ] `./vendor/bin/sail pest` and `view:cache` pass.
+- [ ] Theme tests and `./vendor/bin/sail artisan view:cache` pass.

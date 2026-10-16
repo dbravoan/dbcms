@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 use App\Core\Capabilities\ActorContext;
-use App\Core\Modules\ModuleManager;
 use App\Models\Language;
 use App\Models\Market;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Modules\CreativeStudio\Services\CreativeStudioDomainService;
 use Tests\Support\AiMcpFixture;
+use Tests\Support\CreativeComposition;
+
+uses(CreativeComposition::class);
 
 beforeEach(function (): void {
     Http::preventStrayRequests();
-    app(ModuleManager::class)->discoverModules();
-    app(ModuleManager::class)->activate('creative-studio');
     $this->actor = new ActorContext(AiMcpFixture::admin()->id);
     $market = Market::firstOrCreate(['code' => 'es'], ['name' => 'España', 'is_active' => true]);
     $language = Language::firstOrCreate(['code' => 'es'], ['name' => 'Español', 'native_name' => 'Español', 'is_active' => true]);

@@ -1,7 +1,6 @@
 <?php
 
 declare(strict_types=1);
-use App\Core\Modules\ModuleManager;
 use App\Models\CmsModule;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
@@ -10,27 +9,30 @@ use Illuminate\Validation\ValidationException;
 use Modules\AiAssistant\Contracts\AiAssistantDomainServiceInterface;
 use Modules\AiAssistant\Contracts\AiConfigBridgeInterface;
 use Modules\AiAssistant\Services\AiProviderSettings;
+use Tests\Support\AiComposition;
+
+uses(AiComposition::class);
 
 beforeEach(function (): void {
     Http::preventStrayRequests();
     config(['services.higgsfield.key' => null, 'services.gemini.key' => null]);
-    app(ModuleManager::class)->discoverModules();
 });
-test('Higgsfield stores separate encrypted credentials and resolves the compatible authorization pair', function (): void {
+test('Higgsfield stores separate encrypted credentials and formats the authorization header', function (): void {
     app(AiConfigBridgeInterface::class)->saveProviderConfig('higgsfield', ['api_key_id' => 'account-id', 'api_key_secret' => 'account-secret']);
     $stored = CmsModule::where('identifier', 'ai_assistant')->firstOrFail()->settings;
+    expect($stored)->not->toHaveKey('higgsfield_api_key');
     expect($stored['higgsfield_api_key_id'])->not->toBe('account-id');
     expect(Crypt::decryptString($stored['higgsfield_api_key_id']))->toBe('account-id');
     expect(Crypt::decryptString($stored['higgsfield_api_key_secret']))->toBe('account-secret');
     expect(app(AiProviderSettings::class)->apiKey('higgsfield'))->toBe('account-id:account-secret');
 });
-test('legacy Higgsfield credentials remain usable and masked edits preserve both fields', function (): void {
+test('masked Higgsfield edits preserve both fields and rotate a separate secret', function (): void {
     $bridge = app(AiConfigBridgeInterface::class);
-    $bridge->saveProviderConfig('higgsfield', ['api_key' => 'legacy-id:legacy-secret']);
+    $bridge->saveProviderConfig('higgsfield', ['api_key_id' => 'account-id', 'api_key_secret' => 'account-secret']);
     $bridge->saveProviderConfig('higgsfield', ['api_key_id' => AiProviderSettings::MASKED_KEY, 'api_key_secret' => '']);
-    expect(app(AiProviderSettings::class)->apiKey('higgsfield'))->toBe('legacy-id:legacy-secret');
+    expect(app(AiProviderSettings::class)->apiKey('higgsfield'))->toBe('account-id:account-secret');
     $bridge->saveProviderConfig('higgsfield', ['api_key_secret' => 'rotated-secret']);
-    expect(app(AiProviderSettings::class)->apiKey('higgsfield'))->toBe('legacy-id:rotated-secret');
+    expect(app(AiProviderSettings::class)->apiKey('higgsfield'))->toBe('account-id:rotated-secret');
 });
 test('new incomplete Higgsfield credentials are rejected without persisting a partial secret', function (): void {
     app(AiProviderSettings::class)->save('higgsfield', ['api_key_id' => 'partial-id']);
@@ -74,3 +76,7 @@ test('connection checks expose three independent modalities without creating uns
         expect($result['generation_verified'])->toBeFalse();
     }Http::assertNothingSent();
 });
+
+test('Higgsfield rejects the retired combined credential field', function (): void {
+    app(AiProviderSettings::class)->save('higgsfield', ['api_key' => 'account-id:account-secret']);
+})->throws(ValidationException::class);

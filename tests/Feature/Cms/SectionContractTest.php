@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
+use App\Content\Pages\Models\PageSection;
+use App\Content\Pages\Models\SectionTranslation;
 use App\Core\Sections\SectionLayout;
-use Modules\Pages\Models\PageSection;
-use Modules\Pages\Models\SectionTranslation;
-use Modules\Pages\Services\SectionRendererService;
+use App\Core\Sections\SectionRendererService;
+use App\Models\Market;
+use App\Services\Content\PublishedSectionTextService;
 
 /**
  * El contrato canónico de secciones: sección → columnas → bloques.
@@ -25,14 +28,16 @@ test('the editor payload renders multi-column sections', function (): void {
             'columns_layout' => '2',
             'columns' => [
                 ['id' => 'c1', 'blocks' => [$block]],
-                ['id' => 'c2', 'blocks' => []],
+                ['id' => 'c2', 'blocks' => [['type' => 'text', 'content' => 'Segunda columna']]],
             ],
         ],
     ], null, 'es');
 
-    expect($rendered)->toContain('cms-column')
-        ->and(substr_count($rendered, 'cms-column'))->toBe(2)
-        ->and($rendered)->toContain('Bloque de columna');
+    $document = new DOMDocument;
+    @$document->loadHTML($rendered);
+    $columns = (new DOMXPath($document))->query('//*[contains(concat(" ", normalize-space(@class), " "), " cms-column ")]');
+    expect($columns->length)->toBe(2)
+        ->and($rendered)->toContain('Bloque de columna', 'Segunda columna');
 });
 
 test('a section without columns wraps its content in one column', function (): void {
@@ -70,6 +75,22 @@ test('every locale renders its own column content', function (): void {
 
     expect($es)->toContain('TEXTO ES')->not->toContain('TEXT EN')
         ->and($en)->toContain('TEXT EN')->not->toContain('TEXTO ES');
+});
+
+test('untranslated sections are absent from public rendering and semantic text', function (): void {
+    $section = new PageSection(['type' => 'text', 'styling_json' => ['type' => 'text', 'content' => 'MASTER PRIVATE TEXT']]);
+    $section->setRelation('translations', collect([
+        new SectionTranslation(['locale' => 'en', 'content_json' => ['content' => 'English only section']]),
+    ]));
+    $page = new Page;
+    $page->setRelation('publishedSections', collect([$section]));
+    $renderer = app(SectionRendererService::class);
+    $text = app(PublishedSectionTextService::class);
+
+    expect($renderer->renderSection($section, null, 'es'))->toBe('')
+        ->and($text->text($page, new Market, 'es'))->toBe('')
+        ->and($renderer->renderSection($section, null, 'en'))->toContain('English only section')
+        ->and($text->text($page, new Market, 'en'))->toContain('English only section')->not->toContain('MASTER PRIVATE TEXT');
 });
 
 test('the block grid size uses its own key and never collides with columns', function (): void {

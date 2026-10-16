@@ -3,13 +3,14 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities(['admin' => [], 'editor' => ['access:admin'], 'author' => ['access:admin'], 'marketing' => ['access:admin'], 'viewer' => ['access:admin']]);
 });
 
 test('admin login page renders with dbCMS branding and 1-click personas', function (): void {

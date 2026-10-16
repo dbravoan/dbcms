@@ -28,17 +28,12 @@
 
     <!-- KPI Metric Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        @foreach($counts as $count)
         <div class="cyber-card p-4 space-y-1">
-            <div class="text-[10px] text-gray-400 uppercase font-bold">{{ __('admin.seo_audit.indexable_posts') }}</div>
-            <div class="text-2xl font-bold text-white">{{ $postsCount }}</div>
-            <div class="text-[10px] text-[#00FF99]"><i class="fa-solid fa-check mr-1"></i> {{ __('admin.seo_audit.schema_techarticle') }}</div>
+            <div class="text-[10px] text-gray-400 uppercase font-bold">{{ $count['label'] }}</div>
+            <div class="text-2xl font-bold text-white">{{ $count['count'] }}</div>
         </div>
-
-        <div class="cyber-card p-4 space-y-1">
-            <div class="text-[10px] text-gray-400 uppercase font-bold">{{ __('admin.seo_audit.pages') }}</div>
-            <div class="text-2xl font-bold text-white">{{ $pagesCount }}</div>
-            <div class="text-[10px] text-[#00FF99]"><i class="fa-solid fa-check mr-1"></i> {{ __('admin.seo_audit.schema_webpage') }}</div>
-        </div>
+        @endforeach
 
         <div class="cyber-card p-4 space-y-1">
             <div class="text-[10px] text-gray-400 uppercase font-bold">{{ __('admin.seo_audit.active_markets') }}</div>
@@ -60,7 +55,7 @@
             <span class="text-[10px] text-gray-500">{{ __('admin.seo_audit.last_posts') }}</span>
         </div>
 
-        <x-admin.table :empty="empty($auditedPosts)" emptyTitle="No hay publicaciones para auditar" emptyDescription="Publica contenido para ver su evaluación GEO en tiempo real.">
+        <x-admin.table :empty="empty($auditedEntities)" emptyTitle="No hay publicaciones para auditar" emptyDescription="Publica contenido para ver su evaluación GEO en tiempo real.">
             <x-slot:header>
                 <th class="py-3 px-4 font-bold uppercase tracking-wider text-gray-400">{{ __('admin.seo_audit.col_content') }}</th>
                 <th class="py-3 px-4 font-bold uppercase tracking-wider text-gray-400">{{ __('admin.seo_audit.col_type') }}</th>
@@ -69,7 +64,7 @@
                 <th class="py-3 px-4 font-bold uppercase tracking-wider text-gray-400">{{ __('admin.seo_audit.col_recommendations') }}</th>
             </x-slot:header>
 
-            @foreach($auditedPosts as $post)
+            @foreach($auditedEntities as $post)
                 <tr class="hover:bg-gray-800/30 transition-colors">
                     <td class="py-3.5 px-4 font-bold text-white max-w-xs truncate">
                         <div>{{ $post['title'] }}</div>

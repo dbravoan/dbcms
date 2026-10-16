@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\Blog\Services;
 
-use App\Contracts\Services\LocalizationServiceInterface;
 use App\Core\Content\Contracts\EntityMutationHandlerInterface;
 use App\Core\Sections\SectionLayout;
 use Illuminate\Database\Eloquent\Model;
@@ -24,9 +23,6 @@ final class PostMutationHandler implements EntityMutationHandlerInterface
             ? $rawSections
             : (is_string($rawSections) ? json_decode($rawSections, true) : null);
         $sections = is_array($decoded) ? $decoded : [];
-        if (array_key_exists('sections_json', $args) && array_is_list($sections)) {
-            $sections = [app(LocalizationServiceInterface::class)->defaultLocale() => $sections];
-        }
         foreach ($translations as $locale => $values) {
             if (! is_array($values)) {
                 continue;

@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 use App\Contracts\Services\BrandServiceInterface;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
 });
 
 test('the shared brand name is the brand identity, kept apart from the site name', function (): void {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Shop\Schema;
 
 use App\Core\Content\EntitySchema;
+use App\Core\Content\PublicContentDefinition;
 use Illuminate\Support\Str;
 use Modules\Shop\Models\Inquiry;
 use Modules\Shop\Models\Product;
@@ -34,6 +35,7 @@ final class ShopEntitySchemas
     {
         return new EntitySchema(
             type: 'product',
+            publicContent: new PublicContentDefinition('products', 'fa-solid fa-bag-shopping', includeHub: true),
             mutationHandler: ProductMutationHandler::class,
             label: 'Producto',
             model: Product::class,
@@ -42,6 +44,7 @@ final class ShopEntitySchemas
             permission: 'manage:shop',
             urlPrefix: 'shop',
             createView: 'admin.shop.products.create',
+            adminFormView: 'admin.shop.products._form',
             editView: 'admin.shop.products.edit',
             creationDefaults: ['sku' => static fn (): string => 'DRAFT-'.Str::uuid(), 'price' => 0, 'stock_quantity' => 0],
             fields: [
@@ -60,6 +63,7 @@ final class ShopEntitySchemas
     {
         return new EntitySchema(
             type: 'shop_category',
+            publicContent: new PublicContentDefinition('categories', 'fa-solid fa-tags'),
             mutationHandler: ShopCategoryMutationHandler::class,
             label: 'Categoría de tienda',
             model: ProductCategory::class,

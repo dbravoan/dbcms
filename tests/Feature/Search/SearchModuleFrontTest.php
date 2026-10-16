@@ -4,24 +4,29 @@ declare(strict_types=1);
 
 use App\Contracts\Services\LocalizationServiceInterface;
 use App\Contracts\Services\ModuleSettingsServiceInterface;
-use App\Core\Search\SearchDocument;
 use App\Core\Search\SearchIndexer;
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\SearchDocumentIndex;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Models\Post;
 use Modules\Blog\Models\PostTranslation;
 use Modules\Search\Models\SearchTerm;
 use Modules\Search\Services\SearchSettings;
 use Modules\Shop\Models\Product;
+use Tests\Support\BlogFixtures;
+use Tests\Support\CmsFixtures;
+use Tests\Support\SearchComposition;
+use Tests\Support\ShopFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, SearchComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en', 'ca', 'fr'], ['es', 'us']);
+    CmsFixtures::identities();
+    BlogFixtures::post();
+    ShopFixtures::product();
     // These parity cases explicitly include Catalan in the Spanish market.
     $catalan = Language::updateOrCreate(['code' => 'ca'], ['name' => 'Catalan', 'native_name' => 'Català', 'direction' => 'ltr', 'is_active' => true]);
     Market::where('code', 'es')->firstOrFail()->languages()->syncWithoutDetaching([$catalan->getKey() => ['is_default' => false]]);
@@ -69,8 +74,12 @@ test('the search hub starts as noindex and the typed query consolidates into the
 test('results are served on a canonical path with entity facets', function (): void {
     // A term that exists in two entity types, so the facet links appear.
     $indexer = app(SearchIndexer::class);
-    $indexer->index(new SearchDocument('post', (string) Post::published()->forMarket('es')->firstOrFail()->getKey(), 'es', 'http://localhost/es/es/blog/x', 'Termofacet demo'));
-    $indexer->index(new SearchDocument('product', (string) Product::active()->forMarket(Market::where('code', 'es')->firstOrFail())->firstOrFail()->getKey(), 'es', 'http://localhost/es/es/tienda/y', 'Termofacet demo'));
+    $post = Post::published()->forMarket('es')->firstOrFail();
+    $post->translations()->where('locale', 'es')->update(['title' => 'Termofacet demo']);
+    $indexer->indexEntity('post', $post->id);
+    $product = Product::active()->firstOrFail();
+    $product->translations()->where('locale', 'es')->update(['name' => 'Termofacet demo']);
+    $indexer->indexEntity('product', $product->id);
 
     $response = $this->get('/es/es/buscar/termofacet')->assertOk();
     $html = (string) $response->getContent();
@@ -126,13 +135,8 @@ test('the inbox activates the search for Google, its sitemap entry and llms entr
     foreach (range(1, 3) as $i) {
         $post = Post::withoutEvents(fn () => Post::create(['user_id' => $this->admin->getKey(), 'is_published' => true, 'published_at' => now()]));
         $post->translations()->create(['locale' => 'es', 'title' => 'Contenido suficiente '.$i, 'slug' => 'rich-'.$i, 'content' => 'Contenido público suficiente '.$i]);
-        $indexer->index(new SearchDocument(
-            'post',
-            (string) $post->getKey(),
-            'es',
-            'http://localhost/es/es/blog/rich-'.$i,
-            'Contenido suficiente '.$i,
-        ));
+        $post->markets()->attach(Market::where('code', 'es')->sole());
+        $indexer->indexEntity('post', $post->id);
     }
 
     $rich = (string) $this->get('/es/es/buscar/contenido-suficiente')->assertOk()->getContent();

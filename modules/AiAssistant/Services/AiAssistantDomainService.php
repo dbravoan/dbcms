@@ -9,6 +9,7 @@ use App\Core\Content\EntitySchema;
 use App\Services\Ai\AntiAiEditorialService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Modules\AiAssistant\Contracts\AiAssistantDomainServiceInterface;
 use Modules\AiAssistant\Models\AiGenerationLog;
 
@@ -41,6 +42,9 @@ class AiAssistantDomainService implements AiAssistantDomainServiceInterface
      */
     public function generateBlock(string $blockType, string $prompt, string $locale = 'es', string $market = 'es'): array
     {
+        if ($this->blockIntelligence->getBlockDefinition($blockType) === null) {
+            throw ValidationException::withMessages(['block_type' => 'This block is unavailable: '.$blockType]);
+        }
         $dataQuestion = 'Aporta las etiquetas y los valores reales que quieres representar; no se generarán estadísticas inventadas.';
         if (in_array($blockType, ['charts', 'kpi'], true) && ! preg_match('/\d/u', $prompt)) {
             return ['success' => false, 'status' => 'needs_input', 'question' => $dataQuestion, 'message' => $dataQuestion];

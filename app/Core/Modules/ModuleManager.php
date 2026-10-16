@@ -4,29 +4,33 @@ declare(strict_types=1);
 
 namespace App\Core\Modules;
 
+use App\Content\Pages\Models\PageSection;
+use App\Contracts\Services\LocalizationServiceInterface;
 use App\Contracts\Services\ModulePackageInstallerInterface;
 use App\Contracts\Services\ModulePackageUploadServiceInterface;
-use App\Core\Search\Contracts\SearchSourceRegistryInterface;
+use App\Core\Blocks\Contracts\BlockRegistryInterface;
+use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
 use App\Core\Search\SearchIndexer;
+use App\Core\Sections\SectionLayout;
 use App\DTOs\Modules\ModulePackageDTO;
 use App\Events\ModuleAvailabilityChanged;
 use App\Models\CmsModule;
 use App\Models\MenuItem;
 use App\Services\Cms\PageCacheService;
 use Illuminate\Contracts\Foundation\Application;
-use Illuminate\Http\UploadedFile;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
-use Modules\Pages\Models\PageSection;
 
 class ModuleManager implements ModulePackageUploadServiceInterface
 {
-    /**
-     * @var array<string, ModuleInterface>
-     */
-    protected array $activeModules = [];
+    /** @var array<string, array<string, mixed>>|null */
+    private ?array $manifests = null;
+
+    private ?string $manifestRoot = null;
 
     /** @var array<string, ModuleInterface> */
     protected array $registeredModules = [];
@@ -36,121 +40,233 @@ class ModuleManager implements ModulePackageUploadServiceInterface
     ) {}
 
     /**
-     * Scans modules directory and syncs all discovered modules to database.
+     * Reads manifests without creating directories or changing persisted state.
      *
      * @return array<string, array<string, mixed>>
      */
     public function discoverModules(): array
     {
-        $modulesPath = base_path('modules');
-
-        if (! File::exists($modulesPath)) {
-            File::makeDirectory($modulesPath, 0755, true);
+        $modulesPath = $this->moduleRoot();
+        $this->manifestRoot = $modulesPath;
+        if (! File::isDirectory($modulesPath)) {
+            return $this->manifests = [];
         }
-
-        $discovered = [];
-        $moduleDirectories = File::directories($modulesPath);
-
-        foreach ($moduleDirectories as $dir) {
+        $manifests = [];
+        foreach (File::directories($modulesPath) as $dir) {
+            if (str_starts_with(basename($dir), '.')) {
+                continue;
+            }
             $manifestPath = $dir.'/module.json';
-
             if (! File::exists($manifestPath)) {
                 continue;
             }
-
-            $manifest = json_decode((string) File::get($manifestPath), true);
-
-            if (! is_array($manifest) || ! isset($manifest['identifier'], $manifest['provider'])) {
-                continue;
+            $manifest = json_decode((string) File::get($manifestPath), true, flags: JSON_THROW_ON_ERROR);
+            if (! is_array($manifest)) {
+                throw new \DomainException("Invalid module manifest [{$manifestPath}].");
             }
-
-            $identifier = (string) $manifest['identifier'];
-            $discovered[$identifier] = $manifest;
-
-            // Sync to database if table exists
-            try {
-                $isCore = (bool) ($manifest['is_core'] ?? false) || in_array($identifier, config('cms.core_modules', ['pages']), true);
-                $module = CmsModule::firstOrNew(['identifier' => $identifier]);
-                if (! $module->exists) {
-                    $module->fill([
-                        'name' => (string) ($manifest['name'] ?? $identifier),
-                        'version' => (string) ($manifest['version'] ?? '1.0.0'),
-                        'description' => (string) ($manifest['description'] ?? ''),
-                        'provider' => (string) $manifest['provider'],
-                        'is_pageable' => (bool) ($manifest['is_pageable'] ?? false),
-                        'is_core' => $isCore,
-                        'is_installed' => true,
-                        'is_active' => (bool) ($manifest['default_active'] ?? true),
-                    ])->save();
-                } else {
-                    $module->update([
-                        'name' => (string) ($manifest['name'] ?? $identifier),
-                        'version' => (string) ($manifest['version'] ?? '1.0.0'),
-                        'description' => (string) ($manifest['description'] ?? ''),
-                        'provider' => (string) $manifest['provider'],
-                        'is_core' => $isCore,
-                        'is_pageable' => (bool) ($manifest['is_pageable'] ?? false),
-                    ]);
-                }
-            } catch (\Throwable) {
-                // Table might not be migrated yet
-            }
+            $manifests[] = $manifest;
         }
 
-        return $discovered;
+        return $this->manifests = (new ModuleManifestGraph($manifests, (string) config('cms.version')))->manifests();
     }
 
     /**
-     * Boots all active modules by registering their service providers.
+     * Registers the selected composition before Laravel boots its providers.
      */
-    public function bootActiveModules(): void
+    public function registerConfiguredModules(): void
     {
-        // 1. In testing or fresh boot, discover modules directly
         $discovered = $this->discoverModules();
-
-        // Register providers deterministically; route middleware checks availability.
-        // Ensure 'pages' module is booted last so its clean /{slug} catch-all does not shadow other modules (blog, shop, etc.)
-        if (isset($discovered['pages'])) {
-            $pagesManifest = $discovered['pages'];
-            unset($discovered['pages']);
-            $discovered['pages'] = $pagesManifest;
+        try {
+            $records = Schema::hasTable('cms_modules')
+                ? DB::table('cms_modules')->where('is_installed', true)->get()->keyBy('identifier')
+                : collect();
+        } catch (QueryException) {
+            // The installer and Composer discovery also boot before a database exists.
+            $records = collect();
         }
-
-        foreach ($discovered as $identifier => $manifest) {
-            // Load current installation state without making route registration conditional.
-            try {
-                $moduleRecord = CmsModule::where('identifier', $identifier)->first();
-            } catch (\Throwable) {
-                // DB might not be ready or migrated during installation
-                $moduleRecord = null;
-            }
-
-            $providerClass = $manifest['provider'] ?? '';
-
-            if (class_exists($providerClass)) {
-                /** @var BaseModuleServiceProvider $provider */
-                $provider = $this->app->register($providerClass);
-
-                // NOTE: do NOT call boot() explicitly here. `app->register()` boots
-                // the provider when the application is already booted, and providers
-                // registered during the boot phase are booted by Laravel's boot loop.
-                // Booting again would run every provider's boot() twice (duplicated
-                // view composers, re-registered routes, etc.).
-
-                if ($provider instanceof ModuleInterface) {
-                    $this->registeredModules[$identifier] = $provider;
-                    if ($moduleRecord === null || ($moduleRecord->is_active && $moduleRecord->is_installed)) {
-                        $this->activeModules[$identifier] = $provider;
-                    }
-
-                    // Sync stored module settings into Laravel runtime config
-                    if ($moduleRecord && is_array($moduleRecord->settings)) {
-                        foreach ($moduleRecord->settings as $sKey => $sVal) {
-                            config(["modules.{$identifier}.{$sKey}" => $sVal]);
-                        }
-                    }
+        $selected = array_values(array_unique(array_merge($this->configuredModules(), $records->keys()->all())));
+        $graph = new ModuleManifestGraph($discovered, (string) config('cms.version'));
+        foreach ($graph->ordered($selected) as $identifier) {
+            $moduleRecord = $records->get($identifier);
+            if ($moduleRecord !== null) {
+                $settings = json_decode((string) ($moduleRecord->settings ?? '{}'), true, flags: JSON_THROW_ON_ERROR);
+                foreach (is_array($settings) ? $settings : [] as $key => $value) {
+                    config(["modules.{$identifier}.{$key}" => $value]);
                 }
             }
+            $this->registerModule($identifier, $discovered[$identifier]);
+        }
+    }
+
+    /** @param list<string>|null $identifiers */
+    public function reconcileModules(?array $identifiers = null): void
+    {
+        $manifests = $this->discoverModules();
+        $selected = $identifiers ?? array_keys($manifests);
+        foreach ($selected as $identifier) {
+            if (! isset($manifests[$identifier])) {
+                throw new \DomainException("Selected module [{$identifier}] is unavailable.");
+            }
+        }
+        DB::transaction(function () use ($selected, $manifests): void {
+            foreach ($selected as $identifier) {
+                $manifest = $manifests[$identifier];
+                $module = CmsModule::firstOrNew(['identifier' => $identifier]);
+                if (! $module->exists) {
+                    $module->fill(['is_installed' => false, 'is_active' => false]);
+                }
+                $module->fill([
+                    'name' => $manifest['name'], 'version' => $manifest['version'],
+                    'description' => $manifest['description'] ?? '', 'provider' => $manifest['provider'],
+                    'is_pageable' => (bool) ($manifest['is_pageable'] ?? false),
+                ])->save();
+            }
+        });
+    }
+
+    /** @return Collection<int, CmsModule> */
+    public function catalog(): Collection
+    {
+        $stored = CmsModule::query()->get()->keyBy('identifier');
+
+        return collect($this->discoverModules())->map(function (array $manifest, string $identifier) use ($stored): CmsModule {
+            $module = $stored->get($identifier) ?? new CmsModule(['identifier' => $identifier, 'is_active' => false, 'is_installed' => false]);
+            $module->fill(array_intersect_key($manifest, array_flip(['name', 'version', 'description', 'provider', 'is_pageable'])));
+
+            return $module;
+        })->values();
+    }
+
+    public function toggle(string $identifier): bool
+    {
+        $module = CmsModule::where('identifier', $identifier)->firstOrFail();
+        if (! $module->is_installed) {
+            throw new \DomainException('Install the module before activating it.');
+        }
+        $active = ! $module->is_active;
+        $active ? $this->activate($identifier) : $this->deactivate($identifier);
+
+        return $active;
+    }
+
+    /** Explicit installation entry point used by the installer and fixtures. */
+    public function installConfiguredModules(): void
+    {
+        $graph = new ModuleManifestGraph($this->discoverModules(), (string) config('cms.version'));
+        $selected = $graph->ordered($this->configuredModules());
+        $this->reconcileModules($selected);
+        foreach ($selected as $identifier) {
+            $this->install($identifier);
+        }
+    }
+
+    private function moduleRoot(): string
+    {
+        return (string) config('cms.module_packages.root', base_path('modules'));
+    }
+
+    /** @return list<string> */
+    private function configuredModules(): array
+    {
+        $selected = config('cms.modules', []);
+        if (! is_array($selected) || ! array_is_list($selected) || array_filter($selected, static fn (mixed $identifier): bool => ! is_string($identifier)) !== []) {
+            throw new \DomainException('cms.modules must be a list of module identifiers.');
+        }
+
+        return $selected;
+    }
+
+    /** @param array<string, mixed> $manifest */
+    private function registerModule(string $identifier, array $manifest): void
+    {
+        if (! isset($this->registeredModules[$identifier])) {
+            $providerClass = $this->providerClass($identifier, $manifest);
+            $provider = $this->app->register($providerClass);
+            if (! $provider instanceof ModuleInterface) {
+                throw new \DomainException("Module [{$identifier}] does not implement its lifecycle contract.");
+            }
+            $this->registeredModules[$identifier] = $provider;
+        }
+    }
+
+    /** @param array<string, mixed> $manifest
+     * @return class-string<BaseModuleServiceProvider>
+     */
+    private function providerClass(string $identifier, array $manifest): string
+    {
+        $provider = $manifest['provider'] ?? null;
+        if (! is_string($provider) || ! is_subclass_of($provider, BaseModuleServiceProvider::class)) {
+            throw new \DomainException("Module [{$identifier}] has no valid service provider.");
+        }
+
+        return $provider;
+    }
+
+    private function lockModuleStates(): void
+    {
+        CmsModule::query()->orderBy('id')->lockForUpdate()->get(['id']);
+    }
+
+    /** @return list<string> */
+    private function activeIdentifiers(): array
+    {
+        return array_values(CmsModule::query()->where('is_installed', true)->where('is_active', true)->pluck('identifier')->map(static fn ($identifier): string => (string) $identifier)->filter(fn (string $identifier): bool => $this->isModuleEnabled($identifier))->all());
+    }
+
+    /**
+     * Settings that control module availability obey the same locked dependency graph.
+     *
+     * @param  array<string, mixed>  $settings
+     */
+    public function assertAvailabilitySettings(string $identifier, array $settings): void
+    {
+        $key = $this->getModuleManifest($identifier)['availability_setting'] ?? null;
+        if (! is_string($key) || ! array_key_exists($key, $settings)) {
+            return;
+        }
+        $this->lockModuleStates();
+        if (! filter_var($settings[$key], FILTER_VALIDATE_BOOLEAN)) {
+            $this->assertNoActiveDependents($identifier);
+        } elseif (CmsModule::query()->where('identifier', $identifier)->where('is_installed', true)->where('is_active', true)->exists()) {
+            $this->assertRequirements($identifier);
+        }
+    }
+
+    /** Synchronize projections inside the settings write transaction. */
+    public function synchronizeAvailabilitySettings(string $identifier, bool $previouslyAvailable): bool
+    {
+        if ($previouslyAvailable === $this->isModuleEnabled($identifier)) {
+            return false;
+        }
+
+        $this->rebuildSearchIndex();
+        $this->notifyAvailabilityAfterCommit($identifier, 'settings');
+
+        return true;
+    }
+
+    private function assertRequirements(string $identifier): void
+    {
+        $graph = new ModuleManifestGraph($this->discoverModules(), (string) config('cms.version'));
+        $graph->ordered(array_values(array_unique([...$this->activeIdentifiers(), $identifier])));
+    }
+
+    private function assertNoActiveDependents(string $identifier): void
+    {
+        $graph = new ModuleManifestGraph($this->discoverModules(), (string) config('cms.version'));
+        $dependents = $graph->dependents($identifier, $this->activeIdentifiers());
+        if ($dependents !== []) {
+            throw new \DomainException("Module [{$identifier}] is required by active modules: ".implode(', ', $dependents).'.');
+        }
+    }
+
+    private function assertNoInstalledDependents(string $identifier): void
+    {
+        $installed = array_values(CmsModule::query()->where('is_installed', true)->pluck('identifier')->map(static fn ($id): string => (string) $id)->all());
+        $graph = new ModuleManifestGraph($this->discoverModules(), (string) config('cms.version'));
+        $dependents = $graph->dependents($identifier, $installed);
+        if ($dependents !== []) {
+            throw new \DomainException("Module [{$identifier}] is required by installed modules: ".implode(', ', $dependents).'.');
         }
     }
 
@@ -159,8 +275,9 @@ class ModuleManager implements ModulePackageUploadServiceInterface
      */
     public function install(string $identifier): bool
     {
-        $module = CmsModule::where('identifier', $identifier)->firstOrFail();
+        $this->assertRequirements($identifier);
         $migrationPath = $this->migrationPath($identifier);
+        $this->reconcileModules([$identifier]);
 
         if (File::exists(base_path($migrationPath))) {
             $exitCode = Artisan::call('migrate', [
@@ -172,17 +289,14 @@ class ModuleManager implements ModulePackageUploadServiceInterface
             }
         }
 
-        $manifest = $this->getModuleManifest($identifier);
-        $active = $module->is_active || (bool) ($manifest['default_active'] ?? true);
-        $module->update(['is_installed' => true, 'is_active' => $active]);
-        if ($active && isset($this->registeredModules[$identifier])) {
-            $this->activeModules[$identifier] = $this->registeredModules[$identifier];
-        } else {
-            unset($this->activeModules[$identifier]);
-        }
+        DB::transaction(function () use ($identifier): void {
+            $this->lockModuleStates();
+            $this->assertRequirements($identifier);
+            CmsModule::where('identifier', $identifier)->update(['is_installed' => true, 'is_active' => true]);
+            $this->registerModule($identifier, $this->getModuleManifest($identifier) ?? []);
+            $this->rebuildSearchIndex();
+        });
         app(PageCacheService::class)->invalidate();
-
-        $this->rebuildSearchAfterCommit($identifier);
 
         $this->notifyAvailabilityAfterCommit($identifier, 'install');
 
@@ -194,9 +308,12 @@ class ModuleManager implements ModulePackageUploadServiceInterface
      */
     public function uninstall(string $identifier): bool
     {
-        $module = CmsModule::where('identifier', $identifier)->firstOrFail();
-        $module->update(['is_installed' => false, 'is_active' => false]);
-        unset($this->activeModules[$identifier]);
+        DB::transaction(function () use ($identifier): void {
+            $this->lockModuleStates();
+            $this->assertNoInstalledDependents($identifier);
+            CmsModule::where('identifier', $identifier)->firstOrFail()->update(['is_installed' => false, 'is_active' => false]);
+            $this->rebuildSearchIndex();
+        });
         app(PageCacheService::class)->invalidate();
 
         $this->notifyAvailabilityAfterCommit($identifier, 'uninstall');
@@ -209,14 +326,23 @@ class ModuleManager implements ModulePackageUploadServiceInterface
      */
     public function activate(string $identifier): bool
     {
-        $updated = (bool) CmsModule::where('identifier', $identifier)->where('is_installed', true)->update(['is_active' => true]);
-        if ($updated && isset($this->registeredModules[$identifier])) {
-            $this->activeModules[$identifier] = $this->registeredModules[$identifier];
-        }
+        $updated = DB::transaction(function () use ($identifier): bool {
+            $this->lockModuleStates();
+            if (! CmsModule::where('identifier', $identifier)->where('is_installed', true)->exists()) {
+                return false;
+            }
+            $this->assertRequirements($identifier);
+
+            $updated = (bool) CmsModule::where('identifier', $identifier)->update(['is_active' => true]);
+            if ($updated) {
+                $this->rebuildSearchIndex();
+            }
+
+            return $updated;
+        });
         app(PageCacheService::class)->invalidate();
 
         if ($updated) {
-            $this->rebuildSearchAfterCommit($identifier);
             $this->notifyAvailabilityAfterCommit($identifier, 'activate');
         }
 
@@ -228,9 +354,17 @@ class ModuleManager implements ModulePackageUploadServiceInterface
      */
     public function deactivate(string $identifier): bool
     {
-        unset($this->activeModules[$identifier]);
+        $updated = DB::transaction(function () use ($identifier): bool {
+            $this->lockModuleStates();
+            $this->assertNoActiveDependents($identifier);
 
-        $updated = (bool) CmsModule::where('identifier', $identifier)->update(['is_active' => false]);
+            $updated = (bool) CmsModule::where('identifier', $identifier)->update(['is_active' => false]);
+            if ($updated) {
+                $this->rebuildSearchIndex();
+            }
+
+            return $updated;
+        });
         app(PageCacheService::class)->invalidate();
 
         if ($updated) {
@@ -246,43 +380,11 @@ class ModuleManager implements ModulePackageUploadServiceInterface
         DB::afterCommit(static fn () => event($event));
     }
 
-    private function rebuildSearchAfterCommit(string $identifier): void
+    private function rebuildSearchIndex(): void
     {
-        DB::afterCommit(function () use ($identifier): void {
-            if (! $this->app->bound(SearchSourceRegistryInterface::class) || ! Schema::hasTable('search_documents')) {
-                return;
-            }
-            $sources = $this->app->make(SearchSourceRegistryInterface::class);
-            foreach ($sources->all() as $source) {
-                if ($identifier === 'search' || $this->ownerOfClass($source::class) === $identifier) {
-                    $this->app->make(SearchIndexer::class)->indexSource($source->type(), replace: true);
-                }
-            }
-        });
-    }
-
-    /**
-     * Alias for deactivate.
-     */
-    public function disable(string $identifier): bool
-    {
-        return $this->deactivate($identifier);
-    }
-
-    /**
-     * Alias for activate.
-     */
-    public function enable(string $identifier): bool
-    {
-        return $this->activate($identifier);
-    }
-
-    /**
-     * Uploads and extracts a module ZIP package.
-     */
-    public function uploadPackage(UploadedFile $zipFile): string
-    {
-        return $this->upload(new ModulePackageDTO($zipFile->getPathname(), (int) $zipFile->getSize()));
+        if ($this->app->bound(SearchIndexer::class) && Schema::hasTable('search_documents')) {
+            $this->app->make(SearchIndexer::class)->indexAll();
+        }
     }
 
     public function upload(ModulePackageDTO $upload): string
@@ -298,7 +400,6 @@ class ModuleManager implements ModulePackageUploadServiceInterface
                     'description' => $package->manifest['description'] ?? '',
                     'provider' => $package->manifest['provider'],
                     'is_pageable' => (bool) ($package->manifest['is_pageable'] ?? false),
-                    'is_core' => false,
                     'is_installed' => false,
                     'is_active' => false,
                 ]);
@@ -308,6 +409,8 @@ class ModuleManager implements ModulePackageUploadServiceInterface
             throw $error;
         }
 
+        $this->manifests = null;
+
         return 'Module package uploaded and registered; install it to run migrations and activate it.';
     }
 
@@ -316,7 +419,7 @@ class ModuleManager implements ModulePackageUploadServiceInterface
      */
     public function getActiveModules(): array
     {
-        return $this->activeModules;
+        return array_filter($this->registeredModules, fn (ModuleInterface $provider, string $identifier): bool => $this->isModuleEnabled($identifier), ARRAY_FILTER_USE_BOTH);
     }
 
     /** Resolve ownership from registered manifests, including custom identifiers. */
@@ -335,7 +438,7 @@ class ModuleManager implements ModulePackageUploadServiceInterface
     /**
      * Checks if a module is currently active and enabled.
      */
-    public function isActive(string $identifier): bool
+    public function isModuleEnabled(string $identifier): bool
     {
         try {
             $record = CmsModule::where('identifier', $identifier)->first();
@@ -344,12 +447,9 @@ class ModuleManager implements ModulePackageUploadServiceInterface
                     return false;
                 }
 
-                // Verify module settings toggle if configured. Exclusions:
-                // - 'maintenance': its is_enabled toggle locks the site with a 503, not module availability.
-                // - 'content_audit': its is_enabled toggle governs the quality flow (observer), never the
-                //   module itself, so the audit backoffice (including its settings) must stay reachable.
-                if ($identifier !== 'maintenance' && $identifier !== 'content_audit' && is_array($record->settings) && array_key_exists('is_enabled', $record->settings)) {
-                    $enabled = $record->settings['is_enabled'];
+                $availabilitySetting = $this->getModuleManifest($identifier)['availability_setting'] ?? null;
+                if (is_string($availabilitySetting) && is_array($record->settings) && array_key_exists($availabilitySetting, $record->settings)) {
+                    $enabled = $record->settings[$availabilitySetting];
                     if ($enabled === false || $enabled === 0 || $enabled === '0' || $enabled === 'false') {
                         return false;
                     }
@@ -357,37 +457,25 @@ class ModuleManager implements ModulePackageUploadServiceInterface
 
                 return true;
             }
-        } catch (\Throwable) {
-            // DB not ready or connection issue
+        } catch (QueryException) {
+            // Availability fails closed before installation or during a DB outage.
         }
 
-        return isset($this->activeModules[$identifier]);
+        return false;
     }
 
     /** Resolve case-sensitive module paths from the provider, never its identifier. */
     private function migrationPath(string $identifier): string
     {
-        $manifest = $this->getModuleManifest($identifier);
-        $provider = $manifest['provider'] ?? null;
-        if (! is_string($provider) || ! class_exists($provider)) {
-            throw new \RuntimeException('Module provider was not discovered.');
-        }
+        $provider = $this->providerClass($identifier, $this->getModuleManifest($identifier) ?? []);
         $file = (new \ReflectionClass($provider))->getFileName();
         $directory = $file === false ? false : realpath(dirname($file));
-        $root = realpath(base_path('modules'));
+        $root = realpath($this->moduleRoot());
         if ($directory === false || $root === false || ! str_starts_with($directory, $root.DIRECTORY_SEPARATOR)) {
             throw new \RuntimeException('Module provider is outside the modules directory.');
         }
 
         return substr($directory, strlen(base_path()) + 1).'/Database/Migrations';
-    }
-
-    /**
-     * Alias for isActive to check if a module is enabled.
-     */
-    public function isModuleEnabled(string $identifier): bool
-    {
-        return $this->isActive($identifier);
     }
 
     /**
@@ -405,50 +493,11 @@ class ModuleManager implements ModulePackageUploadServiceInterface
      */
     public function getModuleManifest(string $identifier): ?array
     {
-        $modulesPath = base_path('modules');
-        if (! File::exists($modulesPath)) {
-            return null;
+        if ($this->manifests === null || $this->manifestRoot !== $this->moduleRoot()) {
+            $this->discoverModules();
         }
 
-        foreach (File::directories($modulesPath) as $dir) {
-            $manifestPath = $dir.'/module.json';
-            if (! File::exists($manifestPath)) {
-                continue;
-            }
-
-            $manifest = json_decode((string) File::get($manifestPath), true);
-            if (is_array($manifest) && ($manifest['identifier'] ?? '') === $identifier) {
-                /** @var array<string, mixed> $manifest */
-                return $manifest;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Checks if a module is marked as core / trunk.
-     */
-    public function isCore(string $identifier): bool
-    {
-        $identifier = strtolower($identifier);
-
-        if (in_array($identifier, (array) config('cms.core_modules', ['pages']), true)) {
-            return true;
-        }
-
-        try {
-            $record = CmsModule::where('identifier', $identifier)->first();
-            if ($record && $record->is_core) {
-                return true;
-            }
-        } catch (\Throwable) {
-            // DB not available
-        }
-
-        $manifest = $this->getModuleManifest($identifier);
-
-        return (bool) ($manifest['is_core'] ?? false);
+        return $this->manifests[$identifier] ?? null;
     }
 
     /**
@@ -456,7 +505,7 @@ class ModuleManager implements ModulePackageUploadServiceInterface
      *
      * @return array{
      *     identifier: string,
-     *     is_core_risk: bool,
+     *     dependents: list<string>,
      *     warning: ?string,
      *     affected_menus: array<int, array{menu: string, label: string, url: string}>,
      *     affected_pages: array<int, array{id: int, title: string, reason: string}>,
@@ -466,87 +515,53 @@ class ModuleManager implements ModulePackageUploadServiceInterface
     public function getDeactivationImpact(string $identifier): array
     {
         $identifier = strtolower($identifier);
-        $isCoreRisk = $this->isCore($identifier);
-        $warning = $isCoreRisk
-            ? "El módulo '{$identifier}' es un módulo troncal que provee el enrutamiento principal y la portada del CMS. Desactivarlo pondrá el sitio en modo Clean Install."
-            : null;
+        $graph = new ModuleManifestGraph($this->discoverModules(), (string) config('cms.version'));
+        $dependents = $graph->dependents($identifier, $this->activeIdentifiers());
+        $warning = $dependents === [] ? null : 'Desactiva antes los módulos dependientes: '.implode(', ', $dependents).'.';
 
         $affectedMenus = [];
         $affectedPages = [];
 
-        // 1. Check affected navigation menu items
-        try {
-            if (class_exists(MenuItem::class)) {
-                $patterns = match ($identifier) {
-                    'blog' => ['/blog', 'blog'],
-                    'shop' => ['/shop', 'shop', '/tienda', 'tienda'],
-                    'gallery' => ['/galeria', 'galeria', '/gallery', 'gallery'],
-                    'forms' => ['/forms', 'forms', '/contacto', 'contacto'],
-                    default => ["/{$identifier}", $identifier],
-                };
-
-                $items = MenuItem::with(['menu', 'translations'])->get();
-                foreach ($items as $item) {
-                    $url = (string) $item->url;
-                    $type = (string) $item->type;
-                    $matched = false;
-
-                    foreach ($patterns as $pattern) {
-                        if (str_contains(strtolower($url), strtolower($pattern)) || strtolower($type) === strtolower($pattern)) {
-                            $matched = true;
-                            break;
-                        }
-                    }
-
-                    if ($matched) {
-                        $label = $item->translations->first()->title ?? $item->url ?? 'Enlace';
-                        $menuTitle = $item->menu->name ?? 'Menú Principal';
-                        $affectedMenus[] = [
-                            'menu' => (string) $menuTitle,
-                            'label' => (string) $label,
-                            'url' => (string) $url,
-                        ];
-                    }
+        $schemas = app(EntitySchemaRegistryInterface::class)->all();
+        $types = [];
+        $prefixes = [];
+        $localization = app(LocalizationServiceInterface::class);
+        foreach ($schemas as $schema) {
+            if (($schema->ownerModule ?? $this->ownerOfClass($schema->model)) === $identifier) {
+                $types[] = $schema->type;
+                if ($schema->urlPrefix !== null && $schema->urlPrefix !== '') {
+                    array_push($prefixes, ...$localization->getAllModuleSlugs($schema->urlPrefix));
                 }
             }
-        } catch (\Throwable) {
-            // DB not available or table missing
+        }
+        foreach (MenuItem::with(['menu', 'translations'])->get() as $item) {
+            $segments = explode('/', trim((string) parse_url((string) $item->url, PHP_URL_PATH), '/'));
+            if (in_array((string) $item->type, $types, true) || array_intersect($segments, $prefixes) !== []) {
+                $affectedMenus[] = ['menu' => (string) ($item->menu->name ?? 'Menú'), 'label' => (string) ($item->translations->first()->title ?? $item->url), 'url' => (string) $item->url];
+            }
         }
 
-        // 2. Check affected page sections / widgets
-        try {
-            if (class_exists(PageSection::class)) {
-                $sectionTypes = match ($identifier) {
-                    'blog' => ['widget_posts'],
-                    'shop' => ['widget_products', 'products'],
-                    'gallery' => ['gallery'],
-                    'forms' => ['widget_form', 'form'],
-                    'charts' => ['widget_stats'],
-                    'beforeafter' => ['before_after'],
-                    default => [],
-                };
-
-                $sections = PageSection::with(['page.translations'])
-                    ->where(function ($q) use ($sectionTypes, $identifier): void {
-                        if (! empty($sectionTypes)) {
-                            $q->whereIn('type', $sectionTypes);
-                        }
-                        $q->orWhere('widget_key', 'LIKE', "{$identifier}%");
-                    })
-                    ->get();
-
-                foreach ($sections as $sec) {
-                    $page = $sec->page;
-                    $pTitle = $page->translations->first()->title ?? "Página #{$sec->page_id}";
-                    $affectedPages[] = [
-                        'id' => (int) $sec->page_id,
-                        'title' => (string) $pTitle,
-                        'reason' => "Contiene bloque/widget: {$sec->type}".($sec->widget_key ? " ({$sec->widget_key})" : ''),
-                    ];
+        $blockTypes = [];
+        foreach (app(BlockRegistryInterface::class)->all() as $type => $block) {
+            if ($block->getRequiredModule() === $identifier) {
+                $blockTypes[] = $type;
+            }
+        }
+        if ($blockTypes !== []) {
+            foreach (PageSection::with(['page.translations', 'translations'])->get() as $section) {
+                $master = array_replace(['type' => $section->type], $section->styling_json ?? []);
+                $payloads = [$master];
+                foreach ($section->translations as $translation) {
+                    $payloads[] = SectionLayout::resolve($master, $translation->content_json ?? []);
+                }
+                foreach ($payloads as $payload) {
+                    $type = $this->findAffectedBlock($payload, $blockTypes);
+                    if ($type !== null) {
+                        $affectedPages[] = ['id' => (int) $section->page_id, 'title' => (string) ($section->page->translations->first()->title ?? 'Página #'.$section->page_id), 'reason' => 'Contiene bloque: '.$type];
+                        break;
+                    }
                 }
             }
-        } catch (\Throwable) {
-            // Pages module not installed
         }
 
         // Deduplicate affected pages by ID
@@ -559,17 +574,35 @@ class ModuleManager implements ModulePackageUploadServiceInterface
             }
         }
 
-        $hasImpact = $isCoreRisk || count($affectedMenus) > 0 || count($uniquePages) > 0;
+        $hasImpact = $dependents !== [] || count($affectedMenus) > 0 || count($uniquePages) > 0;
 
         return [
             'identifier' => $identifier,
-            'is_core' => $isCoreRisk,
-            'is_core_risk' => $isCoreRisk,
+            'dependents' => $dependents,
             'warning' => $warning,
-            'core_warning' => $warning,
             'affected_menus' => $affectedMenus,
             'affected_pages' => $uniquePages,
             'has_impact' => $hasImpact,
         ];
+    }
+
+    /** @param array<string, mixed> $payload
+     * @param  list<string>  $types
+     */
+    private function findAffectedBlock(array $payload, array $types): ?string
+    {
+        if (SectionLayout::columns($payload) === []) {
+            $type = $payload['type'] ?? null;
+
+            return is_string($type) && in_array($type, $types, true) ? $type : null;
+        }
+        foreach (SectionLayout::blocks($payload) as $block) {
+            $type = $this->findAffectedBlock($block, $types);
+            if ($type !== null) {
+                return $type;
+            }
+        }
+
+        return null;
     }
 }

@@ -1,4 +1,4 @@
-@extends('themes.db-brutalist.layouts.app')
+@extends('themes::db-brutalist.layouts.app')
 
 @section('title', ($isShop ? 'Tienda Radical' : 'Catálogo Radical') . ' - dbCMS Brutalist')
 @section('meta_description', __('Catálogo de hardware, piezas técnicas y licencias con diseño neo-brutalista de alto impacto.'))

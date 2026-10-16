@@ -29,7 +29,7 @@
 
         <div class="bg-[#121212] border border-gray-800 rounded-xl p-4 space-y-2">
             <span class="text-[#00FF99] font-bold block text-xs"><i class="fa-solid fa-globe mr-1"></i> Portada del Sitio</span>
-            <div class="text-gray-400">Mercados activos: <span class="text-white font-bold">España, EE. UU. y México</span></div>
+            <div class="text-gray-400">Gestiona los idiomas y mercados del sitio desde el panel de administración.</div>
             <div class="text-gray-400">URL pública: <a href="{{ url('/') }}" class="text-[#00FF99] underline hover:text-white block truncate">{{ url('/') }}</a></div>
         </div>
 
@@ -39,7 +39,7 @@
                 <span>Conexión con Agentes de Inteligencia Artificial (Protocolo MCP)</span>
             </span>
             <p class="text-gray-400 text-[11px] leading-relaxed">
-                El endpoint de Model Context Protocol está activo en <code class="text-purple-300">/api/mcp</code>. Para conectar asistentes como Claude Desktop o Cursor, accede a tu panel de administración, entra en la sección <strong>Tokens de API</strong> y genera un Personal Access Token con permisos para redactar o consultar contenidos.
+                Para conectar asistentes, instala y activa el módulo MCP. Su endpoint es <code class="text-purple-300">/mcp/cms</code>. Después configura un cliente OAuth2 con los permisos necesarios desde el panel de administración.
             </p>
         </div>
     </div>

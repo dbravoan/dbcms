@@ -1,4 +1,4 @@
-@extends('themes.db-sunset.layouts.app')
+@extends('themes::db-sunset.layouts.app')
 
 @section('title', app()->getLocale() === 'es' ? 'Galerías & Experiencias Visuales' : (app()->getLocale() === 'ca' ? 'Galeries & Experiències Visuals' : 'Visual Galleries & Experiences'))
 

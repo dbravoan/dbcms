@@ -7,218 +7,127 @@ namespace App\Core\Blocks;
 use App\Core\Blocks\Contracts\BlockRegistryInterface;
 use App\Core\Blocks\Contracts\BlockTypeInterface;
 use App\Core\Modules\ModuleManager;
-use Illuminate\Support\Facades\Schema;
-use Modules\Blog\Models\Category;
-use Modules\Blog\Models\Post;
-use Modules\Forms\Models\CustomForm;
-use Modules\Gallery\Models\Gallery;
-use Modules\Gallery\Models\GalleryItem;
-use Modules\Shop\Models\Product;
-use Modules\Shop\Models\ProductCategory;
+use App\Models\Market;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
-class BlockRegistry implements BlockRegistryInterface
+/** One definition owns the editor, validation and rendering of each block. */
+final class BlockRegistry implements BlockRegistryInterface
 {
-    /**
-     * @var array<string, BlockTypeInterface>
-     */
-    protected array $blocks = [];
+    /** @var array<string,BlockTypeInterface> */
+    private array $blocks = [];
 
-    public function __construct(
-        protected ModuleManager $moduleManager
-    ) {}
+    /** @var array<string,string> */
+    private array $packages = [];
 
-    public function register(BlockTypeInterface $block): void
+    public function __construct(private readonly ModuleManager $modules, private readonly BlockPackageManager $packageManager) {}
+
+    public function register(BlockTypeInterface $block, ?string $package = null): void
     {
-        $this->blocks[$block->getType()] = $block;
+        $type = $block->getType();
+        if (! preg_match('/^[a-z][a-z0-9_.-]{0,127}$/D', $type)) {
+            throw new \DomainException('Invalid block type identifier.');
+        }
+        if (isset($this->blocks[$type])) {
+            throw new \LogicException('Duplicate block definition: '.$type);
+        }
+        $this->blocks[$type] = $block;
+        if ($package !== null) {
+            $this->packages[$type] = $package;
+        }
     }
 
     public function get(string $type): ?BlockTypeInterface
     {
-        if (isset($this->blocks[$type])) {
-            return $this->blocks[$type];
-        }
-
-        $aliasMap = [
-            'markdown' => 'text',
-            'html' => 'text',
-            'widget_stats' => 'kpi',
-            'stats' => 'kpi',
-            'posts' => 'widget_posts',
-            'products' => 'widget_products',
-            'form' => 'widget_form',
-            'lead_form' => 'widget_form',
-        ];
-
-        if (isset($aliasMap[$type]) && isset($this->blocks[$aliasMap[$type]])) {
-            return $this->blocks[$aliasMap[$type]];
-        }
-
-        return null;
+        return $this->blocks[$type] ?? null;
     }
 
-    /**
-     * @return array<string, BlockTypeInterface>
-     */
     public function all(): array
     {
         return $this->blocks;
     }
 
-    /**
-     * @return array<string, BlockTypeInterface>
-     */
+    public function isAvailable(string $type): bool
+    {
+        $block = $this->blocks[$type] ?? null;
+        if ($block === null || (isset($this->packages[$type]) && ! $this->packageManager->isEnabled($this->packages[$type]))) {
+            return false;
+        }
+        $module = $block->getRequiredModule();
+
+        return $module === null || $this->modules->isModuleEnabled($module);
+    }
+
     public function getActiveBlocks(): array
     {
-        $active = [];
-
-        foreach ($this->blocks as $type => $block) {
-            $required = $block->getRequiredModule();
-
-            if ($required === null || $this->moduleManager->isActive($required)) {
-                $active[$type] = $block;
-            }
-        }
-
-        return $active;
+        return array_filter($this->blocks, fn (BlockTypeInterface $block): bool => $this->isAvailable($block->getType()));
     }
 
-    /**
-     * @return array<string, array<string, BlockTypeInterface>>
-     */
     public function getBlocksByCategory(): array
     {
-        $grouped = [];
-
-        foreach ($this->getActiveBlocks() as $type => $block) {
-            $category = $block->getCategory();
-            $grouped[$category][$type] = $block;
+        $groups = [];
+        foreach ($this->getActiveBlocks() as $block) {
+            $groups[$block->getCategory()][$block->getType()] = $block;
         }
 
-        return $grouped;
+        return $groups;
+    }
+
+    public function getDynamicDataPayloads(): array
+    {
+        $data = [];
+        foreach ($this->getActiveBlocks() as $block) {
+            $data = array_replace($data, $block->getEditorData());
+        }
+
+        return $data;
+    }
+
+    public function render(string $type, array $payload, ?Market $market = null, ?string $locale = null): string
+    {
+        if (! $this->isAvailable($type)) {
+            return '';
+        }
+
+        return $this->blocks[$type]->render($payload, $market, $locale);
+    }
+
+    public function validate(string $type, array $payload): void
+    {
+        if (! $this->isAvailable($type)) {
+            throw ValidationException::withMessages(['sections_json' => 'This block is unavailable: '.$type]);
+        }
+        Validator::make($payload, $this->validationRules($this->blocks[$type]->getEditorSchema()))->validate();
     }
 
     /**
-     * @return array<string, mixed>
+     * @param  array<string,array<string,mixed>>  $schema
+     * @return array<string,mixed>
      */
-    public function getDynamicDataPayloads(): array
+    private function validationRules(array $schema, string $prefix = ''): array
     {
-        $payloads = [
-            'forms' => [],
-            'blog_categories' => [],
-            'blog_posts' => [],
-            'shop_categories' => [],
-            'shop_products' => [],
-            'gallery_albums' => [],
-            'gallery_images' => [],
-            'charts_types' => [
-                ['key' => 'roi', 'name' => 'Calculadora & Retorno de Inversión (ROI)'],
-                ['key' => 'bar', 'name' => 'Gráfica de Barras Comparativa'],
-                ['key' => 'line', 'name' => 'Gráfica de Línea de Crecimiento'],
-                ['key' => 'donut', 'name' => 'Gráfica Circular / Anillo Radial'],
-                ['key' => 'metric', 'name' => 'Contador Numérico & Métricas'],
-            ],
-        ];
-
-        // 1. Forms
-        try {
-            if ($this->moduleManager->isActive('forms') && class_exists(CustomForm::class) && Schema::hasTable('custom_forms')) {
-                $forms = CustomForm::where('is_active', true)->with(['translations', 'markets', 'fields.translations'])->get();
-                $payloads['forms'] = $forms->map(fn ($f) => [
-                    'id' => $f->id,
-                    'name' => $f->name,
-                    'slug' => $f->slug,
-                    'submit_button_text' => $f->submit_button_text,
-                    'fields' => $f->fields->map(fn ($field) => [
-                        'key' => $field->field_key,
-                        'label' => $field->label,
-                        'type' => $field->type,
-                        'required' => (bool) $field->is_required,
-                    ])->toArray(),
-                ])->toArray();
+        $rules = [];
+        foreach ($schema as $key => $field) {
+            $path = $prefix.$key;
+            $rules[$path] = $field['rules'] ?? match ($field['type'] ?? 'text') {
+                'number' => ['nullable', 'numeric'],
+                'integer' => ['nullable', 'integer'],
+                'select' => ['nullable', Rule::in(array_is_list((array) ($field['options'] ?? [])) ? (array) ($field['options'] ?? []) : array_keys((array) ($field['options'] ?? [])))],
+                'boolean' => ['nullable', 'boolean'],
+                'json', 'array', 'list', 'repeater' => ['nullable', 'array'],
+                default => ['nullable', 'string'],
+            };
+            if (($field['required'] ?? false) === true) {
+                $fieldRules = is_string($rules[$path]) ? explode('|', $rules[$path]) : (array) $rules[$path];
+                $rules[$path] = ['required', ...$fieldRules];
             }
-        } catch (\Throwable) {
-            // Graceful fallback during tests or migrations
+            if (($field['type'] ?? null) === 'repeater') {
+                $rules[$path.'.*'] = ['array'];
+                $rules = array_replace($rules, $this->validationRules((array) ($field['fields'] ?? []), $path.'.*.'));
+            }
         }
 
-        // 2. Blog Categories & Posts
-        try {
-            if ($this->moduleManager->isActive('blog') && class_exists(Category::class) && Schema::hasTable('categories')) {
-                $categories = Category::with('translations')->get();
-                $payloads['blog_categories'] = $categories->map(fn ($c) => [
-                    'id' => $c->id,
-                    'name' => $c->translations->first()->name ?? "Categoría #{$c->id}",
-                    'slug' => $c->translations->first()->slug ?? (string) $c->id,
-                ])->toArray();
-            }
-
-            if ($this->moduleManager->isActive('blog') && class_exists(Post::class) && Schema::hasTable('posts')) {
-                $posts = Post::where('is_published', true)->with('translations')->latest()->take(20)->get();
-                $payloads['blog_posts'] = $posts->map(fn ($p) => [
-                    'id' => $p->id,
-                    'title' => $p->translations->first()->title ?? "Artículo #{$p->id}",
-                    'slug' => $p->translations->first()->slug ?? (string) $p->id,
-                ])->toArray();
-            }
-        } catch (\Throwable) {
-            // Graceful fallback
-        }
-
-        // 3. Shop Categories & Products
-        try {
-            if ($this->moduleManager->isActive('shop') && class_exists(ProductCategory::class) && Schema::hasTable('product_categories')) {
-                $shopCats = ProductCategory::with('translations')->get();
-                $payloads['shop_categories'] = $shopCats->map(fn ($sc) => [
-                    'id' => $sc->id,
-                    'name' => $sc->translations->first()->name ?? "Categoría #{$sc->id}",
-                    'slug' => $sc->translations->first()->slug ?? (string) $sc->id,
-                ])->toArray();
-            }
-
-            if ($this->moduleManager->isActive('shop') && class_exists(Product::class) && Schema::hasTable('products')) {
-                $products = Product::where('is_active', true)->with('translations')->latest()->take(20)->get();
-                $payloads['shop_products'] = $products->map(fn ($pr) => [
-                    'id' => $pr->id,
-                    'name' => $pr->translations->first()->name ?? "Producto #{$pr->id}",
-                    'slug' => $pr->translations->first()->slug ?? (string) $pr->id,
-                    'price' => $pr->price,
-                ])->toArray();
-            }
-        } catch (\Throwable) {
-            // Graceful fallback
-        }
-
-        // 4. Galleries
-        try {
-            if ($this->moduleManager->isActive('gallery') && class_exists(Gallery::class) && Schema::hasTable('galleries')) {
-                $galleries = Gallery::where('is_active', true)->with('items')->get();
-                $payloads['gallery_albums'] = $galleries->map(fn ($g) => [
-                    'id' => $g->id,
-                    'title' => $g->title,
-                    'slug' => $g->slug,
-                    'cover_url' => $g->items->first()?->image_url,
-                    'image_count' => $g->items->count(),
-                ])->toArray();
-
-                // Sample real image URLs available for block imagery.
-                if (class_exists(GalleryItem::class) && Schema::hasTable('gallery_items')) {
-                    $payloads['gallery_images'] = GalleryItem::query()
-                        ->whereIn('gallery_id', $galleries->pluck('id'))
-                        ->whereNotNull('image_url')
-                        ->orderBy('order')
-                        ->take(12)
-                        ->get()
-                        ->map(fn ($item) => [
-                            'url' => (string) $item->image_url,
-                            'alt' => (string) ($item->alt_text ?: $item->title),
-                        ])
-                        ->values()
-                        ->toArray();
-                }
-            }
-        } catch (\Throwable) {
-            // Graceful fallback
-        }
-
-        return $payloads;
+        return $rules;
     }
 }

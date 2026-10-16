@@ -4,14 +4,7 @@
     $navDesktopClass = ($nav['layout'] ?? 'inline') === 'stacked'
         ? 'hidden md:flex flex-col items-start gap-3'
         : 'hidden md:flex items-center space-x-6';
-    $navFallback = [
-        ['title' => __('Inicio'), 'url' => $localization->url('/', $currentMarket)],
-        ['title' => __('Blog'), 'url' => $localization->url('/blog', $currentMarket)],
-        ['title' => __('Tienda'), 'url' => $localization->url('/shop', $currentMarket)],
-        ['title' => __('Galería'), 'url' => $localization->url("/{$galPrefix}", $currentMarket)],
-        ['title' => __('Nosotros'), 'url' => $localization->url('/sobre-nosotros', $currentMarket)],
-        ['title' => __('Contacto'), 'url' => $localization->url('/contacto', $currentMarket)],
-    ];
+    $navFallback = [['title' => __('Inicio'), 'url' => $localization->url('/', $currentMarket)]];
 @endphp
 <header class="border-b border-stone-200 bg-white/95 backdrop-blur sticky top-0 z-40">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4 sm:gap-6">
@@ -22,7 +15,7 @@
 
             <!-- Desktop Navigation Menu (disposición configurable) -->
             @if($desktopNavVisible)
-                @include('themes.components.nav-items', [
+                @include('themes::components.nav-items', [
                     'items' => $headerMenu,
                     'fallback' => $navFallback,
                     'class' => $navDesktopClass.' text-sm font-medium text-stone-700',
@@ -78,12 +71,7 @@
             @endif
 
             <!-- Cart Indicator (when Shop Mode is enabled) -->
-            @php
-                $shopService = app(\Modules\Shop\Services\ShopDomainService::class);
-                $cartService = app(\Modules\Shop\Services\CartService::class);
-                $cartCount = $cartService->count();
-            @endphp
-            @if($shopService->isShopEnabled())
+            @if(($isShopEnabled ?? false))
                 <a href="{{ $localization->url('/cart', $currentMarket) }}"
                    class="relative p-2 rounded-lg bg-stone-100 hover:bg-stone-200 border border-stone-300 text-stone-700 transition-all flex items-center"
                    title="{{ __('Carrito') }}">
@@ -96,21 +84,21 @@
                 </a>
             @endif
 
-            @include('themes.components.nav-admin', [
+            @include('themes::components.nav-admin', [
                 'frontNav' => $nav,
                 'class' => 'hidden sm:inline-block px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded font-medium transition-colors',
                 'label' => 'Panel Admin',
             ])
 
             <!-- Mobile menu toggle -->
-            @include('themes.components.nav-toggle', [
+            @include('themes::components.nav-toggle', [
                 'frontNav' => $nav,
                 'class' => 'p-2 text-stone-600 hover:text-stone-900',
             ])
         </div>
     </div>
 
-    @include('themes.components.nav-panel', [
+    @include('themes::components.nav-panel', [
         'frontNav' => $nav,
         'items' => $headerMenu,
         'fallback' => $navFallback,

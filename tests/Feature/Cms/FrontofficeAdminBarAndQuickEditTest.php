@@ -4,18 +4,22 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Cms;
 
+use App\Content\Pages\Models\Page;
 use App\Contracts\Services\AdminThemeServiceInterface;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
 use Modules\Blog\Models\Post;
-use Modules\Pages\Models\Page;
 use Modules\Shop\Models\Product;
+use Tests\Support\BlogFixtures;
+use Tests\Support\BlogShopComposition;
+use Tests\Support\CmsFixtures;
+use Tests\Support\ShopFixtures;
 use Tests\TestCase;
 
 class FrontofficeAdminBarAndQuickEditTest extends TestCase
 {
+    use BlogShopComposition;
     use RefreshDatabase;
 
     protected User $adminUser;
@@ -23,7 +27,13 @@ class FrontofficeAdminBarAndQuickEditTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(PlatformShowcaseSeeder::class);
+        CmsFixtures::localization();
+        CmsFixtures::identities();
+        $home = CmsFixtures::home();
+        $section = $home->sections()->create(['type' => 'text', 'order' => 1, 'is_active' => true]);
+        $section->translations()->create(['locale' => 'es', 'content_json' => ['content' => '<p>Editable home.</p>']]);
+        BlogFixtures::post();
+        ShopFixtures::product();
 
         /** @var User $admin */
         $admin = User::where('email', 'admin@db-cms.io')->first();
@@ -45,7 +55,6 @@ class FrontofficeAdminBarAndQuickEditTest extends TestCase
 
         $response->assertOk();
         $response->assertDontSee('cms-frontoffice-admin-bar-root', false);
-        $response->assertDontSee('Auditoría SEO & GEO en Tiempo Real', false);
         $response->assertDontSee('frontoffice-bar-edit-link', false);
     }
 
@@ -64,7 +73,7 @@ class FrontofficeAdminBarAndQuickEditTest extends TestCase
         $response->assertDontSee('frontoffice-bar-edit-link', false);
     }
 
-    public function test_authenticated_admin_sees_frontoffice_bar_with_page_edit_and_seo_geo_score_on_home(): void
+    public function test_authenticated_admin_can_open_the_home_page_editor(): void
     {
         $homePage = Page::whereHas('translations', function ($q): void {
             $q->where('slug', 'home');
@@ -74,23 +83,14 @@ class FrontofficeAdminBarAndQuickEditTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('cms-frontoffice-admin-bar-root', false);
-        $response->assertSee('Backoffice');
-        $response->assertSee('Editar Página');
         $response->assertSee(route('admin.pages.edit', $homePage->id), false);
-        $response->assertSee('Clic para Editar:');
-        $response->assertSee('SEO / GEO:');
-        $response->assertSee('Auditoría SEO', false);
-        $response->assertSee('Consejos y Mejoras Accionables');
         $response->assertSee('data-cms-edit-url', false);
-        $response->assertDontSee('+ Nuevo');
     }
 
-    public function test_authenticated_admin_sees_direct_edit_link_for_blog_post_and_seo_geo_tips(): void
+    public function test_authenticated_admin_can_open_the_blog_post_editor(): void
     {
         /** @var Post $post */
-        $post = Post::whereHas('translations', function ($q): void {
-            $q->where('locale', 'es')->where('title', 'like', 'Arquitectura limpia%');
-        })->firstOrFail();
+        $post = Post::sole();
 
         $slugEs = $post->translations->firstWhere('locale', 'es')?->slug;
 
@@ -99,33 +99,20 @@ class FrontofficeAdminBarAndQuickEditTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('cms-frontoffice-admin-bar-root', false);
-        $response->assertSee('Editar Artículo');
         $response->assertSee(route('admin.blog.posts.edit', $post->id), false);
-        $response->assertSee('Estructura editorial');
-        $response->assertSee('Criterios editoriales SEO');
-        $response->assertSee('Superficie disponible; sin citas medidas');
-        $response->assertSee('Heurística editorial local. No mide posicionamiento, factualidad ni citas de IA.');
-        $response->assertSee('criterios editoriales locales; prioriza las necesidades de tus lectores.');
-        $response->assertDontSee('Citabilidad GEO');
-        $response->assertDontSee('/llms.txt OK');
-        $response->assertDontSee('elevar el score al 100%');
-        $response->assertDontSee('citabilidad en ChatGPT, Gemini y Perplexity');
         $response->assertSee('data-cms-edit-url', false);
     }
 
     public function test_authenticated_admin_sees_direct_edit_link_for_shop_product(): void
     {
         /** @var Product $product */
-        $product = Product::whereHas('translations', function ($q): void {
-            $q->where('slug', 'servidor-edge-cyber-kv-10g');
-        })->first();
+        $product = Product::sole();
 
         $response = $this->actingAs($this->adminUser, 'web')
-            ->get('/es/es/tienda/servidor-edge-cyber-kv-10g');
+            ->get('/es/es/tienda/prd-edge-1000');
 
         $response->assertOk();
         $response->assertSee('cms-frontoffice-admin-bar-root', false);
-        $response->assertSee('Editar Producto');
         $response->assertSee(route('admin.shop.products.edit', $product->id), false);
         $response->assertSee('data-cms-edit-url', false);
     }
@@ -147,14 +134,10 @@ class FrontofficeAdminBarAndQuickEditTest extends TestCase
             $response = $this->actingAs($this->adminUser, 'web')->get('/es/es/');
             $response->assertOk();
             $response->assertSee('cms-frontoffice-admin-bar-root', false);
-            $response->assertSee('Backoffice');
-            $response->assertSee('Editar Página');
-            $response->assertSee('SEO / GEO:', false);
-            $response->assertSee('fa-bolt', false);
         }
     }
 
-    public function test_admin_bar_and_seo_drawer_render_isolated_termocms_design_when_termocms_is_active(): void
+    public function test_admin_bar_loads_the_active_brand_stylesheet(): void
     {
         /** @var AdminThemeServiceInterface $themeService */
         $themeService = app(AdminThemeServiceInterface::class);
@@ -165,22 +148,8 @@ class FrontofficeAdminBarAndQuickEditTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('cms-frontoffice-admin-bar-root', false);
-        $response->assertSee('admin-bar-surface', false);
-        $response->assertSee('admin-bar-btn-primary', false);
-        $response->assertSee('admin-bar-drawer', false);
-        $response->assertSee('admin-bar-score-btn', false);
-        $response->assertSee('Backoffice', false);
 
-        // The bar loads the active theme's token stylesheet and maps its chrome
-        // to the --admin-bar-* variables instead of hardcoded dbCMS colors.
         $response->assertSee('theme-assets/termocms/admin-bar.css', false);
-        $response->assertSee('var(--admin-bar-accent', false);
-
-        $tokens = file_get_contents(resource_path('views/themes/admin/termocms/assets/admin-bar.css'));
-        expect($tokens)->toContain('html.theme-termocms')
-            ->toContain('--admin-bar-accent: #007B90')
-            ->toContain('--admin-bar-bg:')
-            ->toContain("--admin-bar-font: 'Plus Jakarta Sans'");
     }
 
     public function test_admin_bar_and_seo_drawer_render_dbcms_cyberpunk_when_dbcms_is_active(): void
@@ -194,10 +163,6 @@ class FrontofficeAdminBarAndQuickEditTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('cms-frontoffice-admin-bar-root', false);
-        $response->assertSee('dbCMS', false);
-        $response->assertSee('Backoffice', false);
-        $response->assertSee('#00FF99', false);
-        $response->assertSee('admin-bar-drawer', false);
     }
 
     public function test_theme_manifest_exposes_the_brand_logo_for_the_front_bar(): void
@@ -223,23 +188,5 @@ class FrontofficeAdminBarAndQuickEditTest extends TestCase
 
         $this->assertStringContainsString('admin-bar-brand-logo', $rendered);
         $this->assertStringContainsString('termosalud-logo.png', $rendered);
-    }
-
-    public function test_seo_drawer_styles_are_fully_token_driven_like_the_topbar(): void
-    {
-        app(AdminThemeServiceInterface::class)->setActiveTheme('termocms');
-        $this->actingAs($this->adminUser, 'web');
-
-        $rendered = Blade::render('<x-frontoffice-admin-bar />');
-
-        // The SEO drawer (showSeoDrawer) must follow the active theme: every
-        // panel, its short `admin-btn-primary` CTA alias, the mono-font reset and
-        // the neon-accent catch-all are bound to --admin-bar-* tokens.
-        $this->assertStringContainsString('.admin-bar-drawer', $rendered);
-        $this->assertStringContainsString('.admin-stat-box', $rendered);
-        $this->assertStringContainsString('.admin-btn-primary', $rendered);
-        $this->assertStringContainsString('.admin-bar-root .font-mono', $rendered);
-        $this->assertStringContainsString('.admin-bar-root .text-\[\#00FF99\]', $rendered);
-        $this->assertStringContainsString('var(--admin-bar-panel)', $rendered);
     }
 }

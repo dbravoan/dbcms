@@ -6,12 +6,11 @@ namespace Modules\Search\Capabilities;
 
 use App\Core\Capabilities\CapabilityRegistry;
 use App\Core\Capabilities\Tools\Action\ActionTool;
-use App\Services\Capabilities\CmsActionService;
 
 /** Module-owned descriptions; handlers delegate to the existing shared service. */
 final class SearchActionCatalog
 {
-    public static function register(CapabilityRegistry $registry, CmsActionService $service): void
+    public static function register(CapabilityRegistry $registry, SearchActions $service): void
     {
         foreach (self::all($service) as $tool) {
             $registry->register($tool, module: 'search', effect: $tool->name() === 'cms_search_reindex' ? 'draft' : 'read');
@@ -21,7 +20,7 @@ final class SearchActionCatalog
     /**
      * @return list<ActionTool>
      */
-    public static function all(CmsActionService $service): array
+    public static function all(SearchActions $service): array
     {
         return [
             new ActionTool(

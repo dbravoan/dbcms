@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
+use App\Content\Pages\Models\PageTranslation;
 use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Core\Modules\ModuleManager;
 use App\Models\Language;
@@ -18,13 +20,13 @@ use Illuminate\Support\Facades\File;
 use Modules\Blog\Models\Category as BlogCategory;
 use Modules\Blog\Models\CategoryTranslation as BlogCategoryTranslation;
 use Modules\Maintenance\Services\MaintenanceService;
-use Modules\Pages\Models\Page;
-use Modules\Pages\Models\PageTranslation;
 use Modules\Shop\Models\ProductCategory as ShopCategory;
 use Modules\Shop\Models\ProductCategoryTranslation as ShopCategoryTranslation;
+use Tests\Support\MaintenanceContentComposition;
+
+uses(MaintenanceContentComposition::class);
 
 beforeEach(function (): void {
-    app(ModuleManager::class)->discoverModules();
 
     // Ensure clean maintenance state
     $lockFile = storage_path('framework/cms-maintenance.json');
@@ -301,15 +303,10 @@ test('llms.txt includes topic taxonomies and returns valid markdown', function (
     expect($txt)->toContain('IA y Algoritmos');
 });
 
-test('legacy admin maintenance url redirects to module settings and settings panel renders simulator', function (): void {
+test('the canonical module settings panel renders the maintenance simulator', function (): void {
     $adminRole = Role::firstOrCreate(['name' => 'admin'], ['slug' => 'admin']);
     $user = User::factory()->create();
     $user->roles()->syncWithoutDetaching([$adminRole->id]);
-
-    $this->actingAs($user)
-        ->get('/admin/maintenance')
-        ->assertStatus(302)
-        ->assertRedirect(route('admin.modules.settings', ['identifier' => 'maintenance']));
 
     $response = $this->actingAs($user)
         ->get(route('admin.modules.settings', ['identifier' => 'maintenance']));

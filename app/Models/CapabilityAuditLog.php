@@ -30,8 +30,6 @@ use Illuminate\Support\Carbon;
  */
 class CapabilityAuditLog extends Model
 {
-    protected $table = 'mcp_audit_logs';
-
     public const STATUS_OK = 'ok';
 
     public const STATUS_DENIED = 'denied';

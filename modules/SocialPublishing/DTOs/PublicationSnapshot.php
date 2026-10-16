@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\SocialPublishing\DTOs;
 
-use App\DTOs\Marketing\CreativePackage;
+use Modules\Marketing\DTOs\CreativePackage;
 
 final readonly class PublicationSnapshot
 {

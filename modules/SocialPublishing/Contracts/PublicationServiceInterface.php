@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Modules\SocialPublishing\Contracts;
 
 use App\Core\Capabilities\ActorContext;
-use App\DTOs\Marketing\CreativePackage;
+use Modules\Marketing\DTOs\CreativePackage;
 use Modules\SocialPublishing\Models\SocialDelivery;
 use Modules\SocialPublishing\Models\SocialPublication;
 

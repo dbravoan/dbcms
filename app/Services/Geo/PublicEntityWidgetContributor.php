@@ -29,7 +29,7 @@ final class PublicEntityWidgetContributor implements PublicWidgetSemanticContrib
     {
         $discovery = app(PublicContentDiscoveryInterface::class);
         $query = $discovery->query($this->entityType, $market, $locale);
-        $widgetKey = $payload['widget_key'] ?? $payload['type'] ?? '';
+        $widgetKey = $payload['type'] ?? '';
         if ($widgetKey === 'blog.featured_posts') {
             $query->where('is_featured', true);
         }
@@ -47,7 +47,7 @@ final class PublicEntityWidgetContributor implements PublicWidgetSemanticContrib
             $category = (string) $payload['category'];
             $query->whereHas('category', fn ($selection) => $selection->where('is_active', true)->where(fn ($value) => $value->whereKey(is_numeric($category) ? (int) $category : 0)->orWhereHas('translations', fn ($translation) => $translation->where('locale', $locale)->where('slug', $category))));
         }
-        $slug = $payload['album_id'] ?? $payload['album_slug'] ?? $payload['gallery_slug'] ?? null;
+        $slug = $payload['album_slug'] ?? null;
         if ($widgetKey === 'gallery.grid' && $slug === null) {
             $slug = 'default';
         }

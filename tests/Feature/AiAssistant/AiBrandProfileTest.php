@@ -5,19 +5,18 @@ declare(strict_types=1);
 namespace Tests\Feature\AiAssistant;
 
 use App\Contracts\Services\GeneralSettingsServiceInterface;
-use App\Core\Modules\ModuleManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Modules\AiAssistant\Contracts\AiBrandProfileServiceInterface;
 use Modules\AiAssistant\Services\AiPromptTemplateEngine;
-use Modules\Mcp\Services\McpServerService;
+use Tests\Support\AiComposition;
 use Tests\Support\AiMcpFixture;
+use Tests\Support\McpProtocolClient;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, AiComposition::class);
 
 beforeEach(function (): void {
     Http::preventStrayRequests();
-    app(ModuleManager::class)->discoverModules();
 });
 
 test('brand profile defaults merge with general site settings', function (): void {
@@ -168,7 +167,7 @@ test('mcp get editorial prompt reflects instance brand profile dynamically', fun
     $brandService->applyPreset('hosteleria');
 
     AiMcpFixture::configure();
-    $mcpService = app(McpServerService::class);
+    $mcpService = app(McpProtocolClient::class);
     $response = $mcpService->handle([
         'jsonrpc' => '2.0',
         'id' => 104,

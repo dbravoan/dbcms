@@ -1,6 +1,6 @@
-@if(config('cms.orchestration.enabled') || isset($initialExecutionId) || request()->filled('execution'))
+@if(\Illuminate\Support\Facades\Route::has('admin.orchestration.start') || isset($initialExecutionId) || request()->filled('execution'))
 <section class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-6" x-data="cmsExecution()">
-    @if(config('cms.orchestration.enabled') && ! isset($initialExecutionId))
+    @if(\Illuminate\Support\Facades\Route::has('admin.orchestration.start') && ! isset($initialExecutionId))
     <h2 class="text-lg font-semibold">Pídele una tarea al CMS</h2>
     <p class="text-sm text-gray-500 mb-3">Usará tus herramientas disponibles. Podrás revisar publicaciones, borrados y envíos antes de aprobarlos.</p>
     <label class="block text-sm" for="cms-instruction">Instrucciones</label>

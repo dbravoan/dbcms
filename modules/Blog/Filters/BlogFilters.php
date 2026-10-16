@@ -37,11 +37,11 @@ final class BlogFilters implements FilterableModule, FilterableResults
         $query = Post::published()
             ->forMarket($market)
             ->whereHas('translations', fn ($q) => $q->where('locale', $locale))
-            ->with(['translations', 'author']);
+            ->with(['translations', 'author', 'category' => fn ($category) => $category->where('is_active', true)->forMarket($market)->with('translations')]);
 
         foreach ($set->list('category') as $categorySlug) {
             $category = Category::resolveBySlugPath($categorySlug, $locale, $market)
-                ?? Category::whereHas('translations', fn ($q) => $q->where('slug', $categorySlug)->where('locale', $locale))->first();
+                ?? Category::where('is_active', true)->forMarket($market)->whereHas('translations', fn ($q) => $q->where('slug', $categorySlug)->where('locale', $locale))->first();
 
             if ($category === null) {
                 return null;
@@ -141,7 +141,7 @@ final class BlogFilters implements FilterableModule, FilterableResults
             FilterDimension::terms(
                 'category',
                 order: 10,
-                vocabulary: fn (string $locale): array => $this->categories($locale),
+                vocabulary: fn (string $locale, string $marketCode): array => $this->categories($locale, $marketCode),
                 implicit: true,
             ),
             FilterDimension::terms(
@@ -164,18 +164,24 @@ final class BlogFilters implements FilterableModule, FilterableResults
     /**
      * @return array<string, array{label: string, key: int}>
      */
-    private function categories(string $locale): array
+    private function categories(string $locale, string $marketCode): array
     {
+        $market = Market::query()->where('code', $marketCode)->where('is_active', true)
+            ->whereHas('languages', fn ($languages) => $languages->where('code', $locale)->where('is_active', true))->first();
+        if ($market === null) {
+            return [];
+        }
         $map = [];
 
         $categories = Category::query()
+            ->forMarket($market)
             ->where('is_active', true)
+            ->whereHas('translations', fn ($translations) => $translations->where('locale', $locale))
             ->with('translations')
             ->get();
 
         foreach ($categories as $category) {
-            $translation = $category->translations->firstWhere('locale', $locale)
-                ?? $category->translations->first();
+            $translation = $category->translations->firstWhere('locale', $locale);
 
             $slug = (string) ($category->getSlugPath($locale) ?: ($translation->slug ?? ''));
             $label = (string) ($translation->name ?? $category->getKey());

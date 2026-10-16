@@ -7,15 +7,7 @@ namespace Modules\Mcp;
 use App\Core\Modules\BaseModuleServiceProvider;
 use App\Http\Middleware\EnsureAdminAuthenticated;
 use Illuminate\Support\Facades\Route;
-use Modules\Mcp\Resources\McpResourceRegistry;
-use Modules\Mcp\Services\EntityCrudService;
-use Modules\Mcp\Services\McpAccessPolicy;
-use Modules\Mcp\Services\McpActionService;
-use Modules\Mcp\Services\McpAuditLogger;
-use Modules\Mcp\Services\McpServerService;
 use Modules\Mcp\Services\McpToolDispatcher;
-use Modules\Mcp\Services\ResourceCrudService;
-use Modules\Mcp\Tools\McpToolRegistry;
 
 class McpModuleServiceProvider extends BaseModuleServiceProvider
 {
@@ -29,14 +21,6 @@ class McpModuleServiceProvider extends BaseModuleServiceProvider
 
     public function register(): void
     {
-        $this->app->singleton(McpServerService::class);
-        $this->app->singleton(McpAccessPolicy::class);
-        $this->app->singleton(McpToolRegistry::class);
-        $this->app->singleton(McpResourceRegistry::class);
-        $this->app->singleton(EntityCrudService::class);
-        $this->app->singleton(ResourceCrudService::class);
-        $this->app->singleton(McpActionService::class);
-        $this->app->singleton(McpAuditLogger::class);
         $this->app->singleton(McpToolDispatcher::class);
     }
 
@@ -47,14 +31,11 @@ class McpModuleServiceProvider extends BaseModuleServiceProvider
         $this->loadViewsFrom(__DIR__.'/Resources/views', 'mcp');
 
         $this->registerRoutes();
+        $this->loadRoutesFrom(__DIR__.'/Routes/native.php');
     }
 
     protected function registerRoutes(): void
     {
-        Route::prefix('api/mcp')
-            ->middleware(['api', 'module.enabled:mcp'])
-            ->group(__DIR__.'/Routes/api.php');
-
         Route::prefix(trim((string) config('cms.admin_path', 'admin'), '/').'/modules/mcp')
             ->middleware(['web', 'auth', EnsureAdminAuthenticated::class, 'module.enabled:mcp'])
             ->group(__DIR__.'/Routes/web.php');

@@ -13,6 +13,7 @@ final class AiCapabilityRegistrar
 {
     public function register(CapabilityRegistry $registry): void
     {
+        app(EditorialGuidanceCapabilities::class)->register($registry);
         foreach (AiActionRunner::MCP_TOOL_ACTIONS as $name => $action) {
             $properties = [
                 'prompt' => ['type' => 'string'], 'topic' => ['type' => 'string'], 'content' => ['type' => 'string'], 'title' => ['type' => 'string'],

@@ -10,11 +10,10 @@ namespace App\Core\Filters;
  * Resolution order for a bare segment — deterministic and declared, never a
  * guess (see docs/20):
  *
- *   1. explicit legacy markers      `etiqueta/laravel`, `orden/recientes` → 301 later
  *   2. inline qualifiers            `etiqueta-laravel`, `3-habitaciones`
  *   3. reserved tokens              enum options / bool markers (`recientes`)
  *   4. localized connectors+shapes  dates (`desde-2026-01-01`) and ranges (`entre-100-200-eur`)
- *   5. term vocabularies            hyphen backtracking, `+` joins values (`laravel+vue`)
+ *   5. term vocabularies            exact slugs, `+` joins values (`laravel+vue`)
  *   6. search fallback              the last segment, only when the module declares it
  *
  * Unknown or genuinely ambiguous payloads resolve to `null`, which the caller
@@ -50,7 +49,7 @@ final class FilterPathParser
 
         // The implicit dimension may consume several leading segments when its
         // vocabulary is hierarchical (`tecnologia/ia-geo/modelos-llm`).
-        $segments = $this->consumeImplicitPrefix($dimensions, $locale, $segments, $values);
+        $segments = $this->consumeImplicitPrefix($dimensions, $locale, $segments, $values, $market);
 
         $count = count($segments);
 
@@ -58,31 +57,7 @@ final class FilterPathParser
             $segment = $segments[$i];
             $isLast = $i === $count - 1;
 
-            // 1) Explicit legacy marker: the next segment carries the payload.
-            foreach ($dimensions as $dimension) {
-                if ($segment !== $dimension->marker($locale)) {
-                    continue;
-                }
-
-                $payload = $segments[$i + 1] ?? '';
-
-                // No payload: the token may be the reserved value itself
-                // (`destacados`), so fall through to the bare resolution.
-                if ($payload === '') {
-                    continue;
-                }
-
-                // With a payload the marker is explicit: a bad value is a 404.
-                if (! $this->assign($dimension, $payload, $locale, $values)) {
-                    return null;
-                }
-
-                $i++;
-
-                continue 2;
-            }
-
-            $resolved = $this->resolveBareSegment($segment, $dimensions, $locale, $values, $isLast);
+            $resolved = $this->resolveBareSegment($segment, $dimensions, $locale, $values, $isLast, $market);
 
             if ($resolved === null) {
                 return null;
@@ -114,6 +89,7 @@ final class FilterPathParser
         string $locale,
         array &$values,
         bool $isLast,
+        string $marketCode,
     ): ?bool {
         // Reserved tokens (enum options / bool markers) — they always win.
         foreach ($dimensions as $dimension) {
@@ -173,7 +149,7 @@ final class FilterPathParser
 
             $payload = substr($segment, strlen($qualifier) + 1);
 
-            if ($payload !== '' && $this->assign($dimension, $payload, $locale, $values)) {
+            if ($payload !== '' && $this->assign($dimension, $payload, $locale, $values, $marketCode)) {
                 return true;
             }
         }
@@ -184,7 +160,7 @@ final class FilterPathParser
                 continue;
             }
 
-            $resolved = $this->parseTerms($segment, $dimension, $locale);
+            $resolved = $this->parseTerms($segment, $dimension, $locale, $marketCode);
 
             if ($resolved === null) {
                 continue;
@@ -225,7 +201,7 @@ final class FilterPathParser
      * @param  array<int, string>  $segments
      * @return array<int, string>
      */
-    private function consumeImplicitPrefix(array $dimensions, string $locale, array $segments, array &$values): array
+    private function consumeImplicitPrefix(array $dimensions, string $locale, array $segments, array &$values, string $marketCode): array
     {
         $implicit = null;
 
@@ -241,7 +217,7 @@ final class FilterPathParser
             return $segments;
         }
 
-        $vocabulary = array_keys($implicit->vocabulary($locale));
+        $vocabulary = array_keys($implicit->vocabulary($locale, $marketCode));
 
         for ($take = min(count($segments), 5); $take >= 1; $take--) {
             $candidate = implode('/', array_slice($segments, 0, $take));
@@ -280,7 +256,7 @@ final class FilterPathParser
     /**
      * @param  array<string, mixed>  $values
      */
-    private function assign(FilterDimension $dimension, string $payload, string $locale, array &$values): bool
+    private function assign(FilterDimension $dimension, string $payload, string $locale, array &$values, string $marketCode): bool
     {
         $payload = trim($payload, '-');
 
@@ -295,7 +271,7 @@ final class FilterPathParser
         }
 
         if ($dimension->type === 'terms') {
-            $resolved = $this->parseTerms($payload, $dimension, $locale);
+            $resolved = $this->parseTerms($payload, $dimension, $locale, $marketCode);
 
             if ($resolved === null) {
                 return false;
@@ -368,11 +344,6 @@ final class FilterPathParser
             return $this->isUpperBound($matches[1], $connectors) ? '-'.$matches[2] : $matches[2].'-';
         }
 
-        // Compact legacy form: `100-200`.
-        if (preg_match('/^(\d{0,9})-(\d{0,9})$/', $payload) === 1) {
-            return $payload;
-        }
-
         return null;
     }
 
@@ -405,11 +376,6 @@ final class FilterPathParser
             }
 
             return ['date_from' => $from, 'date_to' => $to];
-        }
-
-        // Compact legacy form: a bare date belongs to the module's first date dimension.
-        if (preg_match('/^('.$datePattern.')$/', $payload, $m) === 1 && $this->isValidDate($m[1])) {
-            return $m[1];
         }
 
         return null;
@@ -470,21 +436,15 @@ final class FilterPathParser
     /**
      * @return array<int, string>|null
      */
-    private function parseTerms(string $payload, FilterDimension $dimension, string $locale): ?array
+    private function parseTerms(string $payload, FilterDimension $dimension, string $locale, string $marketCode): ?array
     {
-        $vocabulary = array_keys($dimension->vocabulary($locale));
+        $vocabulary = array_keys($dimension->vocabulary($locale, $marketCode));
 
         if ($vocabulary === []) {
             return null;
         }
 
-        $separators = array_merge(
-            [(string) config('front_filters.multi_value_separator', '+')],
-            (array) config('front_filters.legacy_multi_value_separators', ['_']),
-        );
-
-        $pattern = '/['.preg_quote(implode('', $separators), '/').']/';
-        $parts = preg_split($pattern, $payload) ?: [];
+        $parts = explode('+', $payload);
 
         if (count($parts) > 1) {
             foreach ($parts as $part) {
@@ -496,66 +456,6 @@ final class FilterPathParser
             return $parts;
         }
 
-        // Single value: exact match, or the legacy hyphen-joined form.
-        if (in_array($payload, $vocabulary, true)) {
-            return [$payload];
-        }
-
-        $segmentations = $this->segment($payload, $vocabulary);
-
-        if (count($segmentations) !== 1) {
-            return null;
-        }
-
-        $resolved = $segmentations[0];
-
-        if (! $dimension->multi && count($resolved) !== 1) {
-            return null;
-        }
-
-        return $resolved;
-    }
-
-    /**
-     * Vocabulary-aware backtracking segmentation of a hyphen-joined payload.
-     *
-     * @param  array<int, string>  $slugs
-     * @param  array<int, string>  $acc
-     * @return array<int, array<int, string>>
-     */
-    private function segment(string $payload, array $slugs, array $acc = [], int $depth = 0): array
-    {
-        if ($depth > 12) {
-            return [];
-        }
-
-        if ($payload === '') {
-            return [$acc];
-        }
-
-        $results = [];
-
-        foreach ($slugs as $slug) {
-            if ($slug === '' || ! str_starts_with($payload, $slug)) {
-                continue;
-            }
-
-            $rest = substr($payload, strlen($slug));
-
-            if ($rest !== '' && ! str_starts_with($rest, '-')) {
-                continue;
-            }
-
-            $results = array_merge(
-                $results,
-                $this->segment(ltrim($rest, '-'), $slugs, array_merge($acc, [$slug]), $depth + 1),
-            );
-
-            if (count($results) > 1) {
-                return $results; // Ambiguity detected: stop early.
-            }
-        }
-
-        return $results;
+        return in_array($payload, $vocabulary, true) ? [$payload] : null;
     }
 }

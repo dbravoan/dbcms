@@ -4,18 +4,22 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Cms;
 
+use App\Content\Pages\Models\Page;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Models\Post;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
-use Modules\Pages\Models\Page;
+use Modules\ContentAudit\Services\EditorialWorkflow;
 use Modules\Shop\Models\Product;
 use Modules\Shop\Models\ProductCategory;
+use Tests\Support\BlogFixtures;
+use Tests\Support\CmsFixtures;
+use Tests\Support\MultilingualEditorialComposition;
+use Tests\Support\ShopFixtures;
 use Tests\TestCase;
 
 class BackofficeCrudConsistencyTest extends TestCase
 {
+    use MultilingualEditorialComposition;
     use RefreshDatabase;
 
     protected User $adminUser;
@@ -23,7 +27,11 @@ class BackofficeCrudConsistencyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(PlatformShowcaseSeeder::class);
+        CmsFixtures::localization(['es', 'en', 'fr']);
+        CmsFixtures::identities();
+        CmsFixtures::home(['es', 'en', 'fr']);
+        BlogFixtures::post(['es', 'en', 'fr']);
+        ShopFixtures::product(locales: ['es', 'en', 'fr']);
 
         /** @var User $admin */
         $admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
@@ -110,7 +118,7 @@ class BackofficeCrudConsistencyTest extends TestCase
         $cat->refresh();
         $this->assertEquals('🛰️', $cat->icon);
         $this->assertEquals('Redes Cuánticas', $cat->translations->where('locale', 'es')->first()?->name);
-        app(ContentAuditServiceInterface::class)->approve($cat, $this->adminUser);
+        app(EditorialWorkflow::class)->approve($cat, $this->adminUser);
         $cat->refresh();
         $this->assertNull($cat->parent_id);
         $this->assertEquals('🔬', $cat->icon);

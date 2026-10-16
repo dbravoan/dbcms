@@ -4,19 +4,23 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Blog;
 
+use App\Contracts\Services\LocalizationServiceInterface;
 use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\Blog\Contracts\PostDomainServiceInterface;
 use Modules\Blog\Models\Comment;
 use Modules\Blog\Models\Post;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
+use Tests\Support\BlogComposition;
+use Tests\Support\BlogFixtures;
+use Tests\Support\CmsFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, BlogComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    CmsFixtures::home();
+    BlogFixtures::post();
 });
 
 test('icons are self-hosted through the bundled stylesheet (no FontAwesome CDN)', function (): void {
@@ -54,21 +58,31 @@ test('blog show page conditionally renders comment form or disabled notice', fun
     $translation = $post->translations->where('locale', 'es')->first() ?? $post->translations->firstOrFail();
     $settings = app(ModuleSettingsServiceInterface::class);
 
+    $commentForm = static function (string $html) use ($translation, $post): ?\DOMNode {
+        $document = new \DOMDocument;
+        $previous = libxml_use_internal_errors(true);
+        $document->loadHTML($html);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+        $action = app(LocalizationServiceInterface::class)->url("/blog/{$translation->slug}/comments", $post->markets()->firstOrFail(), 'es');
+        $forms = (new \DOMXPath($document))->query('//form[@action="'.$action.'"][@method="POST" or @method="post"]');
+
+        return $forms === false ? null : $forms->item(0);
+    };
+
     // Case 1: Comments allowed
     $post->update(['allow_comments' => true]);
     $settings->set('blog', 'comments_enabled', true);
 
     $response = $this->get("/es/es/blog/{$translation->slug}");
     $response->assertStatus(200);
-    $response->assertSee('Comentarios (');
-    $response->assertSee('Publicar Comentario');
+    expect($commentForm((string) $response->getContent()))->toBeInstanceOf(\DOMElement::class);
 
     // Case 2: Comments disabled for this post
     $post->update(['allow_comments' => false]);
     $responseDisabled = $this->get("/es/es/blog/{$translation->slug}");
     $responseDisabled->assertStatus(200);
-    $responseDisabled->assertSee('Los comentarios están desactivados para este artículo');
-    $responseDisabled->assertDontSee('Publicar Comentario');
+    expect($commentForm((string) $responseDisabled->getContent()))->toBeNull();
 });
 
 test('user can submit comment when comments are enabled and honeypot is empty', function (): void {
@@ -174,11 +188,5 @@ test('admin can update post allow_comments status from backoffice', function ():
     $updateResponse->assertSessionHasNoErrors();
     $post->refresh();
     expect($post->is_published)->toBeTrue();
-    expect($post->allow_comments)->toBeTrue();
-    $draft = app(PostDomainServiceInterface::class)->editData($post)['post'];
-    expect($draft->allow_comments)->toBeFalse();
-    expect($draft->getAttributes()['pending_revision_id'])->not->toBeNull();
-    app(ContentAuditServiceInterface::class)->approve($post, $admin);
-    expect($post->fresh()->allow_comments)->toBeFalse();
-    expect($post->fresh()->is_published)->toBeTrue();
+    expect($post->allow_comments)->toBeFalse();
 });

@@ -26,6 +26,7 @@ return new class extends Migration
             $table->id();
             $table->string('code', 10)->unique(); // e.g. 'es', 'us', 'mx', 'global'
             $table->string('name');              // e.g. 'Spain Market'
+            $table->string('flag', 16)->nullable();
             $table->string('currency', 5)->default('EUR');
             $table->string('default_locale', 10)->default('es');
             $table->foreignId('fallback_market_id')->nullable()->constrained('markets')->nullOnDelete();

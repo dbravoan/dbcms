@@ -14,6 +14,6 @@ final class FormCreateGetController extends Controller
 
     public function __invoke(): View
     {
-        return view('admin.forms.create', $this->editor->creation()->viewData());
+        return view('forms::admin.create', $this->editor->creation()->viewData());
     }
 }

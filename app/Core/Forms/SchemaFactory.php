@@ -117,7 +117,7 @@ final class SchemaFactory
      */
     private function options(mixed $field): array
     {
-        $raw = $this->rawOptions($field);
+        $raw = data_get($field, 'options');
 
         if (is_string($raw)) {
             return $this->parseOptionLines($raw);
@@ -134,21 +134,6 @@ final class SchemaFactory
         }
 
         return $pairs;
-    }
-
-    private function rawOptions(mixed $field): mixed
-    {
-        if (is_object($field) && method_exists($field, 'optionPairs')) {
-            $pairs = $field->optionPairs();
-
-            return is_array($pairs) ? $pairs : [];
-        }
-
-        if (is_object($field)) {
-            return data_get($field, 'options');
-        }
-
-        return is_array($field) ? ($field['options'] ?? null) : null;
     }
 
     /**

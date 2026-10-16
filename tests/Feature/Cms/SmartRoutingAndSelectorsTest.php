@@ -5,14 +5,19 @@ declare(strict_types=1);
 use App\Contracts\Services\LocalizationServiceInterface;
 use App\Models\Language;
 use App\Models\Market;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Models\Post;
+use Tests\Support\BlogComposition;
+use Tests\Support\BlogFixtures;
+use Tests\Support\CmsFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, BlogComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en'], ['es', 'us']);
+    CmsFixtures::identities();
+    Market::where('code', 'us')->firstOrFail()->update(['default_locale' => 'en']);
+    BlogFixtures::post();
 });
 
 test('smart routing generates correct URLs based on active markets and languages', function (): void {

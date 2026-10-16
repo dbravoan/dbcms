@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 use App\Contracts\Services\AdminThemeServiceInterface;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\MessageBag;
 use Illuminate\Support\ViewErrorBag;
 use Modules\Blog\Models\Post;
+use Tests\Support\BlogFixtures;
+use Tests\Support\CmsFixtures;
+use Tests\Support\EditorialScreensComposition;
+
+uses(EditorialScreensComposition::class);
 
 test('a shared primary button keeps its base, variant and caller classes in rendered html', function (): void {
     $html = Blade::render('<x-admin.button variant="primary" class="test-action" @click="generate()" x-bind:disabled="busy">Generate</x-admin.button>');
@@ -40,7 +44,10 @@ test('shared select and input keep explicit identity, bindings and accessible va
 
 test('both backoffice themes render shared controls and editor translation without changing the public shell', function (string $theme): void {
     app(AdminThemeServiceInterface::class)->setActiveTheme($theme);
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    CmsFixtures::home();
+    BlogFixtures::post();
     $user = User::whereHas('roles', fn ($roles) => $roles->where('slug', 'admin'))->firstOrFail();
     $post = Post::firstOrFail();
     $this->actingAs($user);

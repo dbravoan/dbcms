@@ -8,7 +8,9 @@ use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
 use App\DTOs\Content\PendingEditorialDraft;
 use App\Models\User;
 use App\Services\Capabilities\ContentSnapshotService;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityMutationService;
+use App\Services\Capabilities\EntityReadService;
+use App\Services\Capabilities\EntityTranslationWriter;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Support\Facades\Auth;
@@ -32,7 +34,8 @@ beforeEach(function (): void {
     foreach (FormEntitySchemas::all() as $schema) {
         $registry->register($schema);
     }
-    $this->entities = new EntityCrudService($registry, $locale);
+    $this->reader = new EntityReadService($registry, $locale);
+    $this->entities = new EntityMutationService($this->reader, new EntityTranslationWriter);
     $this->input = ['translations' => ['es' => ['name' => 'QA formulario']], 'attributes' => ['fields' => [['field_key' => 'Full name', 'type' => 'text', 'is_required' => true, 'translations' => ['es' => ['label' => 'Nombre']]]]]];
 });
 
@@ -86,11 +89,11 @@ it('captures restores and hydrates field revisions without changing their ids or
 });
 
 it('uses the same writer for the HTTP editor adapter and native input', function (): void {
-    $service = new FormAdministrationService($this->entities);
+    $service = new FormAdministrationService($this->entities, $this->reader);
     $input = $this->input['attributes'] + ['translations' => $this->input['translations']];
     $form = $service->create($input, null);
     $service->update($form, ['fields' => [['field_key' => 'email', 'type' => 'email', 'translations' => ['es' => ['label' => 'Correo']]]]]);
-    $read = $this->entities->find('form', $form->id);
+    $read = $this->reader->find('form', $form->id);
 
     expect($read['relations']['fields'][0]['field_key'])->toBe('email')
         ->and($read['relations']['fields'][0]['translations']['es']['label'])->toBe('Correo');
@@ -126,3 +129,20 @@ it('stages active form fields while keeping the live definition intact until res
     $snapshots->restore($form, $pending);
     expect($form->fresh()->fields()->count())->toBe(0);
 });
+
+it('refuses incomplete form revisions before replacing any live row', function (array $relations): void {
+    $result = $this->entities->create('form', $this->input);
+    $form = CustomForm::findOrFail($result['id']);
+    $snapshots = app(ContentSnapshotService::class);
+    $snapshot = $snapshots->capture($form);
+    $snapshot['attributes']['slug'] = 'must-not-be-written';
+    $snapshot['module_relations'] = $relations;
+
+    expect(fn () => $snapshots->hydrate($form, $snapshot))->toThrow(DomainException::class)
+        ->and(fn () => $snapshots->restore($form, $snapshot))->toThrow(DomainException::class);
+    expect($form->fresh()->slug)->toBe('qa-formulario')
+        ->and($form->fields()->sole()->field_key)->toBe('full_name');
+})->with([
+    'missing fields' => [[]],
+    'incomplete field' => [['fields' => [['attributes' => ['id' => 1]]]]],
+]);

@@ -54,15 +54,6 @@ return [
             'port' => env('REDIS_PORT', '6379'),
             'database' => env('REDIS_DB', '0'),
         ],
-        'marketing' => [
-            'url' => env('MARKETING_REDIS_URL', env('REDIS_URL')),
-            'host' => env('REDIS_HOST', 'redis'),
-            'username' => env('REDIS_USERNAME'),
-            'password' => env('REDIS_PASSWORD'),
-            'port' => env('REDIS_PORT', '6379'),
-            'database' => env('MARKETING_REDIS_DB', '0'),
-            'options' => ['prefix' => 'cms_'.(env('CMS_INSTALLATION_ID') ?: substr(hash('sha256', (string) env('APP_KEY', '')), 0, 32)).'_marketing_'],
-        ],
         'cache' => [
             'url' => env('REDIS_URL'),
             'host' => env('REDIS_HOST', 'redis'),

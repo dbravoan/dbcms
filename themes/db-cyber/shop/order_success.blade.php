@@ -1,4 +1,4 @@
-@extends('themes.db-cyber.layouts.app')
+@extends('themes::db-cyber.layouts.app')
 
 @section('title', __('¡Pedido Confirmado! - dbCMS'))
 

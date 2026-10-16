@@ -1,4 +1,5 @@
 {
+  "availability_setting": "is_enabled",
   "name": "Servidor MCP (Model Context Protocol)",
   "identifier": "mcp",
   "version": "1.0.0",
@@ -10,7 +11,7 @@
     "is_enabled": {
       "type": "boolean",
       "label": "Activar Servidor MCP",
-      "description": "Habilita o deshabilita los endpoints /api/mcp tanto HTTP como SSE para agentes externos.",
+      "description": "Habilita o deshabilita el endpoint MCP estándar /mcp/cms para agentes externos.",
       "default": true
     },
     "enable_sse": {

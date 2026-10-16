@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Core\Capabilities\Tools\Entity;
 
 use App\Core\Capabilities\Tools\AbstractCapabilityTool;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityMutationService;
+use App\Services\Capabilities\EntityReadService;
 
 /**
  * Deletes an entity (with its translations and sections).
@@ -13,7 +14,8 @@ use App\Services\Capabilities\EntityCrudService;
 class EntityDeleteTool extends AbstractCapabilityTool
 {
     public function __construct(
-        private readonly EntityCrudService $entities,
+        private readonly EntityMutationService $entities,
+        private readonly EntityReadService $reader,
     ) {}
 
     public function name(): string
@@ -46,7 +48,7 @@ class EntityDeleteTool extends AbstractCapabilityTool
 
     public function permissionFor(array $args): ?string
     {
-        return $this->safePermission(fn (): ?string => $this->entities->schemaFor($this->string($args, 'type'))->permission);
+        return $this->safePermission(fn (): ?string => $this->reader->schemaFor($this->string($args, 'type'))->permission);
     }
 
     public function ability(): string

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\Shop\Services;
 
+use App\Core\Sections\SectionEditorService;
 use App\DTOs\Content\EntityMutationData;
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\User;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityMutationService;
+use App\Services\Capabilities\EntityReadService;
 use App\Services\Content\EditorialDraftService;
 use Illuminate\Database\Eloquent\Model;
 use Modules\Shop\Contracts\ShopEditorialServiceInterface;
@@ -18,14 +20,14 @@ use Modules\Shop\Models\ProductCategory;
 /** HTTP adapter over the same transactional entity writer used by native capabilities. */
 final class ShopEditorialService implements ShopEditorialServiceInterface
 {
-    public function __construct(private readonly EntityCrudService $entities) {}
+    public function __construct(private readonly EntityMutationService $entities, private readonly EntityReadService $reader) {}
 
     /** @param array<string,mixed> $input */
     public function create(string $type, array $input, ?User $actor): Model
     {
-        $payload = $this->entities->create($type, EntityMutationData::fromLegacy($input)->arguments, $actor);
+        $payload = $this->entities->create($type, EntityMutationData::fromForm($input)->arguments, $actor);
 
-        return $this->entities->resolveEntity($type, $payload['id']);
+        return $this->reader->resolveEntity($type, $payload['id']);
     }
 
     /** @param array<string,mixed> $input
@@ -33,7 +35,7 @@ final class ShopEditorialService implements ShopEditorialServiceInterface
      */
     public function update(string $type, Model $entity, array $input): array
     {
-        $args = EntityMutationData::fromLegacy($input)->arguments;
+        $args = EntityMutationData::fromForm($input)->arguments;
         if ($entity->getAttribute('is_active') && ! empty($args['attributes']['is_active'])) {
             unset($args['attributes']['is_active']);
         }
@@ -50,9 +52,12 @@ final class ShopEditorialService implements ShopEditorialServiceInterface
     public function editProduct(Product $product): array
     {
         $product->load(['translations', 'category.translations', 'markets', 'sections.translations']);
+        $product = app(EditorialDraftService::class)->forEditor($product);
+        assert($product instanceof Product);
 
         return [
-            'product' => app(EditorialDraftService::class)->forEditor($product),
+            'product' => $product,
+            'sectionsData' => app(SectionEditorService::class)->payload($product),
             'categories' => ProductCategory::with('translations')->get(),
             'markets' => Market::with('languages')->where('is_active', true)->get(),
             'languages' => Language::where('is_active', true)->get(),

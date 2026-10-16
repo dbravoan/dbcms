@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Modules\Shop\Models\Product;
 use Modules\Shop\Services\ShopDomainService;
+use Tests\Support\IsolatedTestDatabase;
 
 require __DIR__.'/../../vendor/autoload.php';
 
@@ -17,10 +18,7 @@ try {
     [$script, $sku, $marketCode, $barrierDirectory, $worker] = $argv;
     $app = require __DIR__.'/../../bootstrap/app.php';
     $app->make(Kernel::class)->bootstrap();
-    if (! $app->environment('testing') || DB::connection()->getDriverName() !== 'mysql'
-        || DB::connection()->getDatabaseName() !== 'testing' || DB::selectOne('SELECT DATABASE() AS name')->name !== 'testing') {
-        throw new LogicException('Worker refuses any database other than MySQL testing.');
-    }
+    IsolatedTestDatabase::assertConnection();
     // Exercise the actual checkout service with stock enabled and no outbound notifications.
     $app->offsetUnset(ModuleSettingsServiceInterface::class);
     $app->offsetUnset(ModuleNotificationServiceInterface::class);

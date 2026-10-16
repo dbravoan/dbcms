@@ -13,13 +13,12 @@ use Modules\Shop\Contracts\InquiryServiceInterface;
 use Modules\Shop\DTOs\InquirySubmission;
 use Modules\Shop\Models\Inquiry;
 use Modules\Shop\Models\Product;
-use Modules\Shop\Models\ShopSetting;
 
 final class InquiryService implements InquiryServiceInterface
 {
     public function submit(InquirySubmission $data, Market $market, string $locale): Inquiry
     {
-        abort_unless((bool) ShopSetting::get('shop.enable_inquiry', true), 404);
+        abort_unless((bool) module_setting('shop', 'enable_inquiry', true), 404);
         Product::active()->forMarket($market)->findOrFail($data->productId);
 
         return DB::transaction(function () use ($data, $market, $locale): Inquiry {
@@ -30,7 +29,7 @@ final class InquiryService implements InquiryServiceInterface
             DB::afterCommit(function () use ($inquiry): void {
                 try {
                     app(ModuleNotificationServiceInterface::class)->notify('shop', 'inquiry', 'Nueva solicitud de presupuesto', 'Solicitud #'.$inquiry->getKey(), route('admin.shop.inquiries.index'), ['inquiry_id' => $inquiry->getKey()], false);
-                    $recipient = (string) ShopSetting::get('shop.notification_email', '');
+                    $recipient = (string) module_setting('shop', 'notification_email', '');
                     if (filter_var($recipient, FILTER_VALIDATE_EMAIL) !== false) {
                         Mail::raw('Solicitud #'.$inquiry->getKey()."\n".$inquiry->name."\n".$inquiry->email."\n".$inquiry->phone."\n".$inquiry->message, function ($message) use ($recipient): void {
                             $message->to($recipient)->subject('Nueva solicitud de presupuesto');

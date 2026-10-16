@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
+use Modules\AiAssistant\Http\Controllers\Admin\AiPromptDownloadGetController;
+use Modules\AiAssistant\Http\Controllers\Admin\AiPromptRawGetController;
 use Modules\AiAssistant\Http\Controllers\Admin\BrandProfile;
 use Modules\AiAssistant\Http\Controllers\Admin\CreateElement;
 use Modules\AiAssistant\Http\Controllers\Admin\Generate;
@@ -60,3 +62,8 @@ Route::get('/providers/models', Providers\Catalog\GetController::class)
 Route::post('/providers/set-default', Providers\SetDefault\PostController::class)
     ->middleware(EnsureAiAuthorized::class.':manage:ai')
     ->name('admin.ai_assistant.providers.set_default');
+
+Route::middleware([EnsureAiAuthorized::class.':use:ai'])->group(function (): void {
+    Route::get('/ai/download-prompt', AiPromptDownloadGetController::class)->name('admin.ai.download-prompt');
+    Route::get('/ai/raw-prompt', AiPromptRawGetController::class)->name('admin.ai.raw-prompt');
+});

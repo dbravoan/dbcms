@@ -16,11 +16,11 @@ final class ModuleUninstallPostController extends Controller
 
     public function __invoke(string $identifier): RedirectResponse
     {
-        if ($this->moduleManager->isCore($identifier)) {
-            return back()->with('error', "El módulo '{$identifier}' es un módulo troncal esencial del sistema y no puede ser desinstalado.");
+        try {
+            $this->moduleManager->uninstall($identifier);
+        } catch (\DomainException $error) {
+            return back()->with('error', $error->getMessage());
         }
-
-        $this->moduleManager->uninstall($identifier);
 
         return back()->with('success', "Module '{$identifier}' uninstalled successfully.");
     }

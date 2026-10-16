@@ -4,6 +4,14 @@ Este manual corresponde a los contratos de [CreativeStudio](../specs/FEAT-CREATI
 
 La construcción local de la imagen de producción, el arranque de rutas, las migraciones aditivas y los procesos de marketing se han comprobado. Las pruebas con HTTP simulado verifican los contratos; el piloto con credenciales, cuentas autorizadas, generación facturada y publicaciones externas reales sigue pendiente. No interpretar una guía marcada, una cuenta creada ni un catálogo de modelos como una conexión o publicación demostrada.
 
+## Composición explícita
+
+`marketing` contiene archivos privados y contratos de integración. CreativeStudio,
+SocialPublishing y Analytics lo declaran como dependencia obligatoria. Seleccionar
+la infraestructura junto con los módulos utilizados antes de instalar. La
+selección no descarga dependencias Composer ni npm durante peticiones HTTP.
+El núcleo no registra sus servicios, colas ni workers al arrancar.
+
 ## Identidad y aislamiento antes del piloto
 
 Cada minisite necesita su propia base de datos, almacenamiento persistente privado, `APP_KEY`, cuentas/configuración y un `CMS_INSTALLATION_ID` único y estable. Fijar este último explícitamente antes de crear tareas; el fallback actual deriva de `APP_KEY`. Conservar ambos valores al actualizar: cambiar la identidad oculta referencias de archivos, progreso y namespaces anteriores; rotar `APP_KEY` impide descifrar secretos existentes.
@@ -31,12 +39,16 @@ Estos comandos son para Sail local. En VPS/Plesk, desde la release y con la imag
 En Sail los procesos nuevos se levantan como servicios separados:
 
 ```bash
-./vendor/bin/sail up -d creative-generation creative-render social-delivery social-reconciliation scheduler
+./vendor/bin/sail --profile creative --profile social up -d
 ./vendor/bin/sail ps creative-generation creative-render social-delivery social-reconciliation scheduler
 ./vendor/bin/sail logs --tail=100 creative-generation creative-render social-delivery social-reconciliation scheduler
 ```
 
-La imagen de producción incorpora los mismos programas en `docker/production/supervisord.conf` como usuario `dbcms`; Sail los ejecuta como `sail`. En VPS/Plesk se deben supervisar estos comandos mediante la CLI PHP nativa y `bin/vps-artisan.sh` de la release, con cierre ordenado y margen de 1500 segundos para los workers. El alojamiento web existente no arranca por sí solo estos procesos.
+Sail mantiene estos workers fuera del arranque básico: activar solo los perfiles
+`creative` o `social` necesarios. En producción Supervisor los inicia únicamente
+con `DBCMS_CREATIVE_WORKERS=true` o `DBCMS_SOCIAL_WORKERS=true`; ambos valen `false`
+por defecto. En VPS/Plesk se supervisan explícitamente mediante la CLI PHP nativa
+y `bin/vps-artisan.sh`, con cierre ordenado y margen de 1500 segundos.
 
 | Proceso | Comando Artisan dentro del contenedor | Timeout |
 | --- | --- | --- |
@@ -50,7 +62,11 @@ Ejecutar un scheduler por instalación o usar réplicas con el mismo cache compa
 
 ## Multimedia y almacenamiento
 
-Antes de activar, comprobar GD con soporte de Freetype, FFmpeg, FFprobe, una fuente TTF legible y espacio temporal/privado suficiente en **la imagen utilizada por los workers**. La imagen de producción incluye estas dependencias; una imagen Sail ya creada debe actualizarse si le faltan.
+Antes de activar, comprobar GD con Freetype, FFmpeg, FFprobe, fuente TTF y espacio
+privado en **la imagen utilizada por los workers**. La imagen básica no instala
+FFmpeg ni fuentes: construir la variante creativa con
+`docker build --build-arg WITH_CREATIVE_TOOLS=true -f docker/production/Dockerfile .`.
+Una imagen Sail debe incorporar esos binarios antes de activar composición.
 
 ```bash
 ./vendor/bin/sail php -r 'var_export(["gd" => extension_loaded("gd"), "freetype" => function_exists("imagettfbbox")]);'
@@ -121,7 +137,7 @@ La retirada de Matrix queda pendiente de un piloto autorizado con cuentas extern
 
 ## Integración prevista en 1.2.0
 
-Los módulos se integran con el actualizador del núcleo en 1.2.0. La validación del árbol integrado y del SHA que se publique está **PENDIENTE**: consultar [la matriz de integración](RELEASE_1.2.0_INTEGRATION.md). Las cifras siguientes corresponden a la rama de trabajo anterior; no certifican esta integración. Conservar las copias históricas y de Matrix. El piloto externo sigue pendiente y no se autoriza retirar Matrix ni publicar automáticamente.
+Los módulos se integran con el actualizador del núcleo en 1.2.0. La validación del árbol integrado y del SHA que se publique está **PENDIENTE**: consultar [la matriz de integración](archive/RELEASE_1.2.0_INTEGRATION.md). Las cifras siguientes corresponden a la rama de trabajo anterior; no certifican esta integración. Conservar las copias históricas y de Matrix. El piloto externo sigue pendiente y no se autoriza retirar Matrix ni publicar automáticamente.
 
 La política 1.2.0 declara `rollback_compatible=true` tras revisar expresamente las cinco migraciones aditivas: solo crean tablas o amplían tablas nuevas de los módulos, sin cambiar contratos de core 1.1.0; los módulos parten inactivos. Esto habilita el recorrido standalone. Un rollback de código no revierte DB, y el rollback automático sigue prohibido tras `migration_started`; cualquier fallo posterior o incierto exige recuperación guiada. El arranque de core 1.1.0 con DB migrada queda PENDIENTE de E2E. Seguir la recuperación guiada del [actualizador](CORE_UPDATES_RUNBOOK.md), con respaldo comprobado de DB, archivos y claves.
 

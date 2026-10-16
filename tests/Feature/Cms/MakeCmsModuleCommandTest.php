@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\File;
+use Modules\TestConferenceTalk\TestConferenceTalkModuleServiceProvider;
 use Symfony\Component\Process\Process;
 
 afterEach(function (): void {
@@ -138,4 +139,20 @@ test('make:cms-module --crud scaffolds a fully working translatable CRUD', funct
     expect($form)->toContain('translations[');
 
     assertGeneratedPhpIsValid($targetDir);
+});
+
+test('generated dedicated portals protect every authentication route with module availability', function (): void {
+    $this->artisan('make:cms-module', [
+        'name' => 'TestConferenceTalk',
+        '--dedicated-panel' => true,
+    ])->assertSuccessful();
+
+    app()->register(TestConferenceTalkModuleServiceProvider::class);
+    $routes = app('router')->getRoutes();
+    $routes->refreshNameLookups();
+    foreach (['portal', 'logout', 'login', 'login.submit'] as $name) {
+        $route = $routes->getByName('test-conference-talk.'.$name);
+        expect($route)->not->toBeNull()
+            ->and($route->gatherMiddleware())->toContain('module.enabled:test-conference-talk');
+    }
 });

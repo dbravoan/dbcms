@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Route;
 use Modules\__STUDLY__\Contracts\Services\__STUDLY__ServiceInterface;
 use Modules\__STUDLY__\Http\Controllers\__STUDLY__FrontController;
 use Modules\__STUDLY__\Services\__STUDLY__DomainService;
-use Modules\__STUDLY__\Widgets\Latest__STUDLY__Widget;
 
 class __STUDLY__ModuleServiceProvider extends BaseModuleServiceProvider
 {
@@ -25,7 +24,6 @@ class __STUDLY__ModuleServiceProvider extends BaseModuleServiceProvider
     public function register(): void
     {
         $this->app->bind(__STUDLY__ServiceInterface::class, __STUDLY__DomainService::class);
-        $this->app->bind('widget.__IDENTIFIER__.latest', fn () => Latest__STUDLY__Widget::class);
     }
 
     public function boot(): void
@@ -38,13 +36,6 @@ __AUTH_BOOT__
     }
 __ROUTES_METHOD__
 __PANEL_METHODS__
-
-    public function getWidgets(): array
-    {
-        return [
-            Latest__STUDLY__Widget::getKey() => Latest__STUDLY__Widget::class,
-        ];
-    }
 
     public function getAdminNavigation(): array
     {

@@ -13,8 +13,12 @@ use App\Services\Cms\PageCacheService;
 use Illuminate\Support\Facades\Cache;
 use Modules\Blog\Models\Post;
 use Modules\Blog\Models\PostTranslation;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
 use Modules\ContentAudit\Enums\AuditStatus;
+use Modules\ContentAudit\Services\AuditRevisionService;
+use Modules\ContentAudit\Services\EditorialWorkflow;
+use Tests\Support\BlogAuditComposition;
+
+uses(BlogAuditComposition::class);
 
 beforeEach(function (): void {
     $spanish = Language::firstOrCreate(
@@ -62,8 +66,8 @@ test('approving pending content invalidates the public page cache', function ():
         'schema_type' => 'TechArticle',
     ]);
 
-    /** @var ContentAuditServiceInterface $auditService */
-    $auditService = app(ContentAuditServiceInterface::class);
+    /** @var EditorialWorkflow $auditService */
+    $auditService = app(EditorialWorkflow::class);
     $auditService->submitForReview($post, $author);
 
     // Seed the reverse index with a cached page, then approve: the editorial
@@ -79,7 +83,7 @@ test('approving pending content invalidates the public page cache', function ():
 
     expect(Cache::get($depKey))->toBeNull()
         ->and(Cache::get($pageKey))->toBeNull()
-        ->and($auditService->getAudit($post)?->status)->toBe(AuditStatus::APPROVED->value);
+        ->and(app(AuditRevisionService::class)->auditFor($post)?->status)->toBe(AuditStatus::APPROVED->value);
 });
 
 test('rejecting pending content invalidates the public page cache', function (): void {
@@ -98,8 +102,8 @@ test('rejecting pending content invalidates the public page cache', function ():
         'schema_type' => 'TechArticle',
     ]);
 
-    /** @var ContentAuditServiceInterface $auditService */
-    $auditService = app(ContentAuditServiceInterface::class);
+    /** @var EditorialWorkflow $auditService */
+    $auditService = app(EditorialWorkflow::class);
     $auditService->submitForReview($post, $author);
 
     // Seed the reverse index with a cached page, then reject: the editorial
@@ -113,5 +117,5 @@ test('rejecting pending content invalidates the public page cache', function ():
 
     expect(Cache::get($depKey))->toBeNull()
         ->and(Cache::get($pageKey))->toBeNull()
-        ->and($auditService->getAudit($post)?->status)->toBe(AuditStatus::REJECTED->value);
+        ->and(app(AuditRevisionService::class)->auditFor($post)?->status)->toBe(AuditStatus::REJECTED->value);
 });

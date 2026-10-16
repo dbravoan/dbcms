@@ -31,7 +31,7 @@ final class GetController extends Controller
         $activeProvider = $this->configBridge->getActiveProvider();
         $configuredModel = $this->configBridge->getModelForProvider($activeProvider);
         $isConfigured = $this->configBridge->isConfigured($activeProvider);
-        $availableBlocks = $this->blockIntelligence->getAvailableBlocks();
+        $availableBlocks = $this->blockIntelligence->getBlockTaxonomy();
         $recentLogs = AiGenerationLog::latest()->take(20)->get();
         $providersCatalog = $this->configBridge->getProvidersCatalog();
 

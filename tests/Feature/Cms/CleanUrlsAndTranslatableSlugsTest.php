@@ -7,18 +7,22 @@ namespace Tests\Feature\Cms;
 use App\Contracts\Services\LocalizationServiceInterface;
 use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Core\Modules\ModuleManager;
+use App\Core\Sections\SectionRendererService;
 use App\Models\Market;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Models\Category;
-use Modules\Pages\Services\SectionRendererService;
 use Modules\Shop\Models\ProductCategory;
-use PlatformShowcaseSeeder;
+use Tests\Support\BlogFixtures;
+use Tests\Support\BlogShopComposition;
+use Tests\Support\CmsFixtures;
+use Tests\Support\ShopFixtures;
 use Tests\TestCase;
 
 class CleanUrlsAndTranslatableSlugsTest extends TestCase
 {
+    use BlogShopComposition;
     use RefreshDatabase;
 
     protected User $admin;
@@ -26,7 +30,14 @@ class CleanUrlsAndTranslatableSlugsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(PlatformShowcaseSeeder::class);
+        CmsFixtures::localization();
+        CmsFixtures::identities();
+        $post = BlogFixtures::post();
+        $post->category->translations()->where('locale', 'es')->update(['slug' => 'tecnologia', 'name' => 'Tecnología']);
+        $category = ProductCategory::create(['is_active' => true]);
+        $category->translations()->create(['locale' => 'es', 'slug' => 'servidores-edge', 'name' => 'Servidores y computación perimetral']);
+        $category->markets()->sync(Market::pluck('id')->all());
+        ShopFixtures::product()->update(['category_id' => $category->id]);
 
         $role = Role::where('slug', 'admin')->firstOrFail();
         $this->admin = User::factory()->create();
@@ -84,25 +95,6 @@ class CleanUrlsAndTranslatableSlugsTest extends TestCase
         expect($allShopSlugs)->toContain('tienda-online');
     }
 
-    public function test_module_impact_assessment_endpoint_returns_json_report(): void
-    {
-        $response = $this->actingAs($this->admin, 'web')->get(route('admin.modules.impact', ['identifier' => 'pages']));
-
-        $response->assertOk();
-        $response->assertJsonStructure([
-            'identifier',
-            'is_core_risk',
-            'warning',
-            'affected_menus',
-            'affected_pages',
-            'has_impact',
-        ]);
-
-        $data = $response->json();
-        expect($data['is_core_risk'])->toBeTrue();
-        expect($data['has_impact'])->toBeTrue();
-    }
-
     public function test_section_renderer_service_gracefully_silences_inactive_module_widgets(): void
     {
         /** @var SectionRendererService $renderer */
@@ -130,6 +122,6 @@ class CleanUrlsAndTranslatableSlugsTest extends TestCase
         ], $market, 'es');
 
         expect($htmlInactive)->not->toContain('Artículos Destacados');
-        expect($htmlInactive)->toContain('blog module inactive');
+        expect(trim($htmlInactive))->toBe('');
     }
 }

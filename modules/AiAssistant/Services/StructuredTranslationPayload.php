@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace Modules\AiAssistant\Services;
 
+use App\Core\Blocks\Contracts\BlockRegistryInterface;
+use App\Core\Blocks\Contracts\TranslatableBlockInterface;
 use Modules\AiAssistant\DTOs\TranslationSnapshot;
 use UnexpectedValueException;
 
 /** Extracts text segments and restores their translations into an untouched copy. */
 final class StructuredTranslationPayload
 {
-    public function __construct(private readonly BlockTranslationRegistry $blocks) {}
+    public function __construct(private readonly BlockRegistryInterface $blocks) {}
 
     /**
      * @param  array<string,mixed>  $fields
@@ -101,11 +103,10 @@ final class StructuredTranslationPayload
     private function block(array $block, array $path, array &$segments, array &$templates, array &$protected): void
     {
         $type = (string) ($block['type'] ?? '');
-        $paths = $this->blocks->paths($type);
+        $definition = $this->blocks->getActiveBlocks()[$type] ?? null;
+        $paths = $definition instanceof TranslatableBlockInterface ? $definition->getTranslationPaths() : null;
         if ($paths === null && $type !== '') {
             $protected[] = $type;
-
-            return;
         }
         foreach ($paths ?? [] as $field) {
             $this->field($block, explode('.', $field), $path, $segments, $templates);

@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\CreativeStudio\Services;
 
-use App\Contracts\Services\MarketingArtifactStoreInterface;
 use App\Core\Capabilities\ActorContext;
 use App\Core\Integrations\IntegrationGuideRegistry;
-use App\DTOs\Marketing\ArtifactDescriptor;
 use App\Models\Language;
 use App\Models\Market;
 use App\Services\Capabilities\ActorContextFactory;
@@ -16,6 +14,8 @@ use Modules\AiAssistant\Contracts\AiConfigBridgeInterface;
 use Modules\CreativeStudio\Models\CreativeCampaign;
 use Modules\CreativeStudio\Models\CreativeGenerationTask;
 use Modules\CreativeStudio\Models\CreativeInputAsset;
+use Modules\Marketing\Contracts\MarketingArtifactStoreInterface;
+use Modules\Marketing\DTOs\ArtifactDescriptor;
 use Symfony\Component\HttpFoundation\Response;
 use ZipArchive;
 

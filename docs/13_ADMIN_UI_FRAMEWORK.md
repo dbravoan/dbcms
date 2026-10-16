@@ -79,7 +79,7 @@ New views should use semantic components rather than rely on legacy color overri
 Structured AI translation uses the same modal, select and button components. Its
 preview scrolls independently; errors, warnings and replacement confirmation follow
 the theme palette. The review evidence is recorded in
-[the functional audit](CMS_MODULE_FUNCTIONAL_AUDIT_2026-10-11.md#revisión-visual-de-termocms-y-dbcms).
+[the functional audit](archive/CMS_MODULE_FUNCTIONAL_AUDIT_2026-10-11.md#revisión-visual-de-termocms-y-dbcms).
 
 ---
 

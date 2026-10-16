@@ -9,7 +9,8 @@ use App\Core\Capabilities\ArgumentValidator;
 use App\Core\Capabilities\Contracts\CapabilityInterface;
 use App\Core\Capabilities\Tools\Entity\EntityCreateTool;
 use App\Core\Capabilities\Tools\Entity\EntityUpdateTool;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityMutationService;
+use App\Services\Capabilities\EntityReadService;
 use Illuminate\Container\Container;
 use Illuminate\Contracts\Foundation\Application as ApplicationContract;
 use Illuminate\Foundation\Application;
@@ -49,20 +50,20 @@ final class LocalizedSectionPayloadTest extends TestCase
         Container::setInstance($this->previousContainer);
     }
 
-    public function test_create_accepts_localized_objects_lists_and_json_in_planning_and_execution(): void
+    public function test_create_accepts_localized_objects_and_json_in_planning_and_execution(): void
     {
-        $this->assertSupportedSections(new EntityCreateTool($this->createStub(EntityCrudService::class)));
+        $this->assertSupportedSections(new EntityCreateTool($this->createStub(EntityMutationService::class), $this->createStub(EntityReadService::class)));
     }
 
-    public function test_update_accepts_localized_objects_lists_and_json_in_planning_and_execution(): void
+    public function test_update_accepts_localized_objects_and_json_in_planning_and_execution(): void
     {
-        $this->assertSupportedSections(new EntityUpdateTool($this->createStub(EntityCrudService::class)));
+        $this->assertSupportedSections(new EntityUpdateTool($this->createStub(EntityMutationService::class), $this->createStub(EntityReadService::class)));
     }
 
     public function test_market_ids_still_rejects_objects_for_create_and_update(): void
     {
-        $entities = $this->createStub(EntityCrudService::class);
-        foreach ([new EntityCreateTool($entities), new EntityUpdateTool($entities)] as $capability) {
+        $entities = $this->createStub(EntityMutationService::class);
+        foreach ([new EntityCreateTool($entities, $this->createStub(EntityReadService::class)), new EntityUpdateTool($entities, $this->createStub(EntityReadService::class))] as $capability) {
             foreach ([false, true] as $planning) {
                 try {
                     $arguments = ['type' => 'post', 'market_ids' => ['es' => 1]];
@@ -96,23 +97,10 @@ final class LocalizedSectionPayloadTest extends TestCase
         self::assertSame('BlogPosting', $structured['translations']['en']['schema_type']);
     }
 
-    public function test_flat_arrays_use_the_default_locale_without_replacing_explicit_text(): void
-    {
-        $sections = [['type' => 'text', 'content' => '<p>Texto de bloque.</p>']];
-        $translations = ['es' => ['title' => 'Español'], 'en' => ['title' => 'English', 'content' => '<p>Explicit English text.</p>']];
-        $handler = new PostMutationHandler;
-        $encoded = $handler->prepare(new Post, ['translations' => $translations, 'sections_json' => json_encode($sections, JSON_THROW_ON_ERROR)], true);
-        $structured = $handler->prepare(new Post, ['translations' => $translations, 'sections_json' => $sections], true);
-
-        self::assertSame($encoded['translations'], $structured['translations']);
-        self::assertSame('<p>Texto de bloque.</p>', $structured['translations']['es']['content']);
-        self::assertSame('<p>Explicit English text.</p>', $structured['translations']['en']['content']);
-    }
-
     private function assertSupportedSections(CapabilityInterface $capability): void
     {
         $localized = $this->localizedSections();
-        foreach ([$localized, $localized['es'], json_encode($localized, JSON_THROW_ON_ERROR)] as $sections) {
+        foreach ([$localized, json_encode($localized, JSON_THROW_ON_ERROR)] as $sections) {
             foreach ([false, true] as $planning) {
                 $arguments = ['type' => 'post', 'sections_json' => $sections];
                 if ($capability instanceof EntityUpdateTool) {

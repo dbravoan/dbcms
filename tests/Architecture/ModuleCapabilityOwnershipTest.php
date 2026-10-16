@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Contracts\Services\SearchAnalyticsInterface;
 use App\Core\Capabilities\ActorContext;
 use App\Core\Capabilities\AvailableCapabilities;
 use App\Core\Capabilities\CallableCapability;
@@ -9,27 +10,28 @@ use App\Core\Capabilities\CapabilityAuthorizer;
 use App\Core\Capabilities\CapabilityRegistry;
 use App\Core\Capabilities\Contracts\CapabilityPresentationInterface;
 use App\Core\Modules\ModuleManager;
+use App\Core\Search\SearchIndexer;
 use App\Services\Capabilities\CmsActionCatalog;
-use App\Services\Capabilities\CmsActionService;
 use Modules\AiAssistant\Services\AiCapabilityRegistrar;
 use Modules\ContentAudit\Capabilities\EditorialActionCatalog;
+use Modules\ContentAudit\Capabilities\EditorialActions;
 use Modules\Maintenance\Capabilities\MaintenanceActionCatalog;
+use Modules\Maintenance\Capabilities\MaintenanceActions;
 use Modules\Search\Capabilities\SearchActionCatalog;
+use Modules\Search\Capabilities\SearchActions;
 
 test('optional module actions do not belong to the always available core action catalog', function (): void {
-    $service = Mockery::mock(CmsActionService::class);
-    $names = array_map(static fn ($tool): string => $tool->name(), CmsActionCatalog::all($service));
+    $names = array_map(static fn ($tool): string => $tool->name(), app(CmsActionCatalog::class)->all());
     foreach (['cms_maintenance_get', 'cms_maintenance_toggle', 'cms_search_reindex', 'cms_search_stats', 'cms_audit_approve', 'cms_audit_reject', 'cms_audit_rollback'] as $name) {
         expect($names)->not->toContain($name);
     }
 });
 
 test('module catalogs declare their owners and the actual effects of every action', function (): void {
-    $service = Mockery::mock(CmsActionService::class);
     $registry = new CapabilityRegistry;
-    MaintenanceActionCatalog::register($registry, $service);
-    SearchActionCatalog::register($registry, $service);
-    EditorialActionCatalog::register($registry, $service);
+    MaintenanceActionCatalog::register($registry, app(MaintenanceActions::class));
+    SearchActionCatalog::register($registry, new SearchActions(app(SearchIndexer::class), Mockery::mock(SearchAnalyticsInterface::class)));
+    EditorialActionCatalog::register($registry, app(EditorialActions::class));
     foreach ([
         'cms_maintenance_get' => ['maintenance', 'read'],
         'cms_maintenance_toggle' => ['maintenance', 'external'],
@@ -42,16 +44,14 @@ test('module catalogs declare their owners and the actual effects of every actio
         expect($registry->metadata($name)['module'])->toBe($owner);
         expect($registry->metadata($name)['effect'])->toBe($effect);
     }
-    $service->shouldReceive('maintenanceGet')->once()->andReturn(['enabled' => false]);
-    expect($registry->get('cms_maintenance_get')->handle([]))->toBe(['enabled' => false]);
+    expect($registry->get('cms_maintenance_get')->handle([])['active'])->toBeFalse();
 });
 
 test('disabling owners removes their actions from discovery and refuses direct execution availability', function (): void {
     $registry = new CapabilityRegistry;
-    $service = Mockery::mock(CmsActionService::class);
-    MaintenanceActionCatalog::register($registry, $service);
-    SearchActionCatalog::register($registry, $service);
-    EditorialActionCatalog::register($registry, $service);
+    MaintenanceActionCatalog::register($registry, app(MaintenanceActions::class));
+    SearchActionCatalog::register($registry, new SearchActions(app(SearchIndexer::class), Mockery::mock(SearchAnalyticsInterface::class)));
+    EditorialActionCatalog::register($registry, app(EditorialActions::class));
     $enabled = false;
     $modules = Mockery::mock(ModuleManager::class);
     $modules->shouldReceive('isModuleEnabled')->andReturnUsing(function () use (&$enabled): bool {

@@ -16,7 +16,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
      <title>{{ $seoMeta?->title ?? $pageTitle ?? config('cms.name') }} | {{ config('cms.name') }}</title>
 
-    @include('themes.components.seo-head')
+    @include('themes::components.seo-head')
 
     @if(isset($hreflangs) && is_array($hreflangs))
         @foreach($hreflangs as $localeTag => $href)
@@ -27,8 +27,8 @@
 </head>
 <body class="min-h-full flex flex-col justify-between selection:bg-stone-200 selection:text-stone-900">
     <!-- Header -->
-    <!--cms-private:themes.db-editorial.partials.header:start-->
-    @include('themes.db-editorial.partials.header')
+    <!--cms-private:themes::db-editorial.partials.header:start-->
+    @include('themes::db-editorial.partials.header')
     <!--cms-private:end-->
 
     <!-- Main Content -->
@@ -37,28 +37,28 @@
     </main>
 
     <!-- Footer -->
-    @include('themes.db-editorial.partials.footer')
+    @include('themes::db-editorial.partials.footer')
 
     <!-- First-Time Visitor Geolocation Preference Modal -->
-    <!--cms-private:themes.components.visitor-geo-modal:start-->
-    @include('themes.components.visitor-geo-modal')
+    <!--cms-private:themes::components.visitor-geo-modal:start-->
+    @include('themes::components.visitor-geo-modal')
     <!--cms-private:end-->
 
     <!-- Dynamic GDPR Cookie Consent Banner & Modal -->
-    <!--cms-private:themes.components.cookie-consent-modal:start-->
-    @include('themes.components.cookie-consent-modal')
+    <!--cms-private:themes::components.cookie-consent-modal:start-->
+    @include('themes::components.cookie-consent-modal')
     <!--cms-private:end-->
 
     <!-- Frontoffice Admin Bar & Real-Time SEO/GEO Quality Inspector -->
     @include('components.frontoffice-admin-bar')
 
     <!-- Google Analytics 4 (GDPR Consent Gated) -->
-    <!--cms-private:themes.components.analytics:start-->
-    @include('themes.components.analytics')
+    <!--cms-private:themes::components.analytics:start-->
+    @include('themes::components.analytics')
     <!--cms-private:end-->
 
     <!-- Universal Scroll-Magic & Interactive Scrub Engine -->
-    @include('themes.components.scroll-magic')
+    @include('themes::components.scroll-magic')
     @stack('admin_scripts')
     @stack('scripts')
 </body>

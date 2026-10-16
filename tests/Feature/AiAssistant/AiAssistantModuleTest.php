@@ -9,10 +9,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Modules\AiAssistant\Contracts\AiAssistantDomainServiceInterface;
 use Modules\AiAssistant\Models\AiGenerationLog;
-use Modules\Mcp\Services\McpServerService;
+use Tests\Support\AiCompletionFixture;
+use Tests\Support\AiComposition;
 use Tests\Support\AiMcpFixture;
+use Tests\Support\McpProtocolClient;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, AiComposition::class);
 
 beforeEach(function (): void {
     Http::preventStrayRequests();
@@ -28,6 +30,7 @@ test('ai assistant module is discovered and active', function (): void {
 });
 
 test('generate block returns valid schema and defaults', function (): void {
+    AiCompletionFixture::configure();
     $aiService = app(AiAssistantDomainServiceInterface::class);
 
     $result = $aiService->generateBlock(
@@ -50,6 +53,7 @@ test('generate block returns valid schema and defaults', function (): void {
 });
 
 test('recommend blocks returns sequenced layout', function (): void {
+    AiCompletionFixture::configure();
     $aiService = app(AiAssistantDomainServiceInterface::class);
 
     $result = $aiService->recommendBlocks('Quiero una landing page para captar leads de un software de ciberseguridad');
@@ -60,6 +64,7 @@ test('recommend blocks returns sequenced layout', function (): void {
 });
 
 test('draft article enforces anti ai guardrails for spanish and english', function (): void {
+    AiCompletionFixture::configure();
     $aiService = app(AiAssistantDomainServiceInterface::class);
 
     // Spanish draft
@@ -94,6 +99,7 @@ test('draft article enforces anti ai guardrails for spanish and english', functi
 });
 
 test('proofread and humanize eradicates cliches', function (): void {
+    AiCompletionFixture::configure();
     $aiService = app(AiAssistantDomainServiceInterface::class);
 
     // Spanish synthetic text with clichés
@@ -114,6 +120,7 @@ test('proofread and humanize eradicates cliches', function (): void {
 });
 
 test('generate seo metadata returns bounded length', function (): void {
+    AiCompletionFixture::configure();
     $aiService = app(AiAssistantDomainServiceInterface::class);
 
     $seo = $aiService->generateSeo(
@@ -130,6 +137,7 @@ test('generate seo metadata returns bounded length', function (): void {
 });
 
 test('test provider connection requires configured credentials instead of synthesizing success', function (): void {
+    config(['services.gemini.key' => null]);
     $aiService = app(AiAssistantDomainServiceInterface::class);
 
     $test = $aiService->testProviderConnection('gemini');
@@ -178,6 +186,7 @@ test('ai assistant workbench renders when generation logs exist', function (): v
 });
 
 test('ai assistant generate endpoint ajax succeeds', function (): void {
+    AiCompletionFixture::configure();
     config(['services.gemini.key' => 'fake-key']);
     $text = json_encode(['type' => 'pricing', 'data' => ['title' => 'Planes', 'items' => []], 'reasoning' => 'Plan comparativo']);
     $responseBody = ['candidates' => [['content' => ['parts' => [['text' => $text]]]]]];
@@ -198,6 +207,7 @@ test('ai assistant generate endpoint ajax succeeds', function (): void {
 });
 
 test('ai assistant logs recorded in database', function (): void {
+    AiCompletionFixture::configure();
     AiGenerationLog::truncate();
     expect(AiGenerationLog::count())->toBe(0);
 
@@ -212,8 +222,9 @@ test('ai assistant logs recorded in database', function (): void {
 });
 
 test('cohesion mcp lists and executes ai assistant tools when enabled', function (): void {
+    AiCompletionFixture::configure();
     AiMcpFixture::configure();
-    $mcpServer = app(McpServerService::class);
+    $mcpServer = app(McpProtocolClient::class);
 
     // 1. Check tools/list contains cms_ai_*
     $listResponse = $mcpServer->handle([
@@ -256,9 +267,9 @@ test('cohesion mcp lists and executes ai assistant tools when enabled', function
 test('decoupling mcp works cleanly when ai assistant is disabled', function (): void {
     AiMcpFixture::configure();
     $manager = app(ModuleManager::class);
-    $manager->disable('ai_assistant');
+    $manager->deactivate('ai_assistant');
 
-    $mcpServer = app(McpServerService::class);
+    $mcpServer = app(McpProtocolClient::class);
 
     $listResponse = $mcpServer->handle([
         'jsonrpc' => '2.0',
@@ -275,6 +286,5 @@ test('decoupling mcp works cleanly when ai assistant is disabled', function (): 
     expect($toolNames)->not->toContain('cms_ai_humanize');
 
     // Standard MCP tools must remain completely functional
-    expect($toolNames)->toContain('cms_list_pages');
-    expect($toolNames)->toContain('cms_list_posts');
+    expect($toolNames)->toContain('cms_entity_list', 'cms_entity_get');
 });

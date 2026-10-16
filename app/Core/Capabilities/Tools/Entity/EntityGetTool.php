@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Core\Capabilities\Tools\Entity;
 
 use App\Core\Capabilities\Tools\AbstractCapabilityTool;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityReadService;
 
 /**
  * Reads one entity with all its translations and its canonical URL.
@@ -13,7 +13,7 @@ use App\Services\Capabilities\EntityCrudService;
 class EntityGetTool extends AbstractCapabilityTool
 {
     public function __construct(
-        private readonly EntityCrudService $entities,
+        private readonly EntityReadService $entities,
     ) {}
 
     public function name(): string

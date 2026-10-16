@@ -3,14 +3,13 @@
 declare(strict_types=1);
 
 use App\Contracts\Services\ModuleSettingsServiceInterface;
-use App\Core\Modules\ModuleManager;
 use App\Services\Capabilities\CapabilityAuditLogger;
-use App\Services\Capabilities\CmsActionService;
-use Database\Seeders\CmsFoundationSeeder;
+use App\Services\Capabilities\PlatformAdministrationActions;
+use Tests\Support\AnalyticsComposition;
+
+uses(AnalyticsComposition::class);
 
 test('module schema secrets never enter capability responses or audit arguments even with opaque field names', function (): void {
-    $this->seed(CmsFoundationSeeder::class);
-    app(ModuleManager::class)->discoverModules();
     $settings = Mockery::mock(ModuleSettingsServiceInterface::class);
     $settings->shouldReceive('getSchema')->with('analytics')->andReturn([
         'opaque_blob' => ['type' => 'text', 'label' => 'Credencial', 'secret' => true],
@@ -23,8 +22,8 @@ test('module schema secrets never enter capability responses or audit arguments 
     $audit = app(CapabilityAuditLogger::class);
     $redacted = $audit->redact(['identifier' => 'analytics', 'settings' => ['opaque_blob' => 'opaque-secret-fixture', 'ga4_service_account_json' => '{"private_key":"private-fixture"}', 'ga4_property_id' => '12345']]);
     expect(json_encode($redacted))->not->toContain('opaque-secret-fixture')->not->toContain('private-fixture')->toContain('12345');
-    app()->forgetInstance(CmsActionService::class);
-    $result = app(CmsActionService::class)->moduleSettings('analytics', []);
+    app()->forgetInstance(PlatformAdministrationActions::class);
+    $result = app(PlatformAdministrationActions::class)->moduleSettings('analytics', []);
     expect(json_encode($result))->not->toContain('opaque-secret-fixture')->not->toContain('private-fixture')->toContain('12345');
     expect($result['settings']['ga4_service_account_json'])->toBe('••••••••');
 });

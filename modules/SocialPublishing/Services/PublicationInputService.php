@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\SocialPublishing\Services;
 
-use App\Contracts\Services\CreativePackageProviderInterface;
-use App\Contracts\Services\MarketingArtifactStoreInterface;
 use App\Core\Capabilities\ActorContext;
-use App\DTOs\Marketing\CreativePackage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
+use Modules\Marketing\Contracts\CreativePackageProviderInterface;
+use Modules\Marketing\Contracts\MarketingArtifactStoreInterface;
+use Modules\Marketing\DTOs\CreativePackage;
 use Modules\SocialPublishing\Contracts\PublicationServiceInterface;
 use Modules\SocialPublishing\Models\SocialAccount;
 use Modules\SocialPublishing\Models\SocialPublication;

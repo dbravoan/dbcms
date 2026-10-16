@@ -8,8 +8,8 @@ use App\Core\Capabilities\ActorContext;
 use App\Core\Capabilities\CapabilityAuthorizer;
 use App\Core\Capabilities\CapabilityRegistry;
 use App\Core\Capabilities\Contracts\CapabilityPresentationInterface;
-use App\Core\Capabilities\Resources\CapabilityResource as McpResource;
-use App\Core\Capabilities\Resources\CapabilityResourceRegistry as McpResourceRegistry;
+use App\Core\Capabilities\Resources\CapabilityResource;
+use App\Core\Capabilities\Resources\CapabilityResourceRegistry;
 use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
 use App\Core\Modules\ModuleManager;
 
@@ -17,7 +17,7 @@ use App\Core\Modules\ModuleManager;
  */
 final class CmsCapabilityPresentation implements CapabilityPresentationInterface
 {
-    public function __construct(private readonly EntitySchemaRegistryInterface $entities, private readonly McpResourceRegistry $resources, private readonly CapabilityRegistry $capabilities, private readonly CapabilityAuthorizer $authorizer, private readonly ModuleManager $modules) {}
+    public function __construct(private readonly EntitySchemaRegistryInterface $entities, private readonly CapabilityResourceRegistry $resources, private readonly CapabilityRegistry $capabilities, private readonly CapabilityAuthorizer $authorizer, private readonly ModuleManager $modules) {}
 
     /**
      * @param  array<string,mixed>  $args
@@ -39,7 +39,7 @@ final class CmsCapabilityPresentation implements CapabilityPresentationInterface
         if ($schema === null || ! $this->active($schema->model)) {
             return 'El módulo propietario no está disponible.';
         }
-        if ($schema instanceof McpResource) {
+        if ($schema instanceof CapabilityResource) {
             $operation = str_replace('cms_resource_', '', $name);
             $allowed = match ($operation) {
                 'create' => $schema->allowCreate, 'update' => $schema->allowUpdate, 'delete' => $schema->allowDelete, default => true

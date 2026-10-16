@@ -73,7 +73,7 @@ interface AiConfigBridgeInterface
     public function supportsProvider(string $provider): bool;
 
     /**
-     * Executes AI completion with telemetry and intelligent mock fallback for testing.
+     * Executes AI completion through the configured provider with telemetry.
      *
      * @param  array<string, mixed>  $options
      * @return array{content: string, provider: string, model: string, prompt_tokens: int, completion_tokens: int, latency_ms: int}

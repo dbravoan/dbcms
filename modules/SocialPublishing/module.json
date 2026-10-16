@@ -65,5 +65,8 @@
             "description": "Identificador IANA, por ejemplo Europe/Madrid. La programación siempre conserva UTC."
         }
     },
-    "default_active": false
+    "default_active": false,
+    "requires": {
+        "marketing": "^1.0"
+    }
 }

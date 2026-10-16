@@ -94,8 +94,8 @@ final class PostStorePostController extends Controller
 
 ### 3.1. Servicios de Dominio
 
-Para entidades declaradas, reutilizar `App\Services\Capabilities\EntityCrudService` y handlers propietarios: el guardado común completa traducciones, bloques, mercados e historial editorial dentro de la transacción. El ejemplo simplificado siguiente ilustra persistencia; **no debe copiarse como ruta alternativa** que omita autorización, revisión o confirmación.
-- Cada servicio implementa su interfaz contract (`App\Contracts\Services\*Interface` o `Modules\{Modulo}\Contracts\Services\*Interface`).
+Para entidades declaradas, reutilizar `App\Services\Capabilities\EntityMutationService` y handlers propietarios: el guardado común completa traducciones, bloques, mercados e historial editorial dentro de la transacción. El ejemplo simplificado siguiente ilustra persistencia; **no debe copiarse como ruta alternativa** que omita autorización, revisión o confirmación.
+- Una interfaz define una frontera sustituible o entre paquetes; no crear interfaces espejo para servicios con una única implementación y sin consumidor alternativo.
 - Las mutaciones de base de datos que afecten a más de una tabla o relación deben envolverse en transacciones atómicas `DB::transaction()`.
 - Lanzan excepciones de dominio semánticas (`DomainServiceException`, `ValidationException`, etc.) ante estados no válidos.
 

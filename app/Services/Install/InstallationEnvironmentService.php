@@ -68,9 +68,6 @@ final class InstallationEnvironmentService implements InstallationEnvironmentSer
      */
     public function write(array $values): void
     {
-        if (app()->environment('testing')) {
-            return;
-        }
         $this->persistEnvironmentValues($values);
     }
 

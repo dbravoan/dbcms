@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Services;
 
 use App\Contracts\Services\LocalizationServiceInterface;
+use App\Core\Blocks\Contracts\BlockRegistryInterface;
 use App\Core\Capabilities\ActorContext;
 use App\Core\Capabilities\CapabilityAuthorizer;
 use App\Core\Capabilities\ExecutionContext;
@@ -13,7 +14,8 @@ use App\Core\Content\EntitySchema;
 use App\Core\Modules\ModuleManager;
 use App\Models\Language;
 use App\Models\Market;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityReadService;
+use BlockPackages\Basic\Blocks\HeroBlock;
 use Illuminate\Container\Container;
 use Illuminate\Contracts\Foundation\Application as ApplicationContract;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -27,10 +29,11 @@ use Illuminate\Validation\ValidationException;
 use Modules\AiAssistant\Contracts\AiConfigBridgeInterface;
 use Modules\AiAssistant\DTOs\EntityTranslationRequest;
 use Modules\AiAssistant\Services\AiEntityTranslationService;
-use Modules\AiAssistant\Services\BlockTranslationRegistry;
 use Modules\AiAssistant\Services\StructuredTranslationPayload;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+
+require_once dirname(__DIR__, 3).'/block-packages/Basic/Blocks/HeroBlock.php';
 
 final class AiEntityTranslationServiceTest extends TestCase
 {
@@ -132,11 +135,12 @@ final class AiEntityTranslationServiceTest extends TestCase
         }, $marketLocales)));
         $localization->method('activeMarkets')->willReturn(new Collection([$market]));
         $modules = $this->createStub(ModuleManager::class);
-        $resources = $this->createMock(EntityCrudService::class);
-        $resources->expects(self::never())->method('create');
-        $resources->expects(self::never())->method('update');
+        $resources = $this->createMock(EntityReadService::class);
         $resources->expects(self::never())->method('resolveEntity');
 
-        return new AiEntityTranslationService($registry, $authorizer, $execution, $localization, $modules, $resources, $bridge, new StructuredTranslationPayload(new BlockTranslationRegistry));
+        $blocks = $this->createStub(BlockRegistryInterface::class);
+        $blocks->method('getActiveBlocks')->willReturn(['hero' => new HeroBlock]);
+
+        return new AiEntityTranslationService($registry, $authorizer, $execution, $localization, $modules, $resources, $bridge, new StructuredTranslationPayload($blocks));
     }
 }

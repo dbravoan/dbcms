@@ -17,6 +17,7 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->string('locale', 10)->nullable();
+            $table->boolean('is_service_account')->default(false);
             $table->rememberToken();
             $table->timestamps();
         });

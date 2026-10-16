@@ -1,4 +1,4 @@
-@extends('themes.db-enterprise.layouts.app')
+@extends('themes::db-enterprise.layouts.app')
 
 @section('title', __('Finalizar Contratación - dbCMS Enterprise'))
 

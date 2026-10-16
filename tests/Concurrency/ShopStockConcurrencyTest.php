@@ -33,7 +33,9 @@ it('serializes two real checkout processes competing for the last unit', functio
         $blocker->beginTransaction();
         $blocker->table('products')->where('id', $product->id)->lockForUpdate()->first();
         $environment = [
-            'APP_ENV' => 'testing', 'DB_CONNECTION' => 'mysql', 'DB_DATABASE' => 'testing',
+            'APP_ENV' => 'testing', 'DB_CONNECTION' => 'mysql', 'DB_DATABASE' => (string) $connection['database'],
+            'DBCMS_TEST_ISOLATED' => '1', 'DBCMS_TEST_DATABASE' => (string) $connection['database'],
+            'CMS_MODULES' => 'shop',
             'APP_CONFIG_CACHE' => $directory.'/no-cached-config.php', 'DB_URL' => false,
             'DB_HOST' => (string) $connection['host'], 'DB_PORT' => (string) $connection['port'],
             'DB_USERNAME' => (string) $connection['username'], 'DB_PASSWORD' => (string) $connection['password'],

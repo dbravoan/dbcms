@@ -244,7 +244,7 @@ class PlatformResourceCatalog
             description: 'Módulos instalados y su estado (lectura; usa las acciones de ciclo de vida para cambiarlo).',
             fillable: [],
             searchable: ['identifier', 'name'],
-            columns: ['id', 'identifier', 'name', 'version', 'is_active', 'is_core', 'is_pageable'],
+            columns: ['id', 'identifier', 'name', 'version', 'is_active', 'is_pageable'],
             allowCreate: false,
             allowUpdate: false,
             allowDelete: false,

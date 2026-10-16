@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace App\Services\Capabilities;
 
 use App\Core\Capabilities\Contracts\CapabilityAuditInterface;
-use App\Services\Capabilities\CapabilityAuditLogger as McpAuditLogger;
 
 final readonly class CapabilityAuditService implements CapabilityAuditInterface
 {
-    public function __construct(private McpAuditLogger $logger) {}
+    public function __construct(private CapabilityAuditLogger $logger) {}
 
     public function log(array $context): void
     {

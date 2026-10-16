@@ -19,9 +19,7 @@ class EnsureCmsIsInstalled
 
         // Check if lock file exists
         $isInstalled = file_exists(storage_path('installed'));
-        $shouldEnforce = ! app()->environment('testing') || config('cms.testing_enforce_installed_middleware', false);
-
-        if (! $isInstalled && $shouldEnforce) {
+        if (! $isInstalled) {
             return redirect()->route('install.step1');
         }
 

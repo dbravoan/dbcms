@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 use App\Models\Market;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Models\Category;
 use Modules\Shop\Models\ProductCategory;
+use Tests\Support\BlogShopComposition;
+use Tests\Support\CmsFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, BlogShopComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en'], ['es', 'us']);
+    CmsFixtures::identities();
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
 });
 

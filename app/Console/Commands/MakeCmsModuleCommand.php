@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Core\Modules\ModuleManifestGraph;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -43,6 +44,22 @@ class MakeCmsModuleCommand extends Command
         $dedicatedPanel = (bool) $this->option('dedicated-panel');
         $crud = (bool) $this->option('crud');
 
+        if (! preg_match('/^[A-Z][A-Za-z0-9]{0,63}$/D', $studlyName)) {
+            $this->error('Use a module name that produces a valid PascalCase directory.');
+
+            return self::FAILURE;
+        }
+        try {
+            ModuleManifestGraph::validateManifest([
+                'identifier' => $identifier, 'name' => Str::headline($rawName), 'version' => '1.0.0',
+                'provider' => "Modules\\{$studlyName}\\{$studlyName}ModuleServiceProvider",
+            ]);
+        } catch (\DomainException $error) {
+            $this->error($error->getMessage());
+
+            return self::FAILURE;
+        }
+
         $basePath = base_path("modules/{$studlyName}");
 
         if (File::exists($basePath)) {
@@ -64,7 +81,6 @@ class MakeCmsModuleCommand extends Command
             $basePath.'/Resources/views/admin',
             $basePath.'/Routes',
             $basePath.'/Services',
-            $basePath.'/Widgets',
         ];
 
         if ($isPageable) {
@@ -90,9 +106,7 @@ class MakeCmsModuleCommand extends Command
             'provider' => "Modules\\{$studlyName}\\{$studlyName}ModuleServiceProvider",
             'is_pageable' => $isPageable,
             'has_dedicated_panel' => $dedicatedPanel,
-            'widgets' => [
-                "{$identifier}.latest" => "Modules\\{$studlyName}\\Widgets\\Latest{$studlyName}Widget",
-            ],
+            'requires' => ['core' => '^'.(string) config('cms.version')],
             'permissions' => [
                 "manage:{$identifier}",
             ],
@@ -157,11 +171,8 @@ class MakeCmsModuleCommand extends Command
             File::put($basePath.'/Resources/views/portal/login.blade.php', $this->getPortalLoginContent($studlyName, $identifier));
         }
 
-        // 9. Widget
-        File::put($basePath."/Widgets/Latest{$studlyName}Widget.php", $this->getWidgetContent($studlyName, $identifier));
-
         $this->info("¡Módulo [{$studlyName}] creado exitosamente en modules/{$studlyName}!");
-        $this->line('Para activarlo, ejecuta: <comment>./vendor/bin/sail artisan migrate</comment>');
+        $this->line('Instálalo desde el gestor de módulos o inclúyelo en CMS_MODULES antes de instalar el proyecto.');
 
         return self::SUCCESS;
     }
@@ -360,11 +371,6 @@ class MakeCmsModuleCommand extends Command
     protected function getFrontIndexViewContent(string $studly, string $identifier): string
     {
         return $this->stub('front_index_view', $this->tokens($studly, $identifier));
-    }
-
-    protected function getWidgetContent(string $studly, string $identifier): string
-    {
-        return $this->stub('widget', $this->tokens($studly, $identifier));
     }
 
     protected function getPortalLayoutContent(string $studly, string $identifier): string

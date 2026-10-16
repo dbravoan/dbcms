@@ -1,7 +1,7 @@
 <div x-data="{
     open: false,
     currentStep: 1,
-    totalSteps: 7,
+    totalSteps: 5,
     spotlight: {
         visible: false,
         top: 0,
@@ -34,18 +34,6 @@
             badge: @js(__('admin.onboarding.step4_badge')),
             desc: @js(__('admin.onboarding.step4_desc')),
             target: '#nav-pages'
-        },
-        {
-            title: @js(__('admin.onboarding.step5_title')),
-            badge: @js(__('admin.onboarding.step5_badge')),
-            desc: @js(__('admin.onboarding.step5_desc')),
-            target: '#nav-blog'
-        },
-        {
-            title: @js(__('admin.onboarding.step6_title')),
-            badge: @js(__('admin.onboarding.step6_badge')),
-            desc: @js(__('admin.onboarding.step6_desc')),
-            target: '#nav-forms'
         },
         {
             title: @js(__('admin.onboarding.step7_title')),
@@ -204,7 +192,7 @@
             <!-- Header -->
             <div class="flex items-center justify-between pb-4 border-b border-gray-800 text-xs text-gray-400">
                 <span class="text-[#00FF99] font-bold">{!! __('admin.onboarding.interactive_tour') !!}</span>
-                <span class="px-2 py-0.5 rounded bg-[#181818] border border-gray-700 text-[10px]">{{ __('admin.onboarding.step_of', ['current' => 1, 'total' => 7]) }}</span>
+                <span class="px-2 py-0.5 rounded bg-[#181818] border border-gray-700 text-[10px]" x-text="@js(__('admin.onboarding.step_of', ['current' => ':current', 'total' => ':total'])).replace(':current', currentStep).replace(':total', totalSteps)"></span>
             </div>
 
             <!-- Body -->

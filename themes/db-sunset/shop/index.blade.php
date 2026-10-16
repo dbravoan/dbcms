@@ -1,4 +1,4 @@
-@extends('themes.db-sunset.layouts.app')
+@extends('themes::db-sunset.layouts.app')
 
 @section('title', ($isShop ? __('Tienda Aurora') : __('Catálogo de Productos')) . ' - dbCMS Sunset')
 @section('meta_description', __('Explora nuestro catálogo de productos con diseño aurora, pagos seguros y soporte multi-mercado.'))

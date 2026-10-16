@@ -9,13 +9,13 @@
 
 El CMS PHP/Laravel interpreta instrucciones y ejecuta servicios existentes mediante capacidades registradas por los módulos. IA, web, API, MCP y jobs comparten autorización y reglas de dominio. MCP adapta el protocolo y no gobierna el catálogo. LangGraph, Google ADK y conexiones personales no forman parte de esta entrega.
 
-La nueva entrada de instrucciones está desactivada por defecto (`CMS_ORCHESTRATION_ENABLED=false`). Los modelos y aplicaciones son conexiones compartidas del CMS, con acceso sujeto a permisos.
+La entrada de instrucciones pertenece a la composición opcional `orchestration`, con dependencia de `ai_assistant`; no está instalada en la composición básica. Los modelos y aplicaciones son conexiones compartidas del CMS, con acceso sujeto a permisos.
 
 ## 2. Algebraic Data Types & DTO Contracts
 
 Contratos: `CapabilityInterface`, `CapabilityExecutorInterface`, `PlannerInterface`, `CapabilityPresentationInterface`, `PendingOperationInterface`, `ContentRevisionInspectorInterface` y `ExecutionServiceInterface`.
 
-DTOs inmutables en `App\Core\Capabilities`: `ActorContext`, `OrchestrationRequest`, `CapabilityDescription`, `CapabilityAvailability`, `ExecutionPlan`, `ExecutionStep` y `StepResult`. El actor contiene usuario humano/de servicio, origen, cliente/token y scopes OAuth reales, mercado e idioma. Los adaptadores HTTP construyen este contexto; el modelo no puede suministrarlo.
+DTOs de capacidades del núcleo: `ActorContext`, `CapabilityDescription` y `CapabilityAvailability`. El módulo Orchestration posee sus DTOs de solicitud, plan y pasos. El actor contiene usuario humano/de servicio, origen, cliente/token y scopes OAuth reales, mercado e idioma. Los adaptadores HTTP construyen este contexto; el modelo no puede suministrarlo.
 
 Una capacidad describe nombre, argumentos, efecto, módulo y dependencias. El catálogo efectivo limita tipos y recursos por permisos y actividad de sus módulos. El modelo recibe descripciones y esquemas autorizados, sin clases internas ni credenciales. La disponibilidad se consulta de nuevo antes de ejecutar.
 
@@ -87,6 +87,6 @@ Evidencia y límites del estado real: `docs/CMS_MODULE_FUNCTIONAL_AUDIT_2026-10-
 
 ## Entrega y migración
 
-Migraciones aditivas para ejecuciones/pasos/aprobaciones, cuentas de servicio y permisos IA, presupuestos y puntero de revisión pendiente. El historial de auditoría conserva `mcp_audit_logs` y el nombre de su migración al pasar al núcleo. No se alteran automáticamente pedidos históricos ni estados de pago. Las herramientas/rutas anteriores conservan adaptadores de compatibilidad con autorización endurecida.
+El esquema para instalaciones nuevas incluye ejecuciones/pasos/aprobaciones, cuentas de servicio, permisos IA del módulo propietario, presupuestos y puntero de revisión pendiente. La auditoría del núcleo usa `capability_audit_logs`. Orchestration es un módulo opcional; el núcleo conserva la aprobación humana de ejecuciones. MCP usa exclusivamente `/mcp/cms` mediante el SDK y el catálogo canónico, sin adaptadores de contratos anteriores.
 
-La activación exige backup, migraciones verificadas, conciliación de pagos simulados, revisión de roles/conexiones y health check. La recuperación revierte código, conserva datos y no ejecuta rollback de migraciones automáticamente. Esta tarea no despliega ni habilita conexiones. Procedimiento: `docs/NATIVE_ORCHESTRATION_RUNBOOK.md`.
+La activación exige backup, migraciones verificadas, revisión de roles/conexiones y health check. La recuperación revierte código, conserva datos y no ejecuta rollback de migraciones automáticamente. Esta tarea no despliega ni habilita conexiones. Procedimiento: `docs/NATIVE_ORCHESTRATION_RUNBOOK.md`.

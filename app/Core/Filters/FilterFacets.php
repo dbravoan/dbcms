@@ -45,7 +45,7 @@ final class FilterFacets
             $values = $set->get($dimension->key);
 
             if ($dimension->type === 'terms') {
-                $labels = $dimension->labels($set->locale);
+                $labels = $dimension->labels($set->locale, (string) $market->code);
 
                 foreach ((array) $values as $slug) {
                     $chips[] = [
@@ -99,7 +99,7 @@ final class FilterFacets
             if ($dimension->type === 'terms') {
                 $active = $set->list($dimension->key);
 
-                foreach (array_slice($dimension->labels($set->locale), 0, $limit, true) as $slug => $label) {
+                foreach (array_slice($dimension->labels($set->locale, (string) $market->code), 0, $limit, true) as $slug => $label) {
                     $isActive = in_array((string) $slug, $active, true);
 
                     $values[] = [

@@ -5,15 +5,19 @@ declare(strict_types=1);
 use App\Models\Market;
 use App\Models\User;
 use App\Services\Content\EditorialDraftService;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
+use Modules\ContentAudit\Services\EditorialWorkflow;
 use Modules\Forms\Models\CustomForm;
+use Tests\Support\CmsFixtures;
+use Tests\Support\FormsEditorialComposition;
+use Tests\Support\VisualContentFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, FormsEditorialComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en'], ['es', 'fr']);
+    CmsFixtures::identities();
+    VisualContentFixtures::form();
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
 });
 
@@ -149,7 +153,7 @@ test('admin can update form attributes and reorder/sync fields', function (): vo
     expect($draft->name)->toBe('Formulario de Contacto Actualizado');
     expect($draft->fields->pluck('field_key')->all())->toBe(['email', 'telefono']);
     $this->get(route('admin.forms.edit', $form))->assertOk()->assertSee(route('admin.audit.review', ['type' => 'forms', 'id' => $form->id]));
-    app(ContentAuditServiceInterface::class)->approve($form, $this->admin);
+    app(EditorialWorkflow::class)->approve($form, $this->admin);
     $form->refresh();
     expect($form->name)->toBe('Formulario de Contacto Actualizado');
     expect($form->fields)->toHaveCount(2);

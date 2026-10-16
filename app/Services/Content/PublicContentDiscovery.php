@@ -7,6 +7,7 @@ namespace App\Services\Content;
 use App\Contracts\Services\LocalizationServiceInterface;
 use App\Contracts\Services\PublicContentDiscoveryInterface;
 use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
+use App\Core\Content\EntitySchema;
 use App\Core\Modules\ModuleManager;
 use App\Models\Market;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,6 +19,30 @@ use InvalidArgumentException;
 final class PublicContentDiscovery implements PublicContentDiscoveryInterface
 {
     public function __construct(private readonly EntitySchemaRegistryInterface $entities, private readonly ModuleManager $modules, private readonly LocalizationServiceInterface $localization) {}
+
+    /** @return array<string, EntitySchema> */
+    public function schemas(): array
+    {
+        $schemas = [];
+        foreach ($this->entities->all() as $schema) {
+            $owner = $schema->ownerModule ?? $this->modules->ownerOfClass($schema->model);
+            if ($schema->publicContent !== null && ($owner === null || $this->modules->isModuleEnabled($owner))) {
+                $schemas[$schema->type] = $schema;
+            }
+        }
+
+        return $schemas;
+    }
+
+    public function entityUrl(string $type, Model $entity, Market $market, string $locale): string
+    {
+        $schema = $this->entities->get($type) ?? throw new InvalidArgumentException('Unknown public content type.');
+        $translation = $entity->getRelation('translations')->firstWhere('locale', $locale);
+        $method = $schema->publicContent?->slugPathMethod;
+        $slug = $method !== null ? (string) $entity->{$method}($locale) : (string) ($translation?->getAttribute('slug') ?? '');
+
+        return $this->url($type, $market, $locale, $slug);
+    }
 
     /**
      * @param  list<string>  $relations
@@ -32,7 +57,7 @@ final class PublicContentDiscovery implements PublicContentDiscoveryInterface
         $publicRelations = method_exists($model, 'publishedSections') ? ['publishedSections.translations'] : [];
         $query = $model->newQuery()->with(array_values(array_unique(['translations', 'markets', ...$publicRelations, ...$relations])));
         $owner = $schema->ownerModule ?? $this->modules->ownerOfClass($class);
-        if (($owner !== null && ! $this->modules->isModuleEnabled($owner)) || ! $market->is_active || ! $market->languages()->where('code', $locale)->where('is_active', true)->exists()) {
+        if ($schema->publicContent === null || ($owner !== null && ! $this->modules->isModuleEnabled($owner)) || ! $market->is_active || ! $market->languages()->where('code', $locale)->where('is_active', true)->exists()) {
             return $query->whereRaw('1 = 0');
         }
         if (method_exists($model, 'scopePublished')) {

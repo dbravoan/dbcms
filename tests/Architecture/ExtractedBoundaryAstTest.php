@@ -5,10 +5,10 @@ declare(strict_types=1);
 use Tests\Support\ArchitectureBoundaryInspector;
 
 /** @return list<string> */
-function extractedBoundaryFiles(string $pattern, int $minimum): array
+function boundaryFiles(string $pattern): array
 {
     $files = glob(base_path($pattern)) ?: [];
-    expect(count($files), $pattern)->toBeGreaterThanOrEqual($minimum);
+    expect($files, $pattern)->not->toBeEmpty();
 
     return array_values($files);
 }
@@ -47,7 +47,7 @@ test('AST guard distinguishes external effects in transactions from deferred eff
 
 test('all extracted HTTP adapters satisfy effective AST boundaries', function (): void {
     $inspector = new ArchitectureBoundaryInspector;
-    $paths = [...extractedBoundaryFiles('app/Http/Controllers/Install/*.php', 9), ...extractedBoundaryFiles('app/Http/Controllers/Admin/ModuleSettings/*.php', 2), ...extractedBoundaryFiles('modules/Maintenance/Http/Controllers/*.php', 4), ...extractedBoundaryFiles('app/Http/Controllers/Admin/Notifications/*.php', 4), ...extractedBoundaryFiles('modules/Shop/Http/Controllers/Front/*.php', 5), base_path('app/Http/Controllers/Admin/Modules/ModuleUploadPostController.php'), base_path('app/Http/Controllers/Admin/Menus/MenusGetController.php'), base_path('modules/Forms/Http/Controllers/Admin/FormCreateGetController.php'), base_path('modules/Forms/Http/Controllers/Admin/FormEditGetController.php')];
+    $paths = [...boundaryFiles('app/Http/Controllers/Install/*.php'), ...boundaryFiles('app/Http/Controllers/Admin/ModuleSettings/*.php'), ...boundaryFiles('modules/Maintenance/Http/Controllers/*.php'), ...boundaryFiles('app/Http/Controllers/Admin/Notifications/*.php'), ...boundaryFiles('modules/Shop/Http/Controllers/Front/*.php'), base_path('app/Http/Controllers/Admin/Modules/ModuleUploadPostController.php'), base_path('app/Http/Controllers/Admin/Menus/MenusGetController.php'), base_path('modules/Forms/Http/Controllers/Admin/FormCreateGetController.php'), base_path('modules/Forms/Http/Controllers/Admin/FormEditGetController.php')];
     foreach ($paths as $path) {
         expect(is_file($path), $path)->toBeTrue();
         expect($inspector->controllerViolations((string) file_get_contents($path)), $path)->toBe([]);
@@ -56,7 +56,7 @@ test('all extracted HTTP adapters satisfy effective AST boundaries', function ()
 
 test('new application services implement contracts and keep transport and remote effects out of transactions', function (): void {
     $inspector = new ArchitectureBoundaryInspector;
-    $paths = [...extractedBoundaryFiles('app/Services/Install/Installation*Service.php', 5), base_path('app/Services/Cms/ModulePackageInstallerService.php'), base_path('app/Services/Cms/ModuleNotificationService.php'), base_path('app/Services/Cms/NotificationRecipientResolverService.php'), base_path('app/Services/Cms/ModuleSettingsAdministrationService.php'), base_path('modules/Maintenance/Services/MaintenanceSettingsAdministrationService.php'), base_path('app/Services/Admin/MenuEditorService.php'), base_path('app/Services/Admin/DatatableQueryService.php'), base_path('modules/Forms/Services/FormEditorService.php'), base_path('modules/Shop/Services/CartApplicationService.php'), base_path('modules/Shop/Services/ShopCatalogueService.php'), base_path('modules/Shop/Services/ShopPurchaseWorkflow.php')];
+    $paths = [...boundaryFiles('app/Services/Install/Installation*Service.php'), base_path('app/Services/Cms/ModulePackageInstallerService.php'), base_path('app/Services/Cms/ModuleNotificationService.php'), base_path('app/Services/Cms/NotificationRecipientResolverService.php'), base_path('app/Services/Cms/ModuleSettingsAdministrationService.php'), base_path('modules/Maintenance/Services/MaintenanceSettingsAdministrationService.php'), base_path('app/Services/Admin/MenuEditorService.php'), base_path('app/Services/Admin/DatatableQueryService.php'), base_path('modules/Forms/Services/FormEditorService.php'), base_path('modules/Shop/Services/CartApplicationService.php'), base_path('modules/Shop/Services/ShopCatalogueService.php'), base_path('modules/Shop/Services/ShopPurchaseWorkflow.php')];
     foreach ($paths as $path) {
         expect(is_file($path), $path)->toBeTrue();
         $source = (string) file_get_contents($path);

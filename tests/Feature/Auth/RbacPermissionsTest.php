@@ -3,13 +3,22 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\BlogFormsComposition;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
+uses(BlogFormsComposition::class);
+
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities([
+        'admin' => [],
+        'editor' => ['access:admin', 'manage:posts', 'manage:pages'],
+        'author' => ['access:admin', 'manage:posts'],
+        'marketing' => ['access:admin', 'manage:forms'],
+    ]);
 });
 
 test('admin has full access to all backoffice modules and management suites', function (): void {

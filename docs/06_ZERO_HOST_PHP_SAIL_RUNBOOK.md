@@ -95,8 +95,11 @@ make up
 # 3. Run Database Migrations
 ./vendor/bin/sail artisan migrate
 
-# 4. Run Test Suite (Pest)
-./vendor/bin/sail pest
+# 4. Run fast contracts and small functional journeys
+make test
+# Complete integration/release checks use disposable files and databases:
+make test-integration
+make test-release
 
 # 5. Run Static Analysis (PHPStan Level 8)
 ./vendor/bin/sail bin phpstan analyse
@@ -110,3 +113,7 @@ make up
 # 8. Stop the local environment
 ./vendor/bin/sail down
 ```
+
+## Composición básica y procesos opcionales
+
+El arranque básico usa archivos para sesiones y caché, y MySQL para colas; no depende de Redis ni de workers. `./vendor/bin/sail --profile workers up -d` añade el worker general y scheduler. Los perfiles `creative` y `social` añaden sus workers, el worker general, scheduler y Redis. Para Redis sin marketing use `./vendor/bin/sail --profile redis up -d` y configure expresamente los drivers que lo consuman. El perfil no instala ni activa módulos del CMS.

@@ -2,23 +2,32 @@
 
 declare(strict_types=1);
 
-use Database\Seeders\PlatformShowcaseSeeder;
+use Tests\Support\BlogFixtures;
+use Tests\Support\CmsFixtures;
+use Tests\Support\PublicContentComposition;
+use Tests\Support\ShopFixtures;
+
+uses(PublicContentComposition::class);
 
 /**
  * SEO/GEO regression suite: every public page type must emit a complete,
  * consistent head across themes.
  */
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en'], ['es', 'us']);
+    CmsFixtures::identities();
+    CmsFixtures::home()->translations()->update(['meta_description' => 'Página de inicio de prueba.']);
+    BlogFixtures::post();
+    ShopFixtures::product();
     config(['cms.theme' => 'db-cyber', 'cms.admin_theme' => 'dbcms', 'cms.page_cache.enabled' => false]);
 });
 
 dataset('seo_pages', [
     'home' => '/es/es/',
     'blog index' => '/es/es/blog',
-    'blog post' => '/es/es/blog/que-es-dbcms-y-por-que-esta-pensado-para-varios-mercados-e-idiomas',
+    'blog post' => '/es/es/blog/arquitectura-modular',
     'shop index' => '/es/es/tienda',
-    'shop product' => '/es/es/tienda/servidor-edge-cyber-kv-10g',
+    'shop product' => '/es/es/tienda/prd-edge-1000',
     'gallery index' => '/es/es/galeria',
 ]);
 

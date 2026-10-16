@@ -11,6 +11,7 @@ use App\Core\Blocks\Contracts\TranslatableBlockInterface;
 use App\Core\Sections\SectionLayout;
 use App\Models\Market;
 use Illuminate\Database\Eloquent\Builder;
+use Modules\Blog\Models\Category;
 use Modules\Blog\Models\Post;
 
 class BlogPostsBlock extends AbstractBlockType implements TranslatableBlockInterface
@@ -60,6 +61,24 @@ class BlogPostsBlock extends AbstractBlockType implements TranslatableBlockInter
         return ['title'];
     }
 
+    public function getEditorData(): array
+    {
+        return [
+            'blog_categories' => Category::with('translations')->get()->map(fn ($category): array => ['id' => $category->id, 'name' => $category->translations->first()->name ?? (string) $category->id, 'slug' => $category->translations->first()->slug ?? ''])->all(),
+            'blog_posts' => Post::published()->with('translations')->latest()->limit(20)->get()->map(fn ($post): array => ['id' => $post->id, 'title' => $post->translations->first()->title ?? (string) $post->id, 'slug' => $post->translations->first()->slug ?? ''])->all(),
+        ];
+    }
+
+    public function getEditorSchema(): array
+    {
+        $fields = parent::getEditorSchema();
+        $data = $this->getEditorData();
+        $fields['category'] = ['type' => 'select', 'label' => 'Categoría', 'options' => ['' => 'Todas'] + array_column($data['blog_categories'], 'name', 'slug')];
+        $fields['post_id'] = ['type' => 'select', 'label' => 'Artículo', 'options' => ['' => 'Selección automática'] + array_column($data['blog_posts'], 'title', 'id')];
+
+        return $fields;
+    }
+
     public function getDefaultPayload(): array
     {
         return [
@@ -75,7 +94,7 @@ class BlogPostsBlock extends AbstractBlockType implements TranslatableBlockInter
     {
         $locale = $locale ?? app()->getLocale();
         $title = htmlspecialchars((string) ($payload['title'] ?? 'Últimos Artículos'));
-        $limit = (int) ($payload['limit'] ?? ($payload['post_count'] ?? 3));
+        $limit = (int) ($payload['limit'] ?? 3);
         $category = (string) ($payload['category'] ?? '');
         $specificPostId = (string) ($payload['post_id'] ?? '');
         $columns = SectionLayout::gridColumns($payload, '3');

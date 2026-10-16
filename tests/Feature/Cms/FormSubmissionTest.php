@@ -8,8 +8,9 @@ use Modules\Forms\Models\CustomFormTranslation;
 use Modules\Forms\Models\FormField;
 use Modules\Forms\Models\FormFieldTranslation;
 use Modules\Forms\Models\FormSubmission;
+use Tests\Support\FormsComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, FormsComposition::class);
 
 beforeEach(function (): void {
     $this->form = CustomForm::create([

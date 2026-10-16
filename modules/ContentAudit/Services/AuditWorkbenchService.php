@@ -10,7 +10,6 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Modules\ContentAudit\Contracts\Services\AuditWorkbenchServiceInterface;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
 use Modules\ContentAudit\Contracts\Services\DiffEngineServiceInterface;
 use Modules\ContentAudit\Contracts\Services\EditorialVisibilityInterface;
 use Modules\ContentAudit\DTOs\AuditDiffData;
@@ -19,7 +18,7 @@ use Modules\ContentAudit\Models\ContentAuditRevision;
 
 final class AuditWorkbenchService implements AuditWorkbenchServiceInterface
 {
-    public function __construct(private readonly ModuleSettingsServiceInterface $settingsService, private readonly ContentAuditServiceInterface $auditService, private readonly EditorialVisibilityInterface $visibility, private readonly DiffEngineServiceInterface $diffEngine) {}
+    public function __construct(private readonly ModuleSettingsServiceInterface $settingsService, private readonly AuditEntityPresentation $presentation, private readonly AuditRevisionService $revisions, private readonly EditorialPolicy $policy, private readonly EditorialVisibilityInterface $visibility, private readonly DiffEngineServiceInterface $diffEngine) {}
 
     public function index(User $user, array $filters): array
     {
@@ -53,7 +52,7 @@ final class AuditWorkbenchService implements AuditWorkbenchServiceInterface
 
             $audit->setAttribute(
                 'entity_title',
-                $entity instanceof Model ? $this->auditService->describeEntity($entity)['title'] : ''
+                $entity instanceof Model ? $this->presentation->describe($entity)['title'] : ''
             );
 
             return $audit;
@@ -129,7 +128,7 @@ final class AuditWorkbenchService implements AuditWorkbenchServiceInterface
 
     public function sidebar(Model $entity, ?User $user): array
     {
-        return ['audit' => $this->auditService->getAudit($entity), 'entityDescription' => $this->auditService->describeEntity($entity), 'canPublish' => $this->auditService->canPublishDirectly($user), 'entityType' => $this->auditService->resolveEntitySlug($entity)];
+        return ['audit' => $this->revisions->auditFor($entity), 'entityDescription' => $this->presentation->describe($entity), 'canPublish' => $this->policy->canPublishDirectly($user), 'entityType' => $this->presentation->slug($entity)];
     }
 
     public function updateSettings(array $values): void

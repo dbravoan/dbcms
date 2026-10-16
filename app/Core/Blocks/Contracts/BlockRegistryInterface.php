@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Core\Blocks\Contracts;
 
+use App\Models\Market;
+
 interface BlockRegistryInterface
 {
     /**
      * Registers a block type definition.
      */
-    public function register(BlockTypeInterface $block): void;
+    public function register(BlockTypeInterface $block, ?string $package = null): void;
 
     /**
      * Retrieves a block type by its identifier.
@@ -44,4 +46,12 @@ interface BlockRegistryInterface
      * @return array<string, mixed>
      */
     public function getDynamicDataPayloads(): array;
+
+    public function isAvailable(string $type): bool;
+
+    /** @param array<string,mixed> $payload */
+    public function render(string $type, array $payload, ?Market $market = null, ?string $locale = null): string;
+
+    /** @param array<string,mixed> $payload */
+    public function validate(string $type, array $payload): void;
 }

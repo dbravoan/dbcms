@@ -6,6 +6,7 @@ namespace App\Services\Cms;
 
 use App\Contracts\Services\LocalizationServiceInterface;
 use App\Contracts\Services\ModuleSettingsServiceInterface;
+use App\Core\Modules\ModuleManager;
 use App\Models\Language;
 use App\Models\Market;
 use Illuminate\Database\Eloquent\Model;
@@ -19,66 +20,6 @@ class LocalizationService implements LocalizationServiceInterface
 
     /** @var Collection<int,Market>|null */
     protected ?Collection $activeMarketsCache = null;
-
-    /**
-     * Localized module slug prefixes.
-     *
-     * @var array<string, array<string, string>>
-     */
-    protected array $modulePrefixes = [
-        'category' => [
-            'es' => 'categoria',
-            'en' => 'category',
-            'ca' => 'categoria',
-            'fr' => 'categorie',
-            'de' => 'kategorie',
-        ],
-        'gallery' => [
-            'es' => 'galeria',
-            'en' => 'gallery',
-            'ca' => 'galeria',
-            'fr' => 'galerie',
-            'de' => 'galerie',
-        ],
-        'blog' => [
-            'es' => 'blog',
-            'en' => 'blog',
-            'ca' => 'blog',
-            'fr' => 'blog',
-            'de' => 'blog',
-        ],
-        'page' => [
-            'es' => 'page',
-            'en' => 'page',
-            'ca' => 'page',
-            'fr' => 'page',
-            'de' => 'page',
-        ],
-        'shop' => [
-            'es' => 'tienda',
-            'en' => 'shop',
-            'ca' => 'botiga',
-            'fr' => 'boutique',
-            'de' => 'shop',
-        ],
-        'search' => [
-            'es' => 'buscar',
-            'en' => 'search',
-            'ca' => 'cercar',
-            'fr' => 'recherche',
-            'de' => 'suche',
-        ],
-    ];
-
-    /**
-     * Module keys whose localized slug is a front-office route prefix.
-     *
-     * `category` is deliberately excluded: its slug is a dimension value inside
-     * a module path, not a pageable prefix of its own.
-     *
-     * @var array<int, string>
-     */
-    protected array $pageablePrefixKeys = ['blog', 'shop', 'gallery', 'page', 'search'];
 
     /**
      * Forget the memoized languages / markets. Called whenever the backoffice
@@ -120,10 +61,7 @@ class LocalizationService implements LocalizationServiceInterface
         /** @var Market $defaultMarket */
         $defaultMarket = Market::where('is_default', true)->where('is_active', true)->first()
             ?? Market::where('is_active', true)->first()
-            ?? Market::firstOrCreate(
-                ['code' => 'es'],
-                ['name' => 'Spain Market', 'currency' => 'EUR', 'default_locale' => 'es', 'is_default' => true, 'is_active' => true]
-            );
+            ?? new Market(['code' => 'es', 'name' => 'Spain Market', 'currency' => 'EUR', 'default_locale' => 'es', 'is_default' => true, 'is_active' => true]);
 
         return $defaultMarket;
     }
@@ -161,10 +99,7 @@ class LocalizationService implements LocalizationServiceInterface
         /** @var Language $defaultLang */
         $defaultLang = Language::where('is_default', true)->where('is_active', true)->first()
             ?? Language::where('is_active', true)->first()
-            ?? Language::firstOrCreate(
-                ['code' => 'es'],
-                ['name' => 'Spanish', 'native_name' => 'Español', 'direction' => 'ltr', 'is_default' => true, 'is_active' => true]
-            );
+            ?? new Language(['code' => 'es', 'name' => 'Spanish', 'native_name' => 'Español', 'direction' => 'ltr', 'is_default' => true, 'is_active' => true]);
 
         return $defaultLang;
     }
@@ -259,15 +194,6 @@ class LocalizationService implements LocalizationServiceInterface
             ->orderBy('id')
             ->get();
 
-        if ($markets->isEmpty()) {
-            /** @var Market $fallback */
-            $fallback = Market::firstOrCreate(
-                ['code' => 'es'],
-                ['name' => 'Spain Market', 'currency' => 'EUR', 'default_locale' => 'es', 'is_default' => true, 'is_active' => true]
-            );
-            $markets = collect([$fallback]);
-        }
-
         $default = $markets->firstWhere('is_default', true);
 
         if ($default !== null) {
@@ -289,16 +215,22 @@ class LocalizationService implements LocalizationServiceInterface
     }
 
     /**
-     * The default language row (creating a sane one when the table is empty).
+     * The default language, with an unsaved display value before installation.
      */
     private function defaultLanguage(): Language
     {
         return Language::query()->where('is_default', true)->where('is_active', true)->first()
             ?? Language::query()->where('is_active', true)->first()
-            ?? Language::firstOrCreate(
-                ['code' => 'es'],
-                ['name' => 'Spanish', 'native_name' => 'Español', 'direction' => 'ltr', 'is_default' => true, 'is_active' => true]
-            );
+            ?? new Language(['code' => 'es', 'name' => 'Spanish', 'native_name' => 'Español', 'direction' => 'ltr', 'is_default' => true, 'is_active' => true]);
+    }
+
+    /** @return array<string, string> */
+    private function prefixDefaults(string $moduleKey): array
+    {
+        $settings = app(ModuleManager::class)->getModuleManifest($moduleKey)['settings'] ?? [];
+        $defaults = $settings['slug_{locale}']['defaults'] ?? [];
+
+        return is_array($defaults) ? array_filter($defaults, static fn (mixed $value): bool => is_string($value) && $value !== '') : [];
     }
 
     /**
@@ -321,9 +253,7 @@ class LocalizationService implements LocalizationServiceInterface
             }
         }
 
-        return $this->modulePrefixes[$moduleKey][$locale]
-            ?? $this->modulePrefixes[$moduleKey]['es']
-            ?? $moduleKey;
+        return $this->prefixDefaults($moduleKey)[$locale] ?? $moduleKey;
     }
 
     /**
@@ -331,13 +261,7 @@ class LocalizationService implements LocalizationServiceInterface
      */
     public function getAllModuleSlugs(string $moduleKey): array
     {
-        $slugs = [$moduleKey];
-
-        if (isset($this->modulePrefixes[$moduleKey])) {
-            foreach ($this->modulePrefixes[$moduleKey] as $fallbackSlug) {
-                $slugs[] = $fallbackSlug;
-            }
-        }
+        $slugs = array_values($this->prefixDefaults($moduleKey));
 
         if (app()->bound(ModuleSettingsServiceInterface::class)) {
             try {
@@ -390,7 +314,10 @@ class LocalizationService implements LocalizationServiceInterface
     {
         $aliases = [];
 
-        foreach ($this->pageablePrefixKeys as $moduleKey) {
+        foreach (app(ModuleManager::class)->discoverModules() as $moduleKey => $manifest) {
+            if (empty($manifest['is_pageable'])) {
+                continue;
+            }
             foreach ($this->getAllModuleSlugs($moduleKey) as $slug) {
                 $slug = strtolower(trim((string) $slug));
 
@@ -432,11 +359,8 @@ class LocalizationService implements LocalizationServiceInterface
                 $tag = strtolower($lang->code).'-'.strtoupper($market->code);
 
                 // Build localized URL for this market & language pair
-                $localizedRoute = str_replace(
-                    ['{locale}', '{slug}', '{categoryPrefix}', '{blogPrefix}', '{shopPrefix}', '{galleryPrefix}'],
-                    [$lang->code, $slug, $this->getModulePrefix('category', $lang->code), $this->getModulePrefix('blog', $lang->code), $this->getModulePrefix('shop', $lang->code), $this->getModulePrefix('gallery', $lang->code)],
-                    $routePattern
-                );
+                $localizedRoute = str_replace(['{locale}', '{slug}'], [$lang->code, $slug], $routePattern);
+                $localizedRoute = preg_replace_callback('/\{([a-zA-Z0-9_-]+)Prefix\}/', fn (array $matches): string => $this->getModulePrefix($matches[1], $lang->code), $localizedRoute) ?? $localizedRoute;
 
                 $targetUrl = $this->url($localizedRoute, $market, $lang);
                 $hreflangs[$tag] = $targetUrl;

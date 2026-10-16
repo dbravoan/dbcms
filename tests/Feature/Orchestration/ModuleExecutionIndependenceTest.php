@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
 use App\Core\Capabilities\ActorContext;
 use App\Core\Capabilities\AvailableCapabilities;
 use App\Core\Capabilities\CapabilityExecutor;
@@ -12,12 +13,13 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Modules\AiAssistant\Contracts\AiConfigBridgeInterface;
-use Modules\Mcp\Services\McpServerService;
-use Modules\Pages\Models\Page;
+use Tests\Support\AiComposition;
 use Tests\Support\AiMcpFixture;
+use Tests\Support\McpProtocolClient;
+
+uses(AiComposition::class);
 
 beforeEach(function (): void {
-    app(ModuleManager::class)->discoverModules();
     Language::firstOrCreate(['code' => 'es'], ['name' => 'Spanish', 'native_name' => 'Español', 'is_default' => true, 'is_active' => true]);
     $this->user = User::factory()->create();
     $this->role = Role::firstOrCreate(['slug' => 'module-executor'], ['name' => 'Module executor']);
@@ -39,13 +41,8 @@ test('native AI and entity execution survive disabling MCP with live role permis
     $names = array_column(app(AvailableCapabilities::class)->manifest($this->actor), 'name');
     expect($names)->toContain('cms_ai_humanize', 'cms_entity_create');
     Http::fake(['api.openai.com/v1/chat/completions' => Http::response(['choices' => [['message' => ['content' => '{"humanized":"Contenido remoto verificado."}']]], 'usage' => ['prompt_tokens' => 2, 'completion_tokens' => 4]])]);
-    app()->instance('env', 'production');
-    try {
-        $result = app(CapabilityExecutor::class)->execute('cms_ai_humanize', ['content' => 'Texto original.'], $this->actor);
-        expect($result['humanized'] ?? null)->toBe('Contenido remoto verificado.');
-    } finally {
-        app()->instance('env', 'testing');
-    }
+    $result = app(CapabilityExecutor::class)->execute('cms_ai_humanize', ['content' => 'Texto original.'], $this->actor);
+    expect($result['humanized'] ?? null)->toBe('Contenido remoto verificado.');
     Http::assertSentCount(1);
     $page = app(CapabilityExecutor::class)->execute('cms_entity_create', ['type' => 'page', 'translations' => ['es' => ['title' => 'Native page']]], $this->actor);
     expect($page)->toHaveKey('id');
@@ -60,7 +57,7 @@ test('concrete MCP entity operations survive disabling AI without any LLM call',
     AiMcpFixture::configure($this->user);
     app(ModuleManager::class)->deactivate('ai_assistant');
     expect(app(ModuleManager::class)->isModuleEnabled('ai_assistant'))->toBeFalse();
-    $server = app(McpServerService::class);
+    $server = app(McpProtocolClient::class);
     $manifest = $server->handle(['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list']);
     $names = array_column($manifest['result']['tools'], 'name');
     expect($names)->toContain('cms_entity_create')->not->toContain('cms_ai_humanize', 'cms_ai_generate_block');

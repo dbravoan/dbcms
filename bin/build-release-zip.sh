@@ -21,11 +21,15 @@ fi
 # Packaging uses exactly the container runtime used by CI.
 if [ ! -f /.dockerenv ]; then
     cd "$ROOT_DIR"
+    mkdir -p "$ROOT_DIR/dist"
     signing_args=()
     if [ -n "${DBCMS_UPDATE_SIGNING_KEY_FILE:-}" ]; then
         signing_args=(--volume "${DBCMS_UPDATE_SIGNING_KEY_FILE}:/run/secrets/updates-signing.pem:ro" --env DBCMS_UPDATE_SIGNING_KEY_FILE=/run/secrets/updates-signing.pem --env DBCMS_UPDATE_SIGNING_KEY_ID="${DBCMS_UPDATE_SIGNING_KEY_ID:-releases-2026}")
     fi
-    exec docker compose -f docker/ci/compose.yml run --build --rm "${signing_args[@]}" app bash bin/build-release-zip.sh "$@"
+    exec docker compose -f docker/ci/compose.yml run --build --rm \
+        --volume "${ROOT_DIR}:/var/www/html:ro" \
+        --volume "${ROOT_DIR}/dist:/var/www/html/dist:rw" \
+        "${signing_args[@]}" app bash bin/build-release-zip.sh "$@"
 fi
 
 VERSION=""
@@ -53,6 +57,8 @@ fi
 VERSION="${VERSION#v}"
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][a-zA-Z0-9.-]+)?$ ]] || { echo "Invalid release version" >&2; exit 64; }
 
+SOURCE_SHA="$(git -C "$ROOT_DIR" rev-parse 'HEAD^{commit}')"
+
 echo "======================================================================"
 echo " Building dbCMS Standalone Release Archive: v${VERSION}"
 echo "======================================================================"
@@ -74,7 +80,7 @@ trap cleanup EXIT
 
 echo "--> 1. Exporting clean source tree with git archive..."
 cd "${ROOT_DIR}"
-git archive HEAD | tar -x -C "${BUILD_TMP}"
+git archive "$SOURCE_SHA" | tar -x -C "${BUILD_TMP}"
 # Composer source exports retain development tooling; only runtime packages prune it.
 rm -rf "$BUILD_TMP/.github" "$BUILD_TMP/docs" "$BUILD_TMP/specs" "$BUILD_TMP/tests" "$BUILD_TMP/docker"
 rm -f "$BUILD_TMP/phpunit.xml" "$BUILD_TMP/phpstan.neon" "$BUILD_TMP/pint.json" "$BUILD_TMP/docker-compose.yml" "$BUILD_TMP/Makefile" "$BUILD_TMP/CONTRIBUTING.md"
@@ -119,23 +125,6 @@ mkdir -p "${BUILD_TMP}/storage/app/public" \
          "${BUILD_TMP}/bootstrap/cache"
 
 chmod -R 775 "${BUILD_TMP}/storage" "${BUILD_TMP}/bootstrap/cache"
-
-# Ensure critical webserver files exist
-if [ -f "${ROOT_DIR}/public/.htaccess" ] && [ ! -f "${BUILD_TMP}/public/.htaccess" ]; then
-    cp "${ROOT_DIR}/public/.htaccess" "${BUILD_TMP}/public/.htaccess"
-fi
-if [ -f "${ROOT_DIR}/.htaccess" ] && [ ! -f "${BUILD_TMP}/.htaccess" ]; then
-    cp "${ROOT_DIR}/.htaccess" "${BUILD_TMP}/.htaccess"
-fi
-if [ -f "${ROOT_DIR}/LICENSE" ] && [ ! -f "${BUILD_TMP}/LICENSE" ]; then
-    cp "${ROOT_DIR}/LICENSE" "${BUILD_TMP}/LICENSE"
-fi
-if [ -f "${ROOT_DIR}/SECURITY.md" ] && [ ! -f "${BUILD_TMP}/SECURITY.md" ]; then
-    cp "${ROOT_DIR}/SECURITY.md" "${BUILD_TMP}/SECURITY.md"
-fi
-if [ -f "${ROOT_DIR}/CHANGELOG.md" ] && [ ! -f "${BUILD_TMP}/CHANGELOG.md" ]; then
-    cp "${ROOT_DIR}/CHANGELOG.md" "${BUILD_TMP}/CHANGELOG.md"
-fi
 
 # Strict sanitization: ensure no local keys or installation locks exist
 rm -f "${BUILD_TMP}/.env" \
@@ -205,10 +194,10 @@ sha256sum "${ZIP_NAME}" "${TAR_NAME}" > checksums.txt
 
 if [ -n "${DBCMS_UPDATE_SIGNING_KEY_FILE:-}" ]; then
     SOURCE_TMP="$(mktemp -d /tmp/dbcms-update-source-XXXXXX)"
-    git -C "$ROOT_DIR" archive HEAD | tar -x -C "$SOURCE_TMP"
+    git -C "$ROOT_DIR" archive "$SOURCE_SHA" | tar -x -C "$SOURCE_TMP"
     php "$ROOT_DIR/bin/build-update-release.php" \
         --source-root="$SOURCE_TMP" --runtime-root="$BUILD_TMP" \
-        --version="$VERSION" --sha="$(git -C "$ROOT_DIR" rev-parse HEAD)" \
+        --version="$VERSION" --sha="$SOURCE_SHA" \
         --output="$DIST_DIR" --key-file="$DBCMS_UPDATE_SIGNING_KEY_FILE" \
         --key-id="${DBCMS_UPDATE_SIGNING_KEY_ID:-releases-2026}"
     CMS_UPDATE_SIGNING_KEY_FILE="$DBCMS_UPDATE_SIGNING_KEY_FILE" \

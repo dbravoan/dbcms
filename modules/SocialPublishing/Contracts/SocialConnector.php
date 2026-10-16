@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\SocialPublishing\Contracts;
 
-use App\DTOs\Marketing\CreativePackage;
+use Modules\Marketing\DTOs\CreativePackage;
 use Modules\SocialPublishing\DTOs\OperationResult;
 use Modules\SocialPublishing\Models\SocialAccount;
 

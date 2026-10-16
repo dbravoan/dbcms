@@ -4,14 +4,7 @@
     $navDesktopClass = ($nav['layout'] ?? 'inline') === 'stacked'
         ? 'hidden md:flex flex-col items-start gap-3'
         : 'hidden md:flex items-center space-x-6';
-    $navFallback = [
-        ['title' => __('Inicio'), 'url' => $localization->url('/', $currentMarket)],
-        ['title' => __('Blog'), 'url' => $localization->url('/blog', $currentMarket)],
-        ['title' => __('Tienda'), 'url' => $localization->url('/shop', $currentMarket)],
-        ['title' => __('Galería'), 'url' => $localization->url("/{$galPrefix}", $currentMarket)],
-        ['title' => __('Nosotros'), 'url' => $localization->url('/sobre-nosotros', $currentMarket)],
-        ['title' => __('Contacto'), 'url' => $localization->url('/contacto', $currentMarket)],
-    ];
+    $navFallback = [['title' => __('Inicio'), 'url' => $localization->url('/', $currentMarket)]];
 @endphp
 <header class="border-b-3 border-black bg-[#FFFDF8] sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-4 sm:gap-6">
@@ -25,7 +18,7 @@
 
             <!-- Desktop Navigation Menu (disposición configurable) -->
             @if($desktopNavVisible)
-                @include('themes.components.nav-items', [
+                @include('themes::components.nav-items', [
                     'items' => $headerMenu,
                     'fallback' => $navFallback,
                     'class' => $navDesktopClass.' text-xs font-black uppercase tracking-wider text-black',
@@ -76,7 +69,7 @@
             @endif
 
             <!-- Cart Indicator -->
-            @if($shopService?->isShopEnabled())
+            @if(($isShopEnabled ?? false))
                 <a href="{{ $localization->url('/cart', $currentMarket) }}"
                    class="relative p-2 bg-[#00F0FF] border-2 border-black shadow-[3px_3px_0px_0px_#000] hover:bg-[#FFE600] transition-all flex items-center"
                    title="{{ __('Carrito') }}">
@@ -89,21 +82,21 @@
                 </a>
             @endif
 
-            @include('themes.components.nav-admin', [
+            @include('themes::components.nav-admin', [
                 'frontNav' => $nav,
                 'class' => 'hidden sm:inline-block px-3 py-1.5 bg-black text-white border-2 border-black shadow-[3px_3px_0px_0px_#FFE600] hover:bg-[#FFE600] hover:text-black transition-all uppercase',
                 'label' => 'Panel',
             ])
 
             <!-- Collapsible menu toggle -->
-            @include('themes.components.nav-toggle', [
+            @include('themes::components.nav-toggle', [
                 'frontNav' => $nav,
                 'class' => 'p-1.5 bg-white border-2 border-black shadow-[2px_2px_0px_0px_#000]',
             ])
         </div>
     </div>
 
-    @include('themes.components.nav-panel', [
+    @include('themes::components.nav-panel', [
         'frontNav' => $nav,
         'items' => $headerMenu,
         'fallback' => $navFallback,

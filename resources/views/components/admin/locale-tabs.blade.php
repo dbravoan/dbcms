@@ -11,18 +11,7 @@
     $activeCode = $active ?? ($langs->first()->code ?? 'es');
     $initialVisible = is_array($activeLocales) && $activeLocales !== [] ? $activeLocales : null;
 
-    // Single source of truth for flags: the backoffice-assigned language flags,
-    // shared by AdminLayoutComposer when available, otherwise resolved once.
     $flags = (is_array($flags) && $flags !== []) ? $flags : ($languageFlags ?? []);
-    if ($flags === [] && class_exists(\App\Models\Language::class)) {
-        static $resolvedFlags = null;
-        if ($resolvedFlags === null) {
-            $resolvedFlags = \App\Models\Language::query()->where('is_active', true)->get()
-                ->mapWithKeys(static fn ($language): array => [$language->code => $language->flag])
-                ->all();
-        }
-        $flags = $resolvedFlags;
-    }
 @endphp
 
 {{-- Reusable multilingual tab bar. Filters itself when markets change (same behaviour as Pages). --}}

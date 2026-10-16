@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Core\Content;
 
+use App\Core\Blocks\Contracts\BlockRegistryInterface;
 use App\Core\Content\Contracts\PublicSemanticContributorInterface;
+use App\Core\Content\Contracts\PublicUrlContributorInterface;
 use App\Core\Content\Contracts\PublicWidgetSemanticContributorInterface;
 use App\Core\Modules\ModuleManager;
 use App\Models\Market;
@@ -18,7 +20,35 @@ final class PublicSemanticRegistry
     /** @var array<string,PublicWidgetSemanticContributorInterface> */
     private array $widgets = [];
 
-    public function __construct(private readonly ModuleManager $modules) {}
+    public function __construct(private readonly ModuleManager $modules, private readonly BlockRegistryInterface $blocks) {}
+
+    /** @var array<string, PublicUrlContributorInterface> */
+    private array $urlContributors = [];
+
+    public function registerUrls(PublicUrlContributorInterface $contributor): void
+    {
+        $key = $contributor::class;
+        if (isset($this->urlContributors[$key])) {
+            throw new InvalidArgumentException('Duplicate public URL contributor.');
+        }
+        $this->urlContributors[$key] = $contributor;
+    }
+
+    /** @return array<string, string> */
+    public function urls(Market $market, string $locale): array
+    {
+        if (! $this->contextIsPublic($market, $locale)) {
+            return [];
+        }
+        $urls = [];
+        foreach ($this->urlContributors as $contributor) {
+            if ($this->modules->isModuleEnabled($contributor->ownerModule())) {
+                $urls += $contributor->urls($market, $locale);
+            }
+        }
+
+        return $urls;
+    }
 
     public function register(PublicSemanticContributorInterface $contributor): void
     {
@@ -51,13 +81,16 @@ final class PublicSemanticRegistry
     /** @param array<string,mixed> $payload */
     public function widgetText(array $payload, Market $market, string $locale): string
     {
-        if (! $this->contextIsPublic($market, $locale)) {
+        $key = $payload['type'] ?? '';
+        if (! is_string($key) || ! $this->blocks->isAvailable($key)) {
             return '';
         }
-        $key = $payload['widget_key'] ?? $payload['type'] ?? '';
-        $widget = is_string($key) ? ($this->widgets[$key] ?? null) : null;
+        $widget = $this->widgets[$key] ?? null;
+        if ($widget === null || ! $this->contextIsPublic($market, $locale)) {
+            return '';
+        }
 
-        return $widget !== null && $this->modules->isModuleEnabled($widget->ownerModule()) ? $widget->text($payload, $market, $locale) : '';
+        return $this->modules->isModuleEnabled($widget->ownerModule()) ? $widget->text($payload, $market, $locale) : '';
     }
 
     private function collect(Market $market, string $locale, bool $full): string

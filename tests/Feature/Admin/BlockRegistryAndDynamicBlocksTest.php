@@ -3,15 +3,22 @@
 declare(strict_types=1);
 
 use App\Core\Blocks\Contracts\BlockRegistryInterface;
+use App\Core\Sections\SectionRendererService;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\Pages\Services\SectionRendererService;
+use Tests\Support\CmsFixtures;
+use Tests\Support\VisualContentFixtures;
+use Tests\Support\VisualModulesComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, VisualModulesComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    VisualContentFixtures::form();
+    VisualContentFixtures::post();
+    VisualContentFixtures::product();
+    VisualContentFixtures::gallery();
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
     $this->registry = app(BlockRegistryInterface::class);
     $this->renderer = app(SectionRendererService::class);
@@ -59,12 +66,11 @@ test('block registry dynamic data payloads provide all select entities', functio
         'shop_categories',
         'shop_products',
         'gallery_albums',
-        'charts_types',
     ]);
 
     expect($payloads['forms'])->not->toBeEmpty();
     expect($payloads['blog_categories'])->not->toBeEmpty();
-    expect($payloads['charts_types'])->toHaveCount(5);
+    expect($this->registry->get('charts')->getEditorSchema()['chart_type']['options'])->toHaveKeys(['bar', 'line', 'donut', 'metric']);
 });
 
 test('section renderer renders decoupled roi block composing charts service', function (): void {
@@ -88,10 +94,10 @@ test('section renderer renders polymorphic card grid for features, pricing, test
     $featuresHtml = $this->renderer->renderSection([
         'type' => 'features',
         'title' => 'Ventajas Competitivas',
-        'columns' => '3',
+        'grid_columns' => '3',
         'items' => [
-            ['icon' => '⚡', 'title' => 'Alta Velocidad', 'desc' => 'Menos de 20ms'],
-            ['icon' => '🛡️', 'title' => 'Seguridad TLS', 'desc' => 'Cifrado total'],
+            ['icon' => '⚡', 'title' => 'Alta Velocidad', 'description' => 'Menos de 20ms'],
+            ['icon' => '🛡️', 'title' => 'Seguridad TLS', 'description' => 'Cifrado total'],
         ],
     ]);
 
@@ -104,7 +110,7 @@ test('section renderer renders polymorphic card grid for features, pricing, test
         'type' => 'pricing',
         'title' => 'Nuestras Tarifas',
         'items' => [
-            ['name' => 'Pro Enterprise', 'price' => '99€', 'period' => '/mes', 'badge' => 'Top', 'features' => 'SLA 99.9%', 'cta_label' => 'Comprar'],
+            ['name' => 'Pro Enterprise', 'price' => '99€', 'period' => '/mes', 'badge' => 'Top', 'features' => ['SLA 99.9%'], 'cta_text' => 'Comprar'],
         ],
     ]);
 
@@ -117,7 +123,7 @@ test('section renderer renders polymorphic card grid for features, pricing, test
         'type' => 'testimonials',
         'title' => 'Opiniones Reales',
         'items' => [
-            ['name' => 'Sara Connor', 'role' => 'Tech Lead', 'quote' => 'Excelente solución modular.', 'rating' => 5],
+            ['author' => 'Sara Connor', 'role' => 'Tech Lead', 'quote' => 'Excelente solución modular.', 'rating' => 5],
         ],
     ]);
 

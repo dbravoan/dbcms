@@ -16,7 +16,11 @@ final class ModuleInstallPostController extends Controller
 
     public function __invoke(string $identifier): RedirectResponse
     {
-        $this->moduleManager->install($identifier);
+        try {
+            $this->moduleManager->install($identifier);
+        } catch (\DomainException $error) {
+            return back()->with('error', $error->getMessage());
+        }
 
         return back()->with('success', "Module '{$identifier}' installed successfully.");
     }

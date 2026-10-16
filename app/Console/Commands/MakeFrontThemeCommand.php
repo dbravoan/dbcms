@@ -102,7 +102,7 @@ class MakeFrontThemeCommand extends Command
     <meta name="description" content="@yield('meta_description', config('cms.tagline'))">
     <link rel="canonical" href="{{ url()->current() }}">
 
-    @include('themes.components.seo-head')
+    @include('themes::components.seo-head')
 
     @if(isset($hreflangs) && is_array($hreflangs))
         @foreach($hreflangs as $localeTag => $href)
@@ -114,20 +114,20 @@ class MakeFrontThemeCommand extends Command
     <style>[x-cloak]{display:none!important}</style>
 </head>
 <body class="min-h-full flex flex-col justify-between">
-    <!--cms-private:themes.__THEME__.partials.header:start-->
-    @include('themes.__THEME__.partials.header')
+    <!--cms-private:themes::__THEME__.partials.header:start-->
+    @include('themes::__THEME__.partials.header')
     <!--cms-private:end-->
 
     <main class="flex-grow">
         @yield('content')
     </main>
 
-    @include('themes.__THEME__.partials.footer')
+    @include('themes::__THEME__.partials.footer')
 
-    @include('themes.components.visitor-geo-modal')
-    @include('themes.components.cookie-consent-modal')
+    @include('themes::components.visitor-geo-modal')
+    @include('themes::components.cookie-consent-modal')
     @include('components.frontoffice-admin-bar')
-    @include('themes.components.scroll-magic')
+    @include('themes::components.scroll-magic')
 
     @stack('admin_scripts')
     @stack('scripts')
@@ -175,9 +175,6 @@ CSS;
                 <a href="{{ $item['url'] }}" target="{{ $item['target_blank'] ? '_blank' : '_self' }}" class="text-slate-600 hover:text-slate-900 transition-colors">{{ $item['title'] }}</a>
             @empty
                 <a href="{{ $localization->url('/', $currentMarket) }}" class="text-slate-600 hover:text-slate-900">{{ __('Home') }}</a>
-                <a href="{{ $localization->url('/blog', $currentMarket) }}" class="text-slate-600 hover:text-slate-900">{{ __('Blog') }}</a>
-                <a href="{{ $localization->url('/'.$galPrefix, $currentMarket) }}" class="text-slate-600 hover:text-slate-900">{{ __('Gallery') }}</a>
-                <a href="{{ $localization->url('/contacto', $currentMarket) }}" class="text-slate-600 hover:text-slate-900">{{ __('Contact') }}</a>
             @endforelse
         </nav>
 
@@ -219,7 +216,6 @@ BLADE;
                     <li><a href="{{ $link['url'] }}" class="hover:text-slate-900">{{ $link['title'] }}</a></li>
                 @empty
                     <li><a href="{{ $localization->url('/', $currentMarket) }}" class="hover:text-slate-900">{{ $homeTitle }}</a></li>
-                    <li><a href="{{ $localization->url('/blog', $currentMarket) }}" class="hover:text-slate-900">{{ $blogTitle }}</a></li>
                 @endforelse
             </ul>
         </div>
@@ -245,7 +241,7 @@ BLADE;
     private function pageStub(): string
     {
         return <<<'BLADE'
-@extends('themes.__THEME__.layouts.app')
+@extends('themes::__THEME__.layouts.app')
 
 @section('title', $translation->meta_title ?? $translation->title ?? '')
 @section('meta_description', $translation->meta_description ?? '')
@@ -269,7 +265,7 @@ BLADE;
     private function blogIndexStub(): string
     {
         return <<<'BLADE'
-@extends('themes.__THEME__.layouts.app')
+@extends('themes::__THEME__.layouts.app')
 
 @section('title', __('Blog'))
 
@@ -299,7 +295,7 @@ BLADE;
     private function blogCategoryStub(): string
     {
         return <<<'BLADE'
-@extends('themes.__THEME__.layouts.app')
+@extends('themes::__THEME__.layouts.app')
 
 @section('title', $category->name ?? __('Category'))
 
@@ -325,7 +321,7 @@ BLADE;
     private function blogShowStub(): string
     {
         return <<<'BLADE'
-@extends('themes.__THEME__.layouts.app')
+@extends('themes::__THEME__.layouts.app')
 
 @section('title', $translation?->meta_title ?? $translation?->title ?? '')
 @section('meta_description', $translation?->meta_description ?? '')
@@ -342,7 +338,7 @@ BLADE;
     private function galleryIndexStub(): string
     {
         return <<<'BLADE'
-@extends('themes.__THEME__.layouts.app')
+@extends('themes::__THEME__.layouts.app')
 
 @section('title', __('Gallery'))
 
@@ -374,7 +370,7 @@ BLADE;
     private function galleryShowStub(): string
     {
         return <<<'BLADE'
-@extends('themes.__THEME__.layouts.app')
+@extends('themes::__THEME__.layouts.app')
 
 @section('title', $translation?->meta_title ?? $translation?->title ?? $gallery->title)
 @section('meta_description', $translation?->meta_description ?? $translation?->description ?? '')
@@ -400,7 +396,7 @@ BLADE;
     private function shopIndexStub(): string
     {
         return <<<'BLADE'
-@extends('themes.__THEME__.layouts.app')
+@extends('themes::__THEME__.layouts.app')
 
 @section('title', $isShop ?? false ? __('Online Store') : __('Catalog'))
 
@@ -434,7 +430,7 @@ BLADE;
     private function shopShowStub(): string
     {
         return <<<'BLADE'
-@extends('themes.__THEME__.layouts.app')
+@extends('themes::__THEME__.layouts.app')
 
 @section('title', $translation?->meta_title ?? $translation?->name ?? '')
 @section('meta_description', $translation?->meta_description ?? '')
@@ -469,7 +465,7 @@ BLADE;
     private function shopCartStub(): string
     {
         return <<<'BLADE'
-@extends('themes.__THEME__.layouts.app')
+@extends('themes::__THEME__.layouts.app')
 
 @section('title', __('Shopping Cart'))
 
@@ -496,7 +492,7 @@ BLADE;
     private function shopCheckoutStub(): string
     {
         return <<<'BLADE'
-@extends('themes.__THEME__.layouts.app')
+@extends('themes::__THEME__.layouts.app')
 
 @section('title', __('Complete Order'))
 
@@ -519,7 +515,7 @@ BLADE;
     private function shopOrderSuccessStub(): string
     {
         return <<<'BLADE'
-@extends('themes.__THEME__.layouts.app')
+@extends('themes::__THEME__.layouts.app')
 
 @section('title', __('Order Confirmed'))
 

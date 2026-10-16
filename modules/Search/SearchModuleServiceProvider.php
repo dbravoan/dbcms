@@ -6,8 +6,11 @@ namespace Modules\Search;
 
 use App\Contracts\Services\LocalizationServiceInterface;
 use App\Contracts\Services\SearchAnalyticsInterface;
+use App\Core\Blocks\Contracts\BlockRegistryInterface;
 use App\Core\Capabilities\CapabilityRegistry;
+use App\Core\Content\PublicSemanticRegistry;
 use App\Core\Modules\BaseModuleServiceProvider;
+use App\Core\Modules\ModuleManager;
 use App\Core\Routing\FrontRoutePatterns;
 use App\Core\Search\Contracts\SearchSourceInterface;
 use App\Core\Search\SearchIndexer;
@@ -15,15 +18,18 @@ use App\Http\Middleware\CachePublicPage;
 use App\Http\Middleware\CanonicalModulePrefix;
 use App\Http\Middleware\EnsureSeoMeta;
 use App\Http\Middleware\ResolveMarketAndLocaleMiddleware;
-use App\Services\Capabilities\CmsActionService;
 use Illuminate\Support\Facades\Route;
 use Illuminate\View\View;
+use Modules\Search\Blocks\SearchBoxBlock;
 use Modules\Search\Capabilities\SearchActionCatalog;
+use Modules\Search\Capabilities\SearchActions;
+use Modules\Search\Capabilities\SearchNavigationCapability;
 use Modules\Search\Contracts\SearchFrontPageServiceInterface;
 use Modules\Search\Http\Controllers\SearchFrontController;
 use Modules\Search\Services\SearchAnalyticsService;
 use Modules\Search\Services\SearchCapabilityAnalyticsAdapter;
 use Modules\Search\Services\SearchFrontPageService;
+use Modules\Search\Services\SearchPublicUrls;
 use Modules\Search\Services\SearchSettings;
 
 /**
@@ -51,15 +57,21 @@ class SearchModuleServiceProvider extends BaseModuleServiceProvider
 
     public function boot(): void
     {
+        $this->app->make(BlockRegistryInterface::class)->register($this->app->make(SearchBoxBlock::class));
+        $this->app->make(PublicSemanticRegistry::class)->registerUrls($this->app->make(SearchPublicUrls::class));
         $this->app->booted(function (): void {
+            $this->app->make(SearchNavigationCapability::class)->register($this->app->make(CapabilityRegistry::class));
             SearchActionCatalog::register(
                 $this->app->make(CapabilityRegistry::class),
-                $this->app->make(CmsActionService::class),
+                $this->app->make(SearchActions::class),
             );
         });
         $this->loadViewsFrom(__DIR__.'/Resources/views', 'search');
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
 
+        \Illuminate\Support\Facades\View::composer('themes::components.search-box', function (View $view): void {
+            $view->with('searchEnabled', $this->app->make(ModuleManager::class)->isModuleEnabled('search'));
+        });
         $this->composeFiltersInbox();
 
         parent::boot();

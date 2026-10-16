@@ -9,7 +9,7 @@
 El flujo sólo interfiere cuando el módulo está instalado, activo y su flujo habilitado. Las revisiones conservan atributos, traducciones, bloques, mercados y relaciones del módulo. Una restauración es completa y atómica; los rechazos no dejan publicar una revisión descartada ni sobrescriben una revisión distinta por una pantalla antigua.
 
 ## 2. Algebraic Data Types & DTO Contracts
-Se reutilizan `ContentAuditServiceInterface`, `DiffResultDTO`, las instantáneas privadas versionadas de `ContentSnapshotService` y la vinculación cifrada de revisión humana existente. No se aceptan instantáneas procedentes del modelo ni del transporte. Los consumidores del núcleo usan `EditorialWorkflowInterface`; `PendingEditorialDraft` readonly contiene identificador/instantánea y `EditorialDecision` readonly contiene estado/versión/referencia pendiente opcional. El adaptador propietario delega sin duplicar las reglas; la implementación por defecto no consulta tablas opcionales y deniega las decisiones de revisión.
+El módulo implementa directamente `EditorialWorkflowInterface` y `ContentRevisionInspectorInterface`; política, historial, presentación, evaluación y notificaciones tienen responsables separados. `ContentSnapshotService` conserva una única versión de instantáneas (v3). `PendingEditorialDraft` y `EditorialDecision` expresan los resultados de la frontera editorial. La implementación core sin módulo no consulta tablas opcionales y deniega decisiones de revisión. No hay fachadas ni adaptadores delegadores históricos.
 
 ## 3. Formal Invariants
 - Estado de módulo: instalado y activo, configuración de flujo activa.
@@ -33,7 +33,7 @@ La decisión editorial invalida índices después de commit. La revisión privad
 - [x] Rechazo de pantalla obsoleta falla sin descartar la revisión actual.
 - [x] Notificación y eventos no salen de una transacción revertida.
 - [x] Opciones de seguimiento y motivo cumplen semántica configurada.
-- [x] EntityCrud, CmsAction, LegacyCms, navegación y dashboard no importan el módulo editorial ni consultan sus revisiones.
+- [x] Mutaciones, acciones de secciones, navegación y dashboard no importan el módulo editorial ni consultan sus revisiones.
 - [x] Crear, actualizar y eliminar siguen funcionando sin módulo/tablas editoriales; no se concede aprobación por ausencia.
 - [x] El contador de revisiones pendientes sólo revela expedientes que el actor puede inspeccionar.
 

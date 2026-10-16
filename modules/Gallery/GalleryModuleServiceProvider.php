@@ -15,6 +15,7 @@ use App\Http\Middleware\CachePublicPage;
 use App\Http\Middleware\CanonicalModulePrefix;
 use App\Http\Middleware\EnsureSeoMeta;
 use App\Http\Middleware\ResolveMarketAndLocaleMiddleware;
+use App\Observers\ContentTranslationCacheObserver;
 use App\Services\Geo\PublicEntityWidgetContributor;
 use Illuminate\Support\Facades\Route;
 use Modules\Gallery\Blocks\GalleryAlbumBlock;
@@ -29,6 +30,7 @@ use Modules\Gallery\Schema\GalleryEntitySchemas;
 use Modules\Gallery\Search\GallerySearchSource;
 use Modules\Gallery\Services\GalleryEditorialService;
 use Modules\Gallery\Services\GalleryFrontPageService;
+use Modules\Gallery\Services\GalleryPublicSemanticContributor;
 use Modules\Gallery\Widgets\GalleryGridWidget;
 
 class GalleryModuleServiceProvider extends BaseModuleServiceProvider
@@ -43,13 +45,17 @@ class GalleryModuleServiceProvider extends BaseModuleServiceProvider
 
     public function register(): void
     {
+        $this->mergeConfigFrom(__DIR__.'/Config/entity_search.php', 'entity_search.sources');
+        config(['cms.page_cache_models' => array_values(array_unique(array_merge((array) config('cms.page_cache_models', []), [Gallery::class, GalleryItem::class])))]);
         $this->app->bind(GalleryFrontPageServiceInterface::class, GalleryFrontPageService::class);
         $this->app->bind(GalleryEditorialServiceInterface::class, GalleryEditorialService::class);
-        $this->app->bind('widget.gallery.grid', fn () => GalleryGridWidget::class);
     }
 
     public function boot(): void
     {
+        $this->app->make(PublicSemanticRegistry::class)->register($this->app->make(GalleryPublicSemanticContributor::class));
+        $this->app->make(BlockRegistryInterface::class)->register($this->app->make(GalleryGridWidget::class));
+        GalleryTranslation::observe(ContentTranslationCacheObserver::class);
         $this->app->make(SearchSourceRegistryInterface::class)->register($this->app->make(GallerySearchSource::class));
         Gallery::observe(GallerySearchObserver::class);
         GalleryTranslation::observe(GallerySearchObserver::class);
@@ -112,20 +118,15 @@ class GalleryModuleServiceProvider extends BaseModuleServiceProvider
         });
     }
 
-    public function getWidgets(): array
-    {
-        return [
-            GalleryGridWidget::getKey() => GalleryGridWidget::class,
-        ];
-    }
-
     public function getAdminNavigation(): array
     {
         return [
             [
-                'title' => 'Galleries',
+                'title' => __('admin.nav.items.galleries'),
                 'route' => 'admin.galleries.index',
-                'icon' => 'photograph',
+                'createRoute' => 'admin.galleries.create',
+                'activePattern' => 'admin.galleries.*',
+                'icon' => 'images',
                 'permission' => 'manage:galleries',
             ],
         ];

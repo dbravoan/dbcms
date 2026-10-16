@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\SocialPublishing\Services;
 
-use App\Contracts\Services\CampaignAttributionGatewayInterface;
 use App\Core\Capabilities\ActorContext;
-use App\DTOs\Marketing\CreativePackage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Modules\Marketing\Contracts\CampaignAttributionGatewayInterface;
+use Modules\Marketing\DTOs\CreativePackage;
 use Modules\SocialPublishing\Contracts\DestinationValidatorInterface;
 use Modules\SocialPublishing\DTOs\OperationResult;
 use Modules\SocialPublishing\Models\SocialAccount;

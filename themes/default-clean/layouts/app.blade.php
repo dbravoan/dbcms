@@ -19,7 +19,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
      <title>{{ $seoMeta?->title ?? $pageTitle ?? config('cms.name') }} | {{ config('cms.name') }}</title>
 
-    @include('themes.components.seo-head')
+    @include('themes::components.seo-head')
 
     @if(isset($hreflangs) && is_array($hreflangs))
         @foreach($hreflangs as $localeTag => $href)
@@ -29,24 +29,24 @@
     @vite(cms_asset_entries(true))
 </head>
 <body class="min-h-full flex flex-col justify-between">
-    <!--cms-private:themes.default-clean.partials.header:start-->
-    @include('themes.default-clean.partials.header')
+    <!--cms-private:themes::default-clean.partials.header:start-->
+    @include('themes::default-clean.partials.header')
     <!--cms-private:end-->
 
     <main class="flex-grow">
         @yield('content')
     </main>
 
-    @include('themes.default-clean.partials.footer')
+    @include('themes::default-clean.partials.footer')
 
-    <!--cms-private:themes.components.visitor-geo-modal:start-->
-    @include('themes.components.visitor-geo-modal')
+    <!--cms-private:themes::components.visitor-geo-modal:start-->
+    @include('themes::components.visitor-geo-modal')
     <!--cms-private:end-->
-    <!--cms-private:themes.components.cookie-consent-modal:start-->
-    @include('themes.components.cookie-consent-modal')
+    <!--cms-private:themes::components.cookie-consent-modal:start-->
+    @include('themes::components.cookie-consent-modal')
     <!--cms-private:end-->
     @include('components.frontoffice-admin-bar')
-    @include('themes.components.scroll-magic')
+    @include('themes::components.scroll-magic')
 
     @stack('admin_scripts')
     @stack('scripts')

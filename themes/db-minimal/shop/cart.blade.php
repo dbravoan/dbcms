@@ -1,4 +1,4 @@
-@extends('themes.db-minimal.layouts.app')
+@extends('themes::db-minimal.layouts.app')
 
 @php
     $cartTitle = match($currentLocale) {

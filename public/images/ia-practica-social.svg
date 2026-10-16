@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">IA en práctica — La IA se aprende haciendo.</title>
+  <desc id="description">Guías por tarea, equipos, agentes y escritorio. Diseño editorial en papel crema, tinta y terracota con un recorrido de tarea, ensayo y revisión.</desc>
+  <rect width="1200" height="630" fill="#f6f3eb"/>
+  <path d="M72 145H1128M72 486H1128" stroke="#d4d1c5" stroke-width="1.5"/>
+  <g transform="translate(72 50)">
+    <rect x="1" y="1" width="60" height="60" rx="2" fill="#f6f3eb" stroke="#252e29" stroke-width="2"/>
+    <g fill="none" stroke="#252e29" stroke-width="3.5" stroke-linecap="square" stroke-linejoin="round">
+      <path d="M12 18H22M17 18V44M12 44H22"/>
+      <path d="M28 44L37 18L46 44M31 35H43"/>
+    </g>
+    <path d="M52 7V17M47 12H57" stroke="#a9381b" stroke-width="2.5"/>
+  </g>
+  <text x="154" y="91" font-family="DejaVu Sans" font-size="29" font-weight="bold" fill="#252e29">IA en práctica</text>
+  <text x="1128" y="75" text-anchor="end" font-family="DejaVu Sans" font-size="12" letter-spacing="2" fill="#a9381b">FORMACIÓN APLICADA</text>
+  <text x="1128" y="103" text-anchor="end" font-family="DejaVu Sans" font-size="14" fill="#596059">Criterio humano. Práctica compartida.</text>
+  <text x="68" y="280" font-family="DejaVu Serif" font-size="73" letter-spacing="-2.5" fill="#252e29">La IA se aprende</text>
+  <text x="68" y="373" font-family="DejaVu Serif" font-size="82" letter-spacing="-3" fill="#a9381b">haciendo.</text>
+  <g transform="translate(850 162)">
+    <g fill="none" stroke="#d4d1c5" stroke-width="1">
+      <path d="M10 32H298M10 88H298M10 144H298M10 200H298M10 256H298M30 10V284M86 10V284M142 10V284M198 10V284M254 10V284"/>
+      <circle cx="154" cy="144" r="119"/>
+    </g>
+    <path d="M52 88H198V256H86V144H264" fill="none" stroke="#252e29" stroke-width="2" stroke-dasharray="5 5"/>
+    <rect x="30" y="66" width="44" height="44" rx="22" fill="#f6f3eb" stroke="#252e29" stroke-width="2"/>
+    <path d="M43 88H61M52 79V97" stroke="#252e29" stroke-width="2"/>
+    <rect x="176" y="234" width="44" height="44" rx="2" fill="#f6f3eb" stroke="#252e29" stroke-width="2"/>
+    <path d="M187 256L196 265L210 246" fill="none" stroke="#252e29" stroke-width="2"/>
+    <rect x="242" y="122" width="44" height="44" rx="2" fill="#a9381b"/>
+    <path d="M254 154L274 134M255 134H274V153" fill="none" stroke="#fffaf2" stroke-width="2"/>
+    <circle cx="86" cy="256" r="5" fill="#a9381b"/>
+    <circle cx="198" cy="88" r="5" fill="#a9381b"/>
+    <path d="M146 126V164M127 145H165M133 132L159 158M133 158L159 132" stroke="#a9381b" stroke-width="6"/>
+  </g>
+  <text x="72" y="542" font-family="DejaVu Sans" font-size="25" fill="#252e29">Guías por tarea · Equipos · Agentes · Escritorio</text>
+  <text x="72" y="581" font-family="DejaVu Sans" font-size="16" fill="#596059">Una tarea. Un resultado verificable. Una revisión humana.</text>
+  <path d="M1085 548H1128M1107 528L1128 548L1107 568" fill="none" stroke="#a9381b" stroke-width="2"/>
+</svg>

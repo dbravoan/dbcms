@@ -64,12 +64,12 @@ validated but never persisted.
 
 ## 3. The Forms module (database-backed)
 
-- The builder (`resources/views/admin/forms/_builder.blade.php`) is driven by
+- The builder (`modules/Forms/Resources/views/admin/_builder.blade.php`) is driven by
   `FieldTypeOptions`, which lists the **available** registered types: a disabled
   module simply disappears from the builder.
 - `FormDomainService::submitForm()` compiles the rules from the registry and
   stores only the inputs of types with `stores() === true`.
-- The public widget (`components.cms.form-engine`, `widgets/embed_form`) renders
+- The public widget (`forms::components.form-engine` (`<x-forms::form-engine>`; module-owned presentation data), `widgets/embed_form`) renders
   the same schema.
 
 ## 4. The blog comment form (code-defined schema)

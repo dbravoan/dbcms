@@ -24,11 +24,6 @@ interface AdminNavigationServiceInterface
     public function getActiveModuleIdentifiers(): array;
 
     /**
-     * Check if a specific module is active and visible.
-     */
-    public function isModuleVisible(string $identifier): bool;
-
-    /**
      * Get pending content audit items count.
      */
     public function getPendingAuditCount(): int;
@@ -37,9 +32,4 @@ interface AdminNavigationServiceInterface
      * Check if maintenance mode is active.
      */
     public function isMaintenanceActive(): bool;
-
-    /**
-     * Get active shop mode.
-     */
-    public function getShopMode(): string;
 }

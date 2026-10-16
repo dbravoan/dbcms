@@ -19,7 +19,6 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $filter_page_id
  * @property string $type
- * @property string|null $widget_key
  * @property int $order
  * @property array<string, mixed>|null $styling_json
  * @property bool $is_active
@@ -35,7 +34,6 @@ class FilterPageSection extends Model
     protected $fillable = [
         'filter_page_id',
         'type',
-        'widget_key',
         'order',
         'styling_json',
         'is_active',

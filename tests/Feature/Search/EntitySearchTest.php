@@ -5,13 +5,20 @@ declare(strict_types=1);
 use App\Contracts\Services\EntitySearchServiceInterface;
 use App\Models\Market;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Modules\Forms\Models\CustomForm;
+use Tests\Support\BlogFixtures;
+use Tests\Support\CmsFixtures;
+use Tests\Support\EntitySearchComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, EntitySearchComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    BlogFixtures::post();
+    $form = CustomForm::create(['slug' => 'contacto', 'is_active' => true]);
+    $form->translations()->create(['locale' => 'es', 'name' => 'Formulario de contacto']);
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
     $this->service = app(EntitySearchServiceInterface::class);
     $this->actingAs($this->admin, 'web');

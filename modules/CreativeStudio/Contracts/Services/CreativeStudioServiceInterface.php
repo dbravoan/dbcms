@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Modules\CreativeStudio\Contracts\Services;
 
-use App\Contracts\Services\CreativePackageProviderInterface;
 use App\Core\Capabilities\ActorContext;
 use Modules\CreativeStudio\Models\CreativeCampaign;
 use Modules\CreativeStudio\Models\CreativeGenerationTask;
 use Modules\CreativeStudio\Models\CreativeRevision;
+use Modules\Marketing\Contracts\CreativePackageProviderInterface;
 
 interface CreativeStudioServiceInterface extends CreativePackageProviderInterface
 {

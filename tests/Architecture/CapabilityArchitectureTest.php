@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Core\Capabilities\CapabilityRegistry;
 use App\Core\Capabilities\Resources\CapabilityResource;
 use App\Core\Capabilities\Resources\CapabilityResourceRegistry;
 use App\Models\Market;
@@ -8,9 +9,6 @@ use App\Providers\CmsCapabilitiesServiceProvider;
 use App\Services\Capabilities\PlatformResourceCatalog;
 use Illuminate\Container\Container;
 use Illuminate\Database\Eloquent\Model;
-use Modules\Mcp\McpModuleServiceProvider;
-use Modules\Mcp\Resources\McpResourceRegistry;
-use Modules\Mcp\Tools\McpToolRegistry;
 
 test('capability engine and shared handlers do not depend on MCP implementation', function (): void {
     expect('App\Core\Capabilities')->not->toUse('Modules\Mcp');
@@ -44,7 +42,8 @@ test('shared content mutation controllers remain thin across their owning module
     foreach (['Blog' => ['Post', 'Category'], 'Pages' => ['Page'], 'Shop' => ['Product', 'ShopCategory'], 'Gallery' => ['Gallery']] as $module => $entities) {
         foreach ($entities as $entity) {
             foreach (['Post', 'Put', 'Delete'] as $verb) {
-                $class = 'Modules\\'.$module.'\\Http\\Controllers\\Admin\\'.$entity.$verb.'Controller';
+                $namespace = $module === 'Pages' ? 'App\\Content\\Pages' : 'Modules\\'.$module;
+                $class = $namespace.'\\Http\\Controllers\\Admin\\'.$entity.$verb.'Controller';
                 $method = new ReflectionMethod($class, '__invoke');
                 $source = file_get_contents($method->getFileName());
                 expect($source)->not->toMatch('/\b(?:DB::|::query\(|::create\(|->save\(|if\s*\(|switch\s*\(|foreach\s*\()/');
@@ -64,14 +63,11 @@ test('core capability provider owns its services without loading MCP adapters', 
     expect(CmsCapabilitiesServiceProvider::class)->not->toUse('Modules\Mcp');
     $container = new Container;
     (new CmsCapabilitiesServiceProvider($container))->register();
-    expect($container->bound(McpToolRegistry::class))->toBeFalse();
+    expect($container->bound(CapabilityRegistry::class))->toBeTrue();
     $core = $container->make(CapabilityResourceRegistry::class);
     expect($core::class)->toBe(CapabilityResourceRegistry::class);
     $core->registerMany(PlatformResourceCatalog::all());
-    (new McpModuleServiceProvider($container))->register();
-    $compat = $container->make(McpResourceRegistry::class);
-    expect($compat->keys())->toBe($core->keys());
     $additional = new CapabilityResource('test_shared_registry', 'Test shared registry', Market::class, 'manage:markets');
-    $compat->register($additional);
+    $core->register($additional);
     expect($core->get('test_shared_registry'))->toBe($additional);
 });

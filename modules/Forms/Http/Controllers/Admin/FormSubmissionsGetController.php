@@ -30,7 +30,7 @@ final class FormSubmissionsGetController extends Controller
 
         $forms = CustomForm::all();
 
-        return view('admin.forms.submissions', [
+        return view('forms::admin.submissions', [
             'submissions' => $submissions,
             'forms' => $forms,
         ]);

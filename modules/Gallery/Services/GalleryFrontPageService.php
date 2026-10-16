@@ -45,6 +45,7 @@ final class GalleryFrontPageService implements GalleryFrontPageServiceInterface
 
         return FrontPageData::view($viewName, [
             'galleries' => $galleries,
+            'galPrefix' => $galPrefix,
             'breadcrumbs' => $breadcrumbs,
             'alternateUrls' => $alternateUrls,
             'currentMarket' => $market,

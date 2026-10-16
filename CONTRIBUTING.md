@@ -27,8 +27,8 @@ Después, arranca explícitamente los servicios:
 # Ejecutar comandos Artisan
 ./vendor/bin/sail artisan <comando>
 
-# Ejecutar suite de pruebas
-./vendor/bin/sail pest
+# Contratos rápidos y recorrido funcional mínimo
+make test
 ```
 
 Para detenerlos, ejecuta `./vendor/bin/sail down`. Sail no inicia contenedores
@@ -37,8 +37,8 @@ CI/bootstrap, que ya se ejecuta en Docker, se usan directamente PHP y Composer;
 no se llama a Sail ni se anida Docker.
 
 ### 2. Ciclo de Desarrollo
-1. **Spec-Driven Design (SDD)**: Define los contratos (`app/Contracts/`) y DTOs inmutables (`app/DTOs/`) antes de codificar la lógica.
-2. **TDD (Test-Driven Development)**: Escribe las pruebas unitarias y funcionales en Pest PHP asegurando que fallen inicialmente.
+1. **Spec-Driven Design (SDD)**: Define el comportamiento y las fronteras antes de codificar. Interfaces y DTOs solo donde aporten un contrato útil; no crear adaptadores de reenvío.
+2. **Pruebas con propósito**: Cada prueba protege un riesgo concreto y debe fallar ante una rotura de ese comportamiento. No añadir pruebas de formato incidental ni mantener contratos retirados para conservar tests.
 3. **Thin Controllers & Fat Services**:
    - Controladores invocables de acción única (`*GetController`, `*PostController`, `*PutController`, `*DeleteController`), con **máximo 10 líneas** en `__invoke()`.
    - Lógica de negocio encapsulada en Servicios de Dominio con transacciones `DB::transaction()`.
@@ -58,6 +58,14 @@ Cualquier Pull Request o aportación debe superar con éxito:
 # 2. Formato de código PSR-12 / Pint estricto
 ./vendor/bin/sail pint --test
 
-# 3. Suite completa de pruebas Pest (100% verde)
-./vendor/bin/sail pest
+# 3. Integración en archivos y base de datos desechables
+make test-integration
+
+# 4. Release o cambios en instalador, updater, despliegue o concurrencia
+make test-release
 ```
+
+[TESTING](docs/TESTING.md) define qué ejecuta cada gate y cómo medir su coste.
+[Core and extensions](specs/CORE_AND_EXTENSIONS.md) define el núcleo, los módulos
+opcionales y los paquetes visuales. La evidencia de ejecuciones anteriores vive
+en `docs/archive/`; no sustituye los contratos actuales.

@@ -4,13 +4,8 @@ declare(strict_types=1);
 
 namespace Modules\CreativeStudio\Services;
 
-use App\Contracts\Services\CreativeGenerationGatewayInterface;
-use App\Contracts\Services\MarketingArtifactStoreInterface;
 use App\Core\Capabilities\ActorContext;
 use App\Core\Modules\ModuleManager;
-use App\DTOs\Marketing\ArtifactDescriptor;
-use App\DTOs\Marketing\CreativePackage;
-use App\DTOs\Marketing\GenerationReceipt;
 use App\Models\Market;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\UploadedFile;
@@ -27,6 +22,11 @@ use Modules\CreativeStudio\Models\CreativeCampaign;
 use Modules\CreativeStudio\Models\CreativeGenerationTask;
 use Modules\CreativeStudio\Models\CreativeInputAsset;
 use Modules\CreativeStudio\Models\CreativeRevision;
+use Modules\Marketing\Contracts\CreativeGenerationGatewayInterface;
+use Modules\Marketing\Contracts\MarketingArtifactStoreInterface;
+use Modules\Marketing\DTOs\ArtifactDescriptor;
+use Modules\Marketing\DTOs\CreativePackage;
+use Modules\Marketing\DTOs\GenerationReceipt;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Throwable;
 

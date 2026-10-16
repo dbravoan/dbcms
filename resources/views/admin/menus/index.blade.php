@@ -370,8 +370,6 @@
                                    @if($language->code === ($defaultLocale ?? 'es')) required @endif
                                    placeholder="{{ __('admin.menus.title_placeholder') }}"
                                    class="w-full bg-[#1A1A1A] border-gray-700 text-white focus:border-[#00FF99] admin-input border rounded px-3 py-1.5">
-                            {{-- Compatibilidad legacy con clientes que envían title_{locale} --}}
-                            <input type="hidden" name="title_{{ $language->code }}" :value="newItem.translations[@js($language->code)] || ''">
                         </div>
                     @endforeach
 

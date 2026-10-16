@@ -5,16 +5,22 @@ declare(strict_types=1);
 use App\Core\Search\Contracts\SearchSourceRegistryInterface;
 use App\Core\Search\SearchIndexer;
 use App\Models\SearchDocumentIndex;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Models\Post;
 use Modules\Blog\Models\PostTranslation;
 use Modules\Shop\Models\ProductTranslation;
+use Tests\Support\BlogFixtures;
+use Tests\Support\BlogShopComposition;
+use Tests\Support\CmsFixtures;
+use Tests\Support\ShopFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, BlogShopComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    BlogFixtures::post();
+    ShopFixtures::product();
     app(SearchIndexer::class)->flush();
 });
 
@@ -151,17 +157,14 @@ test('editing or removing content keeps the index in sync automatically', functi
 test('a product edit reindexes only that product', function (): void {
     $this->artisan('search:reindex')->assertExitCode(0);
 
+    ShopFixtures::product('SECOND-PRODUCT');
     $other = ProductTranslation::query()->where('locale', 'es')->firstOrFail();
     $otherId = (int) $other->getAttribute('product_id');
 
     $target = ProductTranslation::query()
         ->where('locale', 'es')
         ->where('product_id', '!=', $otherId)
-        ->first();
-
-    if ($target === null) {
-        $this->markTestSkipped('The demo catalogue needs at least two products.');
-    }
+        ->firstOrFail();
 
     $target->update(['name' => 'Producto renombrado por evento']);
 

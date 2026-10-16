@@ -12,6 +12,7 @@ use App\Core\Sections\SectionLayout;
 use App\Models\Market;
 use Illuminate\Database\Eloquent\Builder;
 use Modules\Shop\Models\Product;
+use Modules\Shop\Models\ProductCategory;
 use Modules\Shop\Services\ShopDomainService;
 
 class ShopProductsBlock extends AbstractBlockType implements TranslatableBlockInterface
@@ -59,6 +60,23 @@ class ShopProductsBlock extends AbstractBlockType implements TranslatableBlockIn
     public function getTranslationPaths(): array
     {
         return ['title'];
+    }
+
+    public function getEditorData(): array
+    {
+        return [
+            'shop_categories' => ProductCategory::with('translations')->get()->map(fn ($category): array => ['id' => $category->id, 'name' => $category->translations->first()->name ?? (string) $category->id, 'slug' => $category->translations->first()->slug ?? ''])->all(),
+            'shop_products' => Product::where('is_active', true)->with('translations')->latest()->limit(20)->get()->map(fn ($product): array => ['id' => $product->id, 'name' => $product->translations->first()->name ?? (string) $product->id, 'slug' => $product->translations->first()->slug ?? '', 'price' => $product->price])->all(),
+        ];
+    }
+
+    public function getEditorSchema(): array
+    {
+        $fields = parent::getEditorSchema();
+        $data = $this->getEditorData();
+        $fields['category'] = ['type' => 'select', 'label' => 'Categoría', 'options' => ['' => 'Todas'] + array_column($data['shop_categories'], 'name', 'slug')];
+
+        return $fields;
     }
 
     public function getDefaultPayload(): array

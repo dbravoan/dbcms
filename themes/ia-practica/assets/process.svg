@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="390" viewBox="0 0 340 390" fill="none">
+  <g stroke="#d2cbbb" stroke-width="1">
+    <path d="M0 36H340M0 100H340M0 164H340M0 228H340M0 292H340M0 356H340M24 0V390M88 0V390M152 0V390M216 0V390M280 0V390"/>
+    <circle cx="170" cy="195" r="145"/>
+  </g>
+  <path d="M58 100H216V292H88V164H280" stroke="#2a342e" stroke-width="2" stroke-dasharray="5 5"/>
+  <rect x="36" y="78" width="44" height="44" rx="22" fill="#f6f3eb" stroke="#2a342e" stroke-width="2"/>
+  <path d="M49 100H67M58 91V109" stroke="#2a342e" stroke-width="2"/>
+  <rect x="193" y="269" width="46" height="46" rx="2" fill="#f6f3eb" stroke="#2a342e" stroke-width="2"/>
+  <path d="M204 292L213 301L229 281" stroke="#2a342e" stroke-width="2"/>
+  <rect x="257" y="141" width="46" height="46" rx="2" fill="#bf4628"/>
+  <path d="M270 174L290 154M271 154H290V173" stroke="#fffaf2" stroke-width="2"/>
+  <circle cx="88" cy="292" r="6" fill="#bf4628"/>
+  <circle cx="216" cy="100" r="6" fill="#bf4628"/>
+  <path d="M161 174V216M140 195H182M146 180L176 210M146 210L176 180" stroke="#bf4628" stroke-width="8"/>
+  <path d="M24 365H67M24 373H48" stroke="#2a342e" stroke-width="2"/>
+  <circle cx="280" cy="36" r="5" fill="#bf4628"/>
+</svg>

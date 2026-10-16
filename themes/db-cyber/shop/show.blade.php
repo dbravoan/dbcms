@@ -1,4 +1,4 @@
-@extends('themes.db-cyber.layouts.app')
+@extends('themes::db-cyber.layouts.app')
 
 @section('title', ($translation->meta_title ?? $translation->name) . ' - dbCMS')
 @section('meta_description', $translation->meta_description ?? $translation->summary ?? '')

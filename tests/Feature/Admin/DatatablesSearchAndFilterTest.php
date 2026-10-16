@@ -3,15 +3,22 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Models\Post;
 use Modules\Forms\Models\FormSubmission;
+use Tests\Support\AdminCatalogComposition;
+use Tests\Support\BlogFixtures;
+use Tests\Support\CmsFixtures;
+use Tests\Support\FormFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, AdminCatalogComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en'], ['es', 'mx']);
+    CmsFixtures::identities();
+    CmsFixtures::identities(['editor' => [], 'marketing' => [], 'author' => [], 'viewer' => []]);
+    BlogFixtures::post();
+    FormFixtures::contact();
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
 });
 
@@ -32,7 +39,7 @@ test('users datatable filters by text search query and role', function (): void 
 test('posts datatable filters by published status and search text', function (): void {
     $response = $this->actingAs($this->admin, 'web')->get('/admin/blog/posts?search=Arquitectura');
     $response->assertOk();
-    $response->assertSee('controladores finos');
+    $response->assertSee('Arquitectura modular');
 
     $responseStatus = $this->actingAs($this->admin, 'web')->get('/admin/blog/posts?is_published=1');
     $responseStatus->assertOk();

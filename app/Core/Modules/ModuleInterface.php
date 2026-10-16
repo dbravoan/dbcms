@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Core\Modules;
 
+use App\Models\User;
+
 interface ModuleInterface
 {
     /**
@@ -33,32 +35,18 @@ interface ModuleInterface
     public function registerPageableRoutes(): void;
 
     /**
-     * Map of widget identifiers to their ViewComponent / Renderer class names.
-     *
-     * @return array<string, class-string>
-     */
-    public function getWidgets(): array;
-
-    /**
      * Backoffice navigation items for admin sidebar.
      *
-     * @return array<int, array{
-     *     title: string,
-     *     route: string,
-     *     icon: string,
-     *     permission?: string,
-     *     createRoute?: string|null,
-     *     createTooltip?: string|null,
-     *     badgeText?: string|null,
-     *     badgeClass?: string|null,
-     *     children?: array<int, array{title: string, route: string, icon?: string}>
-     * }>
+     * @return array<int, array<string, mixed>>
      */
     public function getAdminNavigation(): array;
 
     /**
      * Whether this module provides a dedicated administrative portal decoupled from the CMS.
      */
+    /** @return array{views: array<string, string>, data: array<string, mixed>}|null */
+    public function getAdminDashboard(User $user): ?array;
+
     public function hasDedicatedPanel(): bool;
 
     /**

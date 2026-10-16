@@ -6,11 +6,12 @@ namespace App\Services\Install;
 
 use App\Contracts\Services\InstallationEnvironmentServiceInterface;
 use App\Contracts\Services\InstallationProvisioningServiceInterface;
+use App\Core\Modules\ModuleManager;
 use App\DTOs\Install\InstallationResultDTO;
 use App\Models\Role;
 use App\Services\Security\PassportKeyPermissionService;
 use Database\Seeders\CmsFoundationSeeder;
-use Database\Seeders\PlatformShowcaseSeeder;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -20,24 +21,27 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 final class InstallationProvisioningService implements InstallationProvisioningServiceInterface
 {
-    public function __construct(private readonly PassportKeyPermissionService $keys, private readonly ClientRepository $clients, private readonly InstallationEnvironmentServiceInterface $environment) {}
+    public function __construct(private readonly PassportKeyPermissionService $keys, private readonly ClientRepository $clients, private readonly InstallationEnvironmentServiceInterface $environment, private readonly ModuleManager $modules) {}
 
     public function provision(bool $withDemo = false, ?OutputInterface $output = null): InstallationResultDTO
     {
         $logs = [];
+        $seeder = CmsFoundationSeeder::class;
+        if ($withDemo) {
+            $configured = config('cms.demo_seeder');
+            if (! is_string($configured) || ! is_subclass_of($configured, Seeder::class)) {
+                return new InstallationResultDTO(false, 'Este proyecto no incluye el contenido de demostración. Instala sin --with-demo.', $logs);
+            }
+            $seeder = $configured;
+        }
         try {
             $this->command('migrate', ['--force' => true], $output);
             $logs[] = 'Tablas relacionales del núcleo migradas correctamente.';
-            foreach (File::directories(base_path('modules')) as $module) {
-                $path = $module.'/Database/Migrations';
-                if (File::isDirectory($path)) {
-                    $this->command('migrate', ['--path' => substr($path, strlen(base_path()) + 1), '--force' => true], $output);
-                    $logs[] = 'Módulo ['.basename($module).']: esquemas y tablas migrados.';
-                }
-            }
+            $this->modules->installConfiguredModules();
+            $logs[] = 'Módulos seleccionados instalados; el resto permanece sin instalar.';
             $this->infrastructure($output);
             $logs[] = 'Claves OAuth2, cliente de acceso personal y almacenamiento preparados.';
-            $this->command('db:seed', ['--class' => $withDemo ? PlatformShowcaseSeeder::class : CmsFoundationSeeder::class, '--force' => true], $output);
+            $this->command('db:seed', ['--class' => $seeder, '--force' => true], $output);
             DB::transaction(fn () => Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Administrador', 'description' => 'Acceso administrativo total']));
             $logs[] = $withDemo ? 'Datos de demostración solicitados inicializados.' : 'Estructura base inicializada sin contenido de demostración.';
             $this->environment->write([

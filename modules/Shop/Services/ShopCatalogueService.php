@@ -12,6 +12,7 @@ use App\Core\Filters\FilterQueryRedirector;
 use App\Core\Filters\FilterSeoResolver;
 use App\Core\Filters\FilterSet;
 use App\Core\Filters\FilterUrlBuilder;
+use App\Core\Sections\SectionRendererService;
 use App\DTOs\Front\FrontPageData;
 use App\DTOs\Front\PublicContentContext;
 use App\Models\Market;
@@ -19,8 +20,6 @@ use App\Services\Cms\FrontViewResolver;
 use App\Services\Seo\JsonLdSchemaService;
 use App\Services\Seo\PublicContentModifiedService;
 use App\Services\Seo\SeoMetaService;
-use Illuminate\Support\Str;
-use Modules\Pages\Services\SectionRendererService;
 use Modules\Shop\Contracts\ShopCatalogueServiceInterface;
 use Modules\Shop\Filters\ShopFilters;
 use Modules\Shop\Models\Product;
@@ -42,16 +41,6 @@ final class ShopCatalogueService implements ShopCatalogueServiceInterface
         $market = $context->market;
         $locale = $context->locale;
 
-        // Legacy query params (`?q=`, `?category=`) consolidate into the friendly
-        // canonical URL with a 301, so the query variant never competes in SERP.
-        if (array_key_exists('q', $context->query) || array_key_exists('category', $context->query)) {
-            $redirect = $this->legacyRedirect($context, $market, $locale);
-
-            if ($redirect !== null) {
-                return $redirect;
-            }
-        }
-
         // Filter form submissions (ranges, picks…) consolidate into the canonical
         // friendly URL with a 301.
         $formPath = app(FilterQueryRedirector::class)
@@ -67,7 +56,7 @@ final class ShopCatalogueService implements ShopCatalogueServiceInterface
     }
 
     /**
-     * Shared catalogue renderer for the index and a (legacy) category URL.
+     * Catalogue renderer shared by the index and category routes.
      */
     private function renderCatalogue(Market $market, string $locale, ?ProductCategory $selectedCategory = null): FrontPageData
     {
@@ -87,43 +76,6 @@ final class ShopCatalogueService implements ShopCatalogueServiceInterface
             'filterSet' => new FilterSet('shop', (string) $market->code, $locale, []),
             'filterModule' => app(ShopFilters::class),
         ]);
-    }
-
-    /**
-     * 301 from legacy `?q=` / `?category=` to the canonical friendly URL.
-     */
-    private function legacyRedirect(PublicContentContext $context, Market $market, string $locale): ?FrontPageData
-    {
-        $filters = app(ShopFilters::class);
-        $values = [];
-
-        if ($this->filled($context, 'category')) {
-            $category = ProductCategory::forMarket($market)->where('is_active', true)->with('translations')->find((int) ($context->query['category'] ?? null));
-            $slug = (string) ($category?->translations->firstWhere('locale', $locale)->slug ?? '');
-
-            if ($slug !== '') {
-                $values['category'] = [$slug];
-            }
-        }
-
-        if ($this->filled($context, 'q')) {
-            $term = Str::slug((string) ($context->query['q'] ?? null));
-
-            if ($term !== '') {
-                $values['search'] = $term;
-            }
-        }
-
-        $set = new FilterSet('shop', (string) $market->code, $locale, $values);
-        $path = (app(FilterUrlBuilder::class))->canonicalPath($set, $filters->filterDimensions(), $locale);
-
-        if ($path === null) {
-            return null;
-        }
-
-        $shopSlug = $this->localization->getModulePrefix('shop', $locale);
-
-        return FrontPageData::redirect($this->localization->url("/{$shopSlug}/{$path}", $market), 301);
     }
 
     public function resolveSlug(PublicContentContext $context): FrontPageData
@@ -429,12 +381,5 @@ final class ShopCatalogueService implements ShopCatalogueServiceInterface
         }
 
         return $schema;
-    }
-
-    private function filled(PublicContentContext $context, string $name): bool
-    {
-        $value = $context->query[$name] ?? null;
-
-        return $value !== null && $value !== '' && $value !== [];
     }
 }

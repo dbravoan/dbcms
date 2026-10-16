@@ -1,4 +1,4 @@
-@extends('themes.db-sunset.layouts.app')
+@extends('themes::db-sunset.layouts.app')
 
 @section('title', __('Blog & Novedades - dbCMS Sunset'))
 @section('meta_description', __('Historias de producto, tendencias de diseño, inteligencia artificial y arquitectura de alto rendimiento.'))

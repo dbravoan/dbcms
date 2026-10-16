@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Core\Modules\ModuleManager;
+use App\Content\Pages\Models\Page;
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\Permission;
@@ -13,11 +13,12 @@ use Illuminate\Support\Facades\Http;
 use Modules\AiAssistant\DTOs\MultimodalOrchestrationRequest;
 use Modules\AiAssistant\Services\AiDraftPersistenceService;
 use Modules\Blog\Models\Post;
-use Modules\Pages\Models\Page;
+use Tests\Support\AiBlogComposition;
+
+uses(AiBlogComposition::class);
 
 beforeEach(function (): void {
     Http::preventStrayRequests();
-    app(ModuleManager::class)->discoverModules();
     $role = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Admin']);
     $this->actor = User::factory()->create();
     $this->actor->roles()->attach($role);

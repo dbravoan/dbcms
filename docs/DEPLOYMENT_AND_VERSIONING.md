@@ -65,8 +65,7 @@ Muestra en consola la versión SemVer actual leída del archivo `VERSION`, el en
 alinear ambos manifiestos con `VERSION` usando el runtime Node del contenedor y
 comprobar el diff. No incluir el `.env` privado en Git.
 
-`--tag` está retirado: el comando lo rechaza antes de modificar archivos. Una etiqueta
-identifica un commit, por lo que etiquetar tras escribir una versión sin haberla
+Una etiqueta identifica un commit, por lo que etiquetar tras escribir una versión sin haberla
 commiteado señalaría el código anterior. Crear etiquetas anotadas explícitamente
 después del commit, del gate local y de los checks de `main`.
 
@@ -81,7 +80,10 @@ Compila AMD64 y ARM64 en runners nativos separados, publica resultados intermedi
 por digest, arranca cada imagen para comprobar su runtime y sólo después crea y
 verifica el manifiesto multiarquitectura. La release espera ese manifiesto y los
 archivos ZIP, tarball y checksums. `bin/build-release-zip.sh` ejecuta Composer y PHP
-dentro del contenedor CI.
+dentro del contenedor CI. El wrapper monta el checkout de Git en solo lectura y
+únicamente `dist/` con escritura; las dependencias, la extracción y el smoke se
+ejecutan en directorios temporales. Ambos inventarios se exportan desde el mismo
+SHA capturado al comenzar. La clave de firma se monta aparte en solo lectura.
 
 `release.yml` queda limitado al repositorio canónico `dbravoan/dbcms`. Los derivados
 se preparan y actualizan por PR siguiendo [su guía](DERIVED_PROJECTS_GUIDE.md).

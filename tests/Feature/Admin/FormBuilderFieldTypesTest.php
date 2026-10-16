@@ -2,38 +2,21 @@
 
 declare(strict_types=1);
 
-use App\Models\CmsModule;
+use App\Core\Modules\ModuleManager;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\Captcha\CaptchaModuleServiceProvider;
+use Tests\Support\CmsFixtures;
+use Tests\Support\FormsCaptchaComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, FormsCaptchaComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
 });
 
-function enableCaptchaForBuilder(bool $active): void
-{
-    CmsModule::updateOrCreate(
-        ['identifier' => 'captcha'],
-        [
-            'name' => 'Security & Dynamic Captcha',
-            'version' => '1.0.0',
-            'description' => 'test',
-            'provider' => CaptchaModuleServiceProvider::class,
-            'is_pageable' => false,
-            'is_installed' => true,
-            'is_active' => $active,
-            'settings' => null,
-        ],
-    );
-}
-
 test('the form builder offers the captcha field type while the module is active', function (): void {
-    enableCaptchaForBuilder(true);
 
     $response = $this->actingAs($this->admin, 'web')->get('/admin/forms/create');
 
@@ -42,7 +25,7 @@ test('the form builder offers the captcha field type while the module is active'
 });
 
 test('the form builder hides the captcha field type when the module is disabled', function (): void {
-    enableCaptchaForBuilder(false);
+    app(ModuleManager::class)->deactivate('captcha');
 
     $response = $this->actingAs($this->admin, 'web')->get('/admin/forms/create');
 

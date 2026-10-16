@@ -13,8 +13,7 @@ return new class extends Migration
         Schema::create('post_sections', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('post_id')->constrained('posts')->cascadeOnDelete();
-            $table->string('type', 40); // 'text', 'hero', 'features', 'before_after', 'gallery', 'faq', 'cta', 'code_embed', 'widget_posts', 'widget_form', 'widget_stats', 'widget'
-            $table->string('widget_key')->nullable();
+            $table->string('type', 40);
             $table->unsignedSmallInteger('order')->default(0);
             $table->json('styling_json')->nullable(); // animations, scroll_magic, container_style
             $table->boolean('is_active')->default(true);

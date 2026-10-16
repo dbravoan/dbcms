@@ -3,13 +3,14 @@
 declare(strict_types=1);
 
 use App\Contracts\Services\ModuleSettingsServiceInterface;
-use App\Core\Modules\ModuleManager;
 use App\Models\Role;
 use App\Models\User;
 use Modules\AiAssistant\Services\AiProviderSettings;
+use Tests\Support\AiMetaComposition;
+
+uses(AiMetaComposition::class);
 
 beforeEach(function (): void {
-    app(ModuleManager::class)->discoverModules();
     $this->admin = User::factory()->create();
     $this->admin->assignRole(Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Admin']));
     $this->settings = app(ModuleSettingsServiceInterface::class);

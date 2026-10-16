@@ -65,8 +65,7 @@ class CapabilityAuthorizer
         }
         $required = $this->scopeFor($ability, $origin, $permission);
 
-        return in_array('*', $scopes, true) || in_array($required, $scopes, true)
-            || ($required === OAuthScope::MCP_WRITE->value && in_array(OAuthScope::MCP_PUBLISH->value, $scopes, true));
+        return in_array('*', $scopes, true) || in_array($required, $scopes, true);
     }
 
     public function scopeFor(string $ability, string $origin = 'mcp', ?string $permission = null): string

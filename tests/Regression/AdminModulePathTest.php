@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Tests\Regression;
+
 use Illuminate\Config\Repository;
 use Illuminate\Container\Container;
 use Illuminate\Events\Dispatcher;
@@ -13,6 +15,7 @@ use Illuminate\Support\Facades\Facade;
 use Modules\AiAssistant\AiAssistantModuleServiceProvider;
 use Modules\Mcp\McpModuleServiceProvider;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
 
 /** Exercises the actual route files and module registration without booting a DB. */
 final class AdminModulePathTest extends TestCase
@@ -41,6 +44,7 @@ final class AdminModulePathTest extends TestCase
             $provider = new $class($this->isolated);
             (new ReflectionMethod($provider, 'registerRoutes'))->invoke($provider);
         }
+        require dirname(__DIR__, 2).'/modules/Mcp/Routes/native.php';
         $this->router->getRoutes()->refreshNameLookups();
         $this->isolated->instance('url', new UrlGenerator($this->router->getRoutes(), Request::create('http://localhost')));
     }
@@ -61,7 +65,9 @@ final class AdminModulePathTest extends TestCase
         self::assertSame('admin.ai_assistant.workbench', $this->router->getRoutes()->match(Request::create('/control/ai-assistant'))->getName());
         self::assertSame('http://localhost/control/ai-assistant', (new AiAssistantModuleServiceProvider($this->isolated))->getAdminNavigation()[0]['url']);
         self::assertSame('http://localhost/control/modules/mcp/settings', (new McpModuleServiceProvider($this->isolated))->getAdminNavigation()[0]['url']);
-        self::assertSame('api/mcp/tools', $this->router->getRoutes()->getByName('api.mcp.tools')->uri());
+        $mcp = $this->router->getRoutes()->match(Request::create('/mcp/cms', 'POST'));
+        self::assertSame('mcp/cms', $mcp->uri());
+        self::assertContains('module.enabled:mcp', $mcp->gatherMiddleware());
         self::assertSame('api/ai-assistant/generate-block', $this->router->getRoutes()->match(Request::create('/api/ai-assistant/generate-block', 'POST'))->uri());
     }
 

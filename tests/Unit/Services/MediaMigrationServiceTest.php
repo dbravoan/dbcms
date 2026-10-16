@@ -12,11 +12,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\ShopComposition;
 use Tests\TestCase;
 
 class MediaMigrationServiceTest extends TestCase
 {
     use RefreshDatabase;
+    use ShopComposition;
 
     private MediaMigrationService $service;
 

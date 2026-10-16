@@ -2,16 +2,18 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\EnsureCmsIsInstalled;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities(['admin' => [], 'viewer' => ['access:admin']]);
     Storage::fake('public');
 });
 
@@ -70,6 +72,8 @@ test('media routes require manage:media permission and reject unauthorized roles
 });
 
 test('quick login redirects to login with error in production', function (): void {
+    // Exercise production authentication independently of the installer redirect.
+    $this->withoutMiddleware(EnsureCmsIsInstalled::class);
     app()['env'] = 'production';
     config([
         'app.env' => 'production',

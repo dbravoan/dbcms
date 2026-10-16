@@ -8,16 +8,16 @@ use App\Core\Capabilities\CapabilityRegistry;
 use App\Core\Capabilities\Contracts\ContentRevisionInspectorInterface;
 use App\Core\Capabilities\Resources\CapabilityResourceRegistry;
 use App\Core\Content\Contracts\EditorialWorkflowInterface;
+use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
 use App\Core\Modules\BaseModuleServiceProvider;
 use App\Core\Notifications\NotificationRecipientPolicyRegistry;
-use App\Services\Capabilities\CmsActionService;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\View;
-use Modules\Blog\Models\Post;
 use Modules\ContentAudit\Capabilities\AuditResources;
 use Modules\ContentAudit\Capabilities\EditorialActionCatalog;
+use Modules\ContentAudit\Capabilities\EditorialActions;
 use Modules\ContentAudit\Contracts\Services\AuditWorkbenchServiceInterface;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
 use Modules\ContentAudit\Contracts\Services\DiffEngineServiceInterface;
 use Modules\ContentAudit\Contracts\Services\EditorialVisibilityInterface;
 use Modules\ContentAudit\Models\ContentAudit;
@@ -25,14 +25,11 @@ use Modules\ContentAudit\Models\ContentAuditRevision;
 use Modules\ContentAudit\Observers\ContentAuditObserver;
 use Modules\ContentAudit\Services\AuditNotificationRecipientPolicy;
 use Modules\ContentAudit\Services\AuditWorkbenchService;
-use Modules\ContentAudit\Services\ContentAuditService;
 use Modules\ContentAudit\Services\ContentRevisionInspector;
 use Modules\ContentAudit\Services\DiffEngineService;
+use Modules\ContentAudit\Services\EditorialPolicy;
 use Modules\ContentAudit\Services\EditorialVisibility;
-use Modules\ContentAudit\Services\EditorialWorkflowAdapter;
-use Modules\Gallery\Models\Gallery;
-use Modules\Pages\Models\Page;
-use Modules\Shop\Models\Product;
+use Modules\ContentAudit\Services\EditorialWorkflow;
 
 class ContentAuditModuleServiceProvider extends BaseModuleServiceProvider
 {
@@ -47,9 +44,8 @@ class ContentAuditModuleServiceProvider extends BaseModuleServiceProvider
     public function register(): void
     {
         $this->app->bind(ContentRevisionInspectorInterface::class, ContentRevisionInspector::class);
-        $this->app->bind(EditorialWorkflowInterface::class, EditorialWorkflowAdapter::class);
+        $this->app->bind(EditorialWorkflowInterface::class, EditorialWorkflow::class);
         $this->app->singleton(DiffEngineServiceInterface::class, DiffEngineService::class);
-        $this->app->singleton(ContentAuditServiceInterface::class, ContentAuditService::class);
         $this->app->bind(EditorialVisibilityInterface::class, EditorialVisibility::class);
         $this->app->bind(AuditWorkbenchServiceInterface::class, AuditWorkbenchService::class);
     }
@@ -59,7 +55,7 @@ class ContentAuditModuleServiceProvider extends BaseModuleServiceProvider
         $this->app->booted(function (): void {
             EditorialActionCatalog::register(
                 $this->app->make(CapabilityRegistry::class),
-                $this->app->make(CmsActionService::class),
+                $this->app->make(EditorialActions::class),
             );
         });
         $this->app->make(CapabilityResourceRegistry::class)->register(AuditResources::descriptor());
@@ -69,51 +65,32 @@ class ContentAuditModuleServiceProvider extends BaseModuleServiceProvider
         $this->loadViewsFrom(__DIR__.'/Resources/views', 'content_audit');
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
 
-        $this->registerAuditableInference();
-        $this->registerSidebarViewComposer();
+        $this->app->booted(fn () => $this->registerAuditableEntities());
     }
 
-    protected function registerAuditableInference(): void
+    protected function registerAuditableEntities(): void
     {
-        $auditedClasses = [
-            Post::class,
-            Page::class,
-            Product::class,
-            Gallery::class,
-        ];
-
-        foreach ($auditedClasses as $modelClass) {
-            if (class_exists($modelClass)) {
-                $modelClass::observe(ContentAuditObserver::class);
-
-                $modelClass::resolveRelationUsing('contentAudit', function (Model $model) {
-                    return $model->morphOne(ContentAudit::class, 'auditable');
-                });
-
-                $modelClass::resolveRelationUsing('auditRevisions', function (Model $model) {
-                    return $model->morphMany(ContentAuditRevision::class, 'auditable')->orderByDesc('version');
-                });
+        foreach ($this->app->make(EntitySchemaRegistryInterface::class)->all() as $schema) {
+            /** @var class-string<Model> $modelClass */
+            $modelClass = $schema->model;
+            $modelClass::observe(ContentAuditObserver::class);
+            $modelClass::resolveRelationUsing('contentAudit', fn (Model $model) => $model->morphOne(ContentAudit::class, 'auditable'));
+            $modelClass::resolveRelationUsing('auditRevisions', fn (Model $model) => $model->morphMany(ContentAuditRevision::class, 'auditable')->orderByDesc('version'));
+            if ($schema->adminFormView === null) {
+                continue;
             }
+            View::composer($schema->adminFormView, function ($view) use ($modelClass): void {
+                if (! $this->app->make(EditorialPolicy::class)->isEnabled()) {
+                    return;
+                }
+                foreach ($view->getData() as $entity) {
+                    if ($entity instanceof $modelClass && $entity->exists) {
+                        $view->getFactory()->startPush('admin_form_sidebar', view('content_audit::admin.partials.audit-card', ['entity' => $entity] + $this->app->make(AuditWorkbenchServiceInterface::class)->sidebar($entity, auth()->user()))->render());
+                        break;
+                    }
+                }
+            });
         }
-    }
-
-    protected function registerSidebarViewComposer(): void
-    {
-        View::composer(['admin.pages._form', 'admin.blog.posts._form', 'admin.galleries._form', 'admin.shop.products._form'], function ($view): void {
-            if (! $this->app->make(ContentAuditServiceInterface::class)->isEnabled()) {
-                return;
-            }
-            $data = $view->getData();
-            $entity = $data['page'] ?? $data['post'] ?? $data['gallery'] ?? $data['product'] ?? null;
-            $isEdit = (bool) ($data['isEdit'] ?? false);
-
-            if ($isEdit && $entity instanceof Model && $entity->exists) {
-                $view->getFactory()->startPush(
-                    'admin_form_sidebar',
-                    view('content_audit::admin.partials.audit-card', ['entity' => $entity] + $this->app->make(AuditWorkbenchServiceInterface::class)->sidebar($entity, auth()->user()))->render()
-                );
-            }
-        });
     }
 
     public function hasDedicatedPanel(): bool
@@ -128,12 +105,16 @@ class ContentAuditModuleServiceProvider extends BaseModuleServiceProvider
 
     public function getAdminNavigation(): array
     {
+        $user = auth()->user();
+        $pending = $user instanceof User ? $this->app->make(EditorialWorkflowInterface::class)->pendingReviewCount($user) : 0;
+
         return [
             [
                 'title' => 'Auditoría & Calidad',
                 'route' => 'admin.audit.index',
                 'icon' => 'clipboard-check',
                 'permission' => 'access:admin',
+                'badge' => $pending > 0 ? (string) $pending : null,
             ],
         ];
     }

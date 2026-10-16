@@ -2,13 +2,12 @@
 
 declare(strict_types=1);
 
-use App\Contracts\Services\CreativeGenerationGatewayInterface;
 use App\Core\Capabilities\ActorContext;
 use App\Core\Modules\ModuleManager;
-use App\DTOs\Marketing\GenerationReceipt;
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\User;
+use App\Services\Cms\AdminThemeService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
@@ -18,8 +17,14 @@ use Illuminate\Validation\ValidationException;
 use Modules\CreativeStudio\Models\CreativeCampaign;
 use Modules\CreativeStudio\Models\CreativeGenerationTask;
 use Modules\CreativeStudio\Services\CreativeStudioDomainService;
+use Modules\Marketing\Contracts\CreativeGenerationGatewayInterface;
+use Modules\Marketing\DTOs\GenerationReceipt;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Tests\Support\AiMcpFixture;
+use Tests\Support\CreativeWorkflowComposition;
+use Tests\Support\PassportTestKeys;
+
+uses(CreativeWorkflowComposition::class);
 
 beforeEach(function (): void {
     Http::preventStrayRequests();
@@ -203,12 +208,13 @@ test('both admin brands render the campaign workbench using canonical components
     $service = app(CreativeStudioDomainService::class);
     $campaign = $service->createCampaign(creativeCampaignInput(), $this->actor);
     foreach (['dbcms', 'termocms'] as $brand) {
-        config(['cms.admin_theme' => $brand]);
+        app(AdminThemeService::class)->setActiveTheme($brand);
         $this->actingAs(User::findOrFail($this->actor->userId), 'web')->get(route('admin.creative-studio.show', $campaign->id))->assertOk()->assertSee('Identidad visual')->assertSee('Componer con plantillas');
     }
 });
 
 test('creative REST endpoints reject an unauthenticated reader', function (): void {
+    PassportTestKeys::configure();
     $this->getJson('/api/v1/creative-studio')->assertUnauthorized();
 });
 

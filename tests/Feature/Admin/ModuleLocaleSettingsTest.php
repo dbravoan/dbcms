@@ -7,13 +7,15 @@ use App\Models\CmsModule;
 use App\Models\Language;
 use App\Models\User;
 use App\Services\Cms\ModuleSettingsService;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\BlogComposition;
+use Tests\Support\CmsFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, BlogComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
 });
 
 /**

@@ -21,11 +21,11 @@ declare(strict_types=1);
 | Resolution order for a bare segment (deterministic, see docs/20):
 |   1. reserved tokens (enum options / bool markers)   → e.g. `recientes`
 |   2. localized connectors + shapes (dates, ranges)   → e.g. `desde-…`, `entre-…`
-|   3. term vocabularies (hyphen backtracking, `+` joins values)
+|   3. exact term vocabularies (`+` joins values)
 |   4. search fallback (only the last segment, opt-in per module)
 |
-| Every non-canonical permutation (legacy markers, `_` joins, compact ranges)
-| 301s to the canonical form. Ambiguity resolves to 404 — never served.
+| Valid non-canonical ordering redirects to the canonical form.
+| Ambiguous or unsupported syntax resolves to 404.
 */
 
 return [
@@ -45,12 +45,10 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Localized dimension markers (legacy + inline qualifiers)
+    | Localized dimension qualifiers
     |--------------------------------------------------------------------------
-    | dimension key => [locale => marker]. Markers are no longer emitted in
-    | canonical URLs: they are accepted for backwards compatibility (301 to the
-    | markerless form) and used as an inline qualifier only when a bare value
-    | would be ambiguous (`etiqueta-laravel`, `3-habitaciones`).
+    | dimension key => [locale => marker]. Inline qualifiers disambiguate a
+    | bare value when necessary (`etiqueta-laravel`, `3-habitaciones`).
     */
     'markers' => [
         'category' => ['es' => 'categoria', 'en' => 'category', 'ca' => 'categoria'],
@@ -99,11 +97,8 @@ return [
     |--------------------------------------------------------------------------
     | Multi-value separator
     |--------------------------------------------------------------------------
-    | Canonical: `+` (`/blog/laravel+vue`). Legacy `_` (and the old
-    | hyphen-only form) are still accepted and 301 to the canonical URL.
+    | Multiple values use `+` (`/blog/laravel+vue`).
     */
-    'multi_value_separator' => '+',
-    'legacy_multi_value_separators' => ['_'],
 
     /*
     |--------------------------------------------------------------------------

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\SocialPublishing\Services;
 
-use App\Contracts\Services\MarketingArtifactStoreInterface;
 use App\Core\Capabilities\ActorContext;
-use App\DTOs\Marketing\CreativePackage;
+use Modules\Marketing\Contracts\MarketingArtifactStoreInterface;
+use Modules\Marketing\DTOs\CreativePackage;
 use Modules\SocialPublishing\Models\SocialDelivery;
 use Modules\SocialPublishing\Models\SocialPublication;
 use Modules\SocialPublishing\Models\SocialRevision;

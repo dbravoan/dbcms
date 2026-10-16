@@ -1,7 +1,7 @@
-@extends('themes.db-minimal.layouts.app')
+@extends('themes::db-minimal.layouts.app')
 
 @section('title', ($translation->meta_title ?? $translation->title ?? $gallery->title) . ' - dbCMS Minimal')
-@section('meta_description', $translation->meta_description ?? $translation->description ?? $gallery->description)
+@section('meta_description', $translation->meta_description ?? $translation->description ?? $gallery->description ?? '')
 
 @section('content')
 <div class="space-y-16" x-data="{ lightboxImage: null, lightboxTitle: '' }">

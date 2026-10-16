@@ -146,7 +146,7 @@ final class ShopFilters implements FilterableModule, FilterableResults
             FilterDimension::terms(
                 'category',
                 order: 10,
-                vocabulary: fn (string $locale): array => $this->categories($locale),
+                vocabulary: fn (string $locale, string $marketCode): array => $this->categories($locale, $marketCode),
                 implicit: true,
             ),
             FilterDimension::text('search', order: 20),
@@ -164,19 +164,24 @@ final class ShopFilters implements FilterableModule, FilterableResults
     /**
      * @return array<string, array{label: string, key: int}>
      */
-    private function categories(string $locale): array
+    private function categories(string $locale, string $marketCode): array
     {
+        $market = Market::query()->where('code', $marketCode)->where('is_active', true)
+            ->whereHas('languages', fn ($languages) => $languages->where('code', $locale)->where('is_active', true))->first();
+        if ($market === null) {
+            return [];
+        }
         $map = [];
 
         $categories = ProductCategory::query()
-            ->forMarket(app()->bound('current.market') ? app('current.market') : null)
+            ->forMarket($market)
             ->where('is_active', true)
+            ->whereHas('translations', fn ($translations) => $translations->where('locale', $locale))
             ->with('translations')
             ->get();
 
         foreach ($categories as $category) {
-            $translation = $category->translations->firstWhere('locale', $locale)
-                ?? $category->translations->first();
+            $translation = $category->translations->firstWhere('locale', $locale);
 
             $slug = (string) ($translation->slug ?? '');
             $label = (string) ($translation->name ?? $category->getKey());

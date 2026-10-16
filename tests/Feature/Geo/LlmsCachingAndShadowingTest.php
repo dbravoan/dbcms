@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
 use App\Contracts\Services\GeoServiceInterface;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
-use Modules\Pages\Models\Page;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
@@ -25,7 +25,7 @@ test('/llms.txt is cached server-side across requests', function (): void {
 });
 
 test('a page with slug "llms" cannot shadow the /llms.txt endpoint', function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
 
     $page = Page::create([
         'template' => 'default',

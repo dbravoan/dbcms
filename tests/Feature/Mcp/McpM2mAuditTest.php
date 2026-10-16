@@ -6,27 +6,21 @@ use App\Models\OAuthServiceAccount;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\Auth\ServiceAccountProvisioningService;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Artisan;
 use Laravel\Passport\ClientRepository;
 use Modules\Blog\Models\Post;
 use Modules\ContentAudit\Enums\AuditStatus;
 use Modules\ContentAudit\Models\ContentAudit;
+use Tests\Support\McpEditorialComposition;
+use Tests\Support\McpFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, McpEditorialComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
-
-    Artisan::call('passport:client', [
-        '--personal' => true,
-        '--name' => 'Feature Test Personal Client',
-        '--no-interaction' => true,
-    ]);
+    McpFixtures::identities();
 
     $clientRepository = app(ClientRepository::class);
-    $this->m2mClient = app(ServiceAccountProvisioningService::class)->create('MCP service regression fixture', ['mcp:access', 'mcp:read', 'mcp:write', 'mcp:publish', 'mcp:destructive'], (int) Role::where('slug', 'author')->firstOrFail()->getKey());
+    $this->m2mClient = app(ServiceAccountProvisioningService::class)->create('MCP service regression fixture', ['mcp:access', 'mcp:read', 'mcp:write', 'mcp:destructive'], (int) Role::where('slug', 'author')->firstOrFail()->getKey());
     $this->m2mSecret = $this->m2mClient->plainSecret;
 });
 
@@ -35,21 +29,23 @@ test('machine-to-machine publications enter the editorial review queue', functio
         'grant_type' => 'client_credentials',
         'client_id' => $this->m2mClient->id,
         'client_secret' => $this->m2mSecret,
-        'scope' => 'mcp:access mcp:publish',
+        'scope' => 'mcp:access mcp:write',
     ]);
     $token = $tokenResponse->json('access_token');
 
-    $response = $this->withToken($token)->postJson('/api/mcp', [
+    $response = $this->withToken($token)->postJson('/mcp/cms', [
         'jsonrpc' => '2.0',
         'id' => 1,
         'method' => 'tools/call',
         'params' => [
-            'name' => 'cms_publish_post',
+            'name' => 'cms_entity_create',
             'arguments' => [
-                'title' => 'Artículo automatizado pendiente de revisión',
-                'content' => "## Informe automatizado\n\nEl sistema generó este artículo sin intervención humana directa.\n\n### Conclusión\nLos datos respaldan las conclusiones del informe, que ahora pasan por el circuito editorial.",
-                'summary' => 'Resumen del artículo automatizado.',
-                'locale' => 'es',
+                'type' => 'post', 'publish' => true,
+                'translations' => ['es' => [
+                    'title' => 'Artículo automatizado pendiente de revisión',
+                    'content' => "## Informe automatizado\n\nEl sistema generó este artículo sin intervención humana directa.\n\n### Conclusión\nLos datos respaldan las conclusiones del informe, que ahora pasan por el circuito editorial.",
+                    'summary' => 'Resumen del artículo automatizado.',
+                ]],
             ],
         ],
     ]);
@@ -60,11 +56,9 @@ test('machine-to-machine publications enter the editorial review queue', functio
     expect($pending['execution']['status'])->toBe('approval_required');
     $data = mcpTestHumanApproval($pending, User::where('email', 'admin@db-cms.io')->firstOrFail());
 
-    expect($data['success'])->toBeTrue()
-        ->and($data['published'])->toBeFalse()
-        ->and($data['audit_status'])->toBe(AuditStatus::PENDING_REVIEW->value);
+    expect($data['status'])->toBe('draft');
 
-    $post = Post::find($data['post_id']);
+    $post = Post::find($data['id']);
     expect($post)->not->toBeNull()
         ->and((bool) $post->is_published)->toBeFalse();
 
@@ -85,21 +79,24 @@ test('machine-to-machine publications without publish scope stay forbidden', fun
     ]);
     $token = $tokenResponse->json('access_token');
 
-    $response = $this->withToken($token)->postJson('/api/mcp', [
+    $response = $this->withToken($token)->postJson('/mcp/cms', [
         'jsonrpc' => '2.0',
         'id' => 2,
         'method' => 'tools/call',
         'params' => [
-            'name' => 'cms_publish_post',
+            'name' => 'cms_entity_create',
             'arguments' => [
-                'title' => 'Post Denegado',
-                'content' => 'Contenido que no debe publicarse sin permisos.',
+                'type' => 'post', 'publish' => true,
+                'translations' => ['es' => [
+                    'title' => 'Post Denegado',
+                    'content' => 'Contenido que no debe publicarse sin permisos.',
+                ]],
             ],
         ],
     ]);
 
-    $response->assertOk();
-    expect(json_decode((string) $response->json('result.content.0.text'), true)['denied'])->toBeTrue();
+    $response->assertStatus(400);
+    expect($response->json('error.code'))->toBe(-32602);
 });
 
 test('the mcp service user belongs to the auditable role', function (): void {
@@ -111,7 +108,7 @@ test('the mcp service user belongs to the auditable role', function (): void {
     ]);
     $token = $tokenResponse->json('access_token');
 
-    $this->withToken($token)->postJson('/api/mcp', [
+    $this->withToken($token)->postJson('/mcp/cms', [
         'jsonrpc' => '2.0',
         'id' => 3,
         'method' => 'tools/list',

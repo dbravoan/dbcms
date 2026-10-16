@@ -2,33 +2,7 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
-
-$originalInstalledLock = null;
-
-beforeEach(function () use (&$originalInstalledLock): void {
-    Config::set('cms.testing_enforce_installed_middleware', true);
-    if (File::exists(storage_path('installed'))) {
-        $originalInstalledLock = (string) File::get(storage_path('installed'));
-    }
-});
-
-afterEach(function () use (&$originalInstalledLock): void {
-    Config::set('cms.testing_enforce_installed_middleware', false);
-    // Ensure original installed lock is restored cleanly
-    if ($originalInstalledLock !== null) {
-        File::put(storage_path('installed'), $originalInstalledLock);
-    } else {
-        File::put(storage_path('installed'), (string) json_encode([
-            'installed_at' => now()->toIso8601String(),
-            'admin_email' => 'admin@db-cms.io',
-            'admin_path' => 'admin',
-            'version' => '1.0.0',
-            'platform' => 'dbCMS Enterprise',
-        ], JSON_PRETTY_PRINT));
-    }
-});
 
 test('uninstalled system redirects root web visits to /install', function (): void {
     if (File::exists(storage_path('installed'))) {

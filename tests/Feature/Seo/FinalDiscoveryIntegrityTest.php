@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
 use App\Contracts\Services\LocalizationServiceInterface;
+use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Core\Modules\ModuleManager;
 use App\Http\Controllers\Admin\Seo\SeoAuditGetController;
 use App\Models\CmsModule;
@@ -14,10 +16,11 @@ use Illuminate\Support\Facades\File;
 use Modules\Blog\Models\Category;
 use Modules\Blog\Models\Post;
 use Modules\Blog\Services\PostSeoSchemaService;
-use Modules\Pages\Models\Page;
 use Modules\Shop\Models\Product;
 use Modules\Shop\Models\ProductCategory;
-use Modules\Shop\Models\ShopSetting;
+use Tests\Support\PublicContentComposition;
+
+uses(PublicContentComposition::class);
 
 beforeEach(function (): void {
     app(ModuleManager::class)->discoverModules();
@@ -70,8 +73,8 @@ test('taxonomy discovery and routes honour activity and market restrictions', fu
 });
 
 test('the semantic corpus respects hidden prices and contains canonical sources and only published blocks', function (): void {
-    ShopSetting::set('shop.mode', 'catalog');
-    ShopSetting::set('shop.catalog_show_prices', false);
+    app(ModuleSettingsServiceInterface::class)->set('shop', 'shop_mode', 'catalog');
+    app(ModuleSettingsServiceInterface::class)->set('shop', 'catalog_show_prices', false);
     $author = User::factory()->create();
     $post = Post::withoutEvents(fn () => Post::create(['user_id' => $author->getKey(), 'is_published' => true, 'published_at' => now()]));
     $post->translations()->create(['locale' => 'es', 'title' => 'Public block article', 'slug' => 'public-block-article', 'content' => 'Legacy article text']);
@@ -119,7 +122,7 @@ test('the SEO overview counts publicly discoverable articles and labels its limi
         $post->translations()->create(['locale' => 'es', 'title' => $published ? 'Public audited article' : 'Private draft article', 'slug' => $published ? 'audited-public' : 'audited-draft', 'content' => 'Auditable content']);
     }
     $data = app(SeoAuditGetController::class)(request())->getData();
-    expect($data['postsCount'])->toBe(1);
+    expect($data['counts']['post']['count'])->toBe(1);
     $auditTemplate = File::get(resource_path('views/admin/seo/audit.blade.php'));
     expect($auditTemplate)->not->toContain('>100%</div>')->toContain('editorial_heuristic');
     $metaBox = Blade::render('<x-admin.seo-meta-box schemaType="WebPage" />');
@@ -148,4 +151,21 @@ test('publication timestamps in the future do not expose pages or articles', fun
     $this->get('/sitemaps/posts.xml')->assertOk()->assertDontSee('future-confidential-article');
     $this->get('/sitemaps/pages.xml')->assertOk()->assertDontSee('future-confidential-page');
     $this->get('/feed.xml')->assertOk()->assertDontSee('future-confidential-article');
+});
+
+test('blog semantic exports readable paragraph text while preserving teaching code', function (): void {
+    $post = Post::create(['user_id' => User::factory()->create()->getKey(), 'is_published' => true, 'published_at' => now()]);
+    $post->translations()->create([
+        'locale' => 'es',
+        'title' => 'Visible practical answer',
+        'slug' => 'visible-practical-answer',
+        'summary' => 'Verified public summary.',
+        'content' => "## Human verification\n\n<p>Review &amp; verify the original source.</p><p>Keep the approved copy.</p>\n\n```html\n<script>TEACHING CODE EXAMPLE</script>\n```",
+    ]);
+
+    $response = $this->get('/es/es/llms-full.txt')->assertOk();
+    expect((string) $response->getContent())
+        ->toContain("Review & verify the original source.\nKeep the approved copy.")
+        ->toContain('Human verification')->toContain('<script>TEACHING CODE EXAMPLE</script>')
+        ->not->toContain('<p>')->not->toContain('<h2>')->not->toContain('<pre>');
 });

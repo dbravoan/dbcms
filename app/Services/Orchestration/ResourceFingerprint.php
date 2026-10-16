@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Orchestration;
 
 use App\Core\Capabilities\Contracts\ContentRevisionInspectorInterface;
-use App\Core\Capabilities\Resources\CapabilityResourceRegistry as McpResourceRegistry;
+use App\Core\Capabilities\Resources\CapabilityResourceRegistry;
 use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
 use App\Services\Capabilities\ContentSnapshotService;
 use Illuminate\Database\Eloquent\Model;
@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  */
 final class ResourceFingerprint
 {
-    public function __construct(private readonly EntitySchemaRegistryInterface $entities, private readonly McpResourceRegistry $resources) {}
+    public function __construct(private readonly EntitySchemaRegistryInterface $entities, private readonly CapabilityResourceRegistry $resources) {}
 
     /**
      * @param  array<string,mixed>  $args

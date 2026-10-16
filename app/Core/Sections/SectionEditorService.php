@@ -54,11 +54,6 @@ class SectionEditorService
             $base['id'] = (int) $section->getKey();
             $base['type'] = (string) ($section->getAttribute('type') ?? 'text');
 
-            $widgetKey = (string) ($section->getAttribute('widget_key') ?? '');
-            if ($widgetKey !== '') {
-                $base['widget_key'] = $widgetKey;
-            }
-
             $section->loadMissing('translations');
             $translations = $section->getRelation('translations');
 

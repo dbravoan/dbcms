@@ -1,4 +1,4 @@
-@extends('themes.db-cyber.layouts.app')
+@extends('themes::db-cyber.layouts.app')
 
 @section('title', app()->getLocale() === 'es' ? 'Galerías y álbumes multimedia' : (app()->getLocale() === 'ca' ? 'Galeries i àlbums multimèdia' : 'Media Galleries & Showcase'))
 

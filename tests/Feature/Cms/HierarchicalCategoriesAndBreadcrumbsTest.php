@@ -2,14 +2,30 @@
 
 declare(strict_types=1);
 
+use App\Models\Market;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Models\Category;
 use Modules\Blog\Models\Post;
+use Tests\Support\BlogComposition;
+use Tests\Support\BlogFixtures;
+use Tests\Support\CmsFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, BlogComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    $post = BlogFixtures::post();
+    $parent = null;
+    foreach ([['tecnologia', 'technology', 'Tecnología y software'], ['ia-geo', 'ai-geo', 'Inteligencia artificial y GEO'], ['modelos-llm', 'llm-models', 'Modelos LLM y agentes']] as [$es, $en, $title]) {
+        $category = Category::create(['is_active' => true, 'parent_id' => $parent?->id]);
+        foreach (['es' => $es, 'en' => $en] as $locale => $slug) {
+            $category->translations()->create(['locale' => $locale, 'name' => $title, 'slug' => $slug]);
+        }
+        $category->markets()->sync(Market::pluck('id')->all());
+        $parent = $category;
+    }
+    $post->update(['category_id' => $parent->id]);
 });
 
 test('hierarchical category tree computes recursive slug paths correctly', function (): void {

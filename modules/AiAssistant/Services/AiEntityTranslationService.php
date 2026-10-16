@@ -10,7 +10,7 @@ use App\Core\Capabilities\ExecutionContext;
 use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
 use App\Core\Content\EntitySchema;
 use App\Core\Modules\ModuleManager;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityReadService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use Modules\AiAssistant\Contracts\AiConfigBridgeInterface;
@@ -21,7 +21,7 @@ use UnexpectedValueException;
 /** Produces a preview only: persistence remains the entity owner's responsibility. */
 final class AiEntityTranslationService implements AiEntityTranslationServiceInterface
 {
-    public function __construct(private readonly EntitySchemaRegistryInterface $entities, private readonly CapabilityAuthorizer $authorizer, private readonly ExecutionContext $execution, private readonly LocalizationServiceInterface $localization, private readonly ModuleManager $modules, private readonly EntityCrudService $resources, private readonly AiConfigBridgeInterface $bridge, private readonly StructuredTranslationPayload $payload) {}
+    public function __construct(private readonly EntitySchemaRegistryInterface $entities, private readonly CapabilityAuthorizer $authorizer, private readonly ExecutionContext $execution, private readonly LocalizationServiceInterface $localization, private readonly ModuleManager $modules, private readonly EntityReadService $resources, private readonly AiConfigBridgeInterface $bridge, private readonly StructuredTranslationPayload $payload) {}
 
     public function translate(EntityTranslationRequest $request): array
     {

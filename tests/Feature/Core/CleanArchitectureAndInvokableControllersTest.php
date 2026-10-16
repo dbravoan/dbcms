@@ -17,8 +17,9 @@ use App\Models\User;
 use Database\Seeders\CmsFoundationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
+use Tests\Support\ModuleAdministrationComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, ModuleAdministrationComposition::class);
 
 beforeEach(function (): void {
     $this->seed(CmsFoundationSeeder::class);
@@ -58,22 +59,13 @@ test('deactivating module hides it from navigation identifiers and items', funct
     $moduleManager = app(ModuleManager::class);
     $moduleManager->discoverModules();
 
-    $shopModule = CmsModule::where('identifier', 'shop')->first();
-    if ($shopModule) {
-        $shopModule->update(['is_active' => false]);
-        $moduleManager->deactivate('shop');
-
-        /** @var AdminNavigationServiceInterface $navService */
-        $navService = app(AdminNavigationServiceInterface::class);
-
-        expect($navService->isModuleVisible('shop'))->toBeFalse();
-        expect($navService->getActiveModuleIdentifiers())->not->toContain('shop');
-
-        $sections = $navService->getNavigationSections($this->adminUser);
-        $titles = array_map(fn (AdminNavigationSection $s) => $s->title, $sections);
-
-        expect($titles)->not->toContain('Comercio y catálogo');
-    }
+    $shopModule = CmsModule::where('identifier', 'shop')->firstOrFail();
+    $moduleManager->deactivate('shop');
+    $navService = app(AdminNavigationServiceInterface::class);
+    expect($navService->getActiveModuleIdentifiers())->not->toContain('shop');
+    $sections = $navService->getNavigationSections($this->adminUser);
+    $routes = collect($sections)->flatMap(fn (AdminNavigationSection $section) => $section->items)->pluck('route')->all();
+    expect($routes)->not->toContain('admin.shop.products.index');
 });
 
 test('module settings get controller is invokable and renders view', function (): void {

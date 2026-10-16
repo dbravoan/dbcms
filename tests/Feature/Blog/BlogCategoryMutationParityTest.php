@@ -10,7 +10,10 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Modules\Blog\Models\Category;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
+use Modules\ContentAudit\Services\EditorialWorkflow;
+use Tests\Support\BlogShopAuditComposition;
+
+uses(BlogShopAuditComposition::class);
 
 beforeEach(function (): void {
     Language::firstOrCreate(['code' => 'es'], ['name' => 'Spanish', 'native_name' => 'Español', 'is_default' => true, 'is_active' => true]);
@@ -62,7 +65,7 @@ it('stages published category edits and hydrates the inline editor until a human
     expect($category->fresh()->translations->first()->name)->toBe('Live category');
     $this->get(route('admin.blog.categories.index'))->assertOk()->assertViewHas('categories', fn ($rows): bool => $rows->getCollection()->firstWhere('id', $category->id)->translations->first()->name === 'Pending category')->assertSee(route('admin.audit.review', ['type' => 'blog_categories', 'id' => $category->id]), false);
     expect($category->fresh()->translations->first()->name)->toBe('Live category');
-    app(ContentAuditServiceInterface::class)->approve($category->fresh(), $this->user);
+    app(EditorialWorkflow::class)->approve($category->fresh(), $this->user);
     expect($category->fresh()->translations->first()->name)->toBe('Pending category');
 });
 

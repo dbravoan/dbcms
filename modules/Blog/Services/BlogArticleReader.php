@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace Modules\Blog\Services;
 
 use App\Contracts\Services\LocalizationServiceInterface;
+use App\Core\Sections\SectionRendererService;
 use App\DTOs\Front\FrontPageData;
 use App\DTOs\Front\PublicContentContext;
 use App\Services\Cms\FrontViewResolver;
 use App\Services\Seo\SeoMetaService;
 use Modules\Blog\Contracts\BlogArticleReaderInterface;
 use Modules\Blog\Models\Post;
-use Modules\Pages\Services\SectionRendererService;
 
 final class BlogArticleReader implements BlogArticleReaderInterface
 {

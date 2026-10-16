@@ -2,10 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Contracts\Services\MarketingArtifactStoreInterface;
 use App\Core\Capabilities\ActorContext;
 use App\Core\Modules\ModuleManager;
-use App\DTOs\Marketing\CreativePackage;
 use App\Models\Language;
 use App\Models\Market;
 use Illuminate\Http\UploadedFile;
@@ -13,18 +11,20 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Modules\CreativeStudio\Services\CreativeStudioDomainService;
+use Modules\Marketing\Contracts\MarketingArtifactStoreInterface;
+use Modules\Marketing\DTOs\CreativePackage;
 use Modules\SocialPublishing\Models\SocialAccount;
 use Modules\SocialPublishing\Models\SocialRevision;
 use Modules\SocialPublishing\Services\PublicationService;
 use Tests\Support\AiMcpFixture;
+use Tests\Support\CreativeSocialComposition;
+
+uses(CreativeSocialComposition::class);
 
 test('a composed JPEG transfers to Instagram as independent approved bytes and survives source changes', function (): void {
     Http::preventStrayRequests();
     Queue::fake();
     $modules = app(ModuleManager::class);
-    $modules->discoverModules();
-    $modules->activate('creative-studio');
-    $modules->activate('social-publishing');
     $user = AiMcpFixture::admin();
     Auth::guard('web')->login($user);
     $actor = new ActorContext($user->id);

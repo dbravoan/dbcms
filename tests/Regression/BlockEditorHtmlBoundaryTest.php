@@ -7,10 +7,11 @@ use Illuminate\Support\Facades\Blade;
 
 uses(TestCase::class);
 
-it('keeps carousel and following form controls outside conditional block templates', function (string $blockKey): void {
+it('keeps following form controls outside the schema field templates', function (string $blockKey): void {
     $html = view('components.admin.blocks._block_form_body', [
         'blockKey' => $blockKey,
         'dynamicPayloads' => [],
+        'activeBlockTypes' => [],
         'isSubBlock' => $blockKey === 'subBlock',
     ])->render();
     $document = new DOMDocument;
@@ -20,7 +21,7 @@ it('keeps carousel and following form controls outside conditional block templat
         $xpath = new DOMXPath($document);
         expect($xpath->query('//button[@id="after-editor"]')->length)->toBe(1);
         expect($xpath->query('//button[@id="after-editor"]/ancestor::template')->length)->toBe(0);
-        expect($xpath->query('//template[contains(@x-if, "carousel")]/ancestor::template')->length)->toBe(0);
+        expect($xpath->query('//template[@x-for="field in schemaFields('.$blockKey.')"]')->length)->toBe(1);
     } finally {
         libxml_clear_errors();
         libxml_use_internal_errors($previous);

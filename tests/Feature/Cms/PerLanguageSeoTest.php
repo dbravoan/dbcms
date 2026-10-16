@@ -2,21 +2,25 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Contracts\PageDomainServiceInterface;
+use App\Content\Pages\Models\Page;
 use App\Models\Language;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Schema;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
-use Modules\Pages\Contracts\PageDomainServiceInterface;
-use Modules\Pages\Models\Page;
+use Modules\ContentAudit\Services\EditorialWorkflow;
 use Modules\Shop\Contracts\ShopEditorialServiceInterface;
 use Modules\Shop\Models\Product;
+use Tests\Support\CmsFixtures;
+use Tests\Support\PerLanguageSeoComposition;
+use Tests\Support\ShopFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, PerLanguageSeoComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en', 'fr']);
+    CmsFixtures::identities();
+    CmsFixtures::home(['es', 'en', 'fr']);
+    ShopFixtures::product();
 });
 
 /**
@@ -70,10 +74,10 @@ test('a single page save persists the SEO of every language', function (): void 
         expect($translation->meta_description)->toBe('DESC '.strtoupper($locale));
         expect($translation->schema_type)->toBe('WebPage');
     }
-    app(ContentAuditServiceInterface::class)->approve($live, $admin);
+    app(EditorialWorkflow::class)->approve($live, $admin);
     expect($live->fresh()->translations->pluck('meta_title', 'locale')->all())->toBe($meta);
     expect($live->fresh()->is_published)->toBeTrue();
-})->skip(fn (): bool => ! Language::where('code', 'fr')->exists(), 'French is not active in this installation');
+});
 
 test('the SEO box submits nested metadata for active and inactive languages', function (): void {
     $page = Page::whereHas('translations')->firstOrFail();
@@ -98,15 +102,7 @@ test('the SEO box submits nested metadata for active and inactive languages', fu
 });
 
 test('product and gallery saves accept the per-language SEO', function (): void {
-    if (! class_exists(Product::class)) {
-        $this->markTestSkipped('Shop module not installed');
-    }
-
-    $product = Product::with('translations')->first();
-
-    if ($product === null) {
-        $this->markTestSkipped('No product seeded');
-    }
+    $product = Product::with('translations')->firstOrFail();
 
     // French is created here so the demo seeder stays untouched.
     Language::firstOrCreate(['code' => 'fr'], [
@@ -139,7 +135,7 @@ test('product and gallery saves accept the per-language SEO', function (): void 
         ->and($meta['fr'] ?? null)->toBe('PROD FR');
     expect($draft->translations->firstWhere('locale', 'es')->meta_description)->toBe('PD ES');
     expect($draft->translations->firstWhere('locale', 'fr')->meta_description)->toBe('PD FR');
-    app(ContentAuditServiceInterface::class)->approve($live, $admin);
+    app(EditorialWorkflow::class)->approve($live, $admin);
     expect($live->fresh()->translations->pluck('meta_title', 'locale')->all())->toBe($meta);
     expect($live->fresh()->is_active)->toBeTrue();
-})->skip(fn (): bool => ! Schema::hasTable('product_translations'), 'Shop tables missing');
+});

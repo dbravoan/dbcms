@@ -2,22 +2,31 @@
 
 declare(strict_types=1);
 
-use Database\Seeders\PlatformShowcaseSeeder;
+use App\Models\Market;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Modules\Blog\Models\Category;
 use Modules\Blog\Models\Post;
 use Modules\Blog\Models\Tag;
-use Modules\Mcp\Services\McpServerService;
+use Modules\Shop\Models\ProductCategory;
+use Tests\Support\CmsFixtures;
+use Tests\Support\FilterFixtures;
+use Tests\Support\McpFilterComposition;
+use Tests\Support\McpFixtures;
+use Tests\Support\McpProtocolClient;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, McpFilterComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    McpFixtures::identities();
+    CmsFixtures::localization(['es', 'en'], ['es', 'us']);
+    FilterFixtures::blog();
+    FilterFixtures::shop();
     mcpTestBindIdentity();
 });
 
 function callMcpTool(string $tool, array $arguments = []): array
 {
-    $response = app(McpServerService::class)->handle([
+    $response = app(McpProtocolClient::class)->handle([
         'jsonrpc' => '2.0',
         'id' => 'test',
         'method' => 'tools/call',
@@ -34,7 +43,7 @@ function callMcpTool(string $tool, array $arguments = []): array
 }
 
 test('the webmcp filter tools are part of the server manifest', function (): void {
-    $response = app(McpServerService::class)->handle([
+    $response = app(McpProtocolClient::class)->handle([
         'jsonrpc' => '2.0',
         'id' => 'list',
         'method' => 'tools/list',
@@ -69,7 +78,7 @@ test('an agent can resolve a friendly path into its canonical url and policy', f
 
     $resolved = callMcpTool('cms_resolve_filter_url', [
         'module' => 'blog',
-        'path' => 'etiqueta/laravel/orden/recientes',
+        'path' => 'laravel/recientes',
         'market' => 'es',
         'locale' => 'es',
     ]);
@@ -86,7 +95,7 @@ test('an agent can resolve a friendly path into its canonical url and policy', f
 test('an invalid path is reported instead of served', function (): void {
     $resolved = callMcpTool('cms_resolve_filter_url', [
         'module' => 'blog',
-        'path' => 'etiqueta/no-existe',
+        'path' => 'no-existe/otro',
         'market' => 'es',
         'locale' => 'es',
     ]);
@@ -99,7 +108,7 @@ test('an agent can browse the catalogue through a friendly path or a filters map
     $tag = Tag::create(['name' => 'Laravel', 'slug' => 'laravel']);
     $post->tags()->attach($tag->getKey());
 
-    $byPath = callMcpTool('cms_browse_content', ['module' => 'blog', 'path' => 'etiqueta/laravel', 'market' => 'es', 'locale' => 'es']);
+    $byPath = callMcpTool('cms_browse_content', ['module' => 'blog', 'path' => 'laravel', 'market' => 'es', 'locale' => 'es']);
 
     expect($byPath['total'])->toBeGreaterThan(0)
         ->and($byPath['items'])->not->toBeEmpty()
@@ -117,3 +126,17 @@ test('the shop catalogue is browsable too', function (): void {
     expect($browse)->toHaveKey('total')
         ->and($browse['canonical_url'])->toContain('/es/es/tienda/precio-asc');
 });
+
+test('agent category vocabularies use the selected market rather than request-global state', function (string $module): void {
+    $spain = Market::query()->where('code', 'es')->sole();
+    app()->instance('current.market', $spain);
+    $class = $module === 'blog' ? Category::class : ProductCategory::class;
+    $category = $class::create(['is_active' => true]);
+    $category->translations()->create(['locale' => 'en', 'name' => 'Selected market taxonomy', 'slug' => 'selected-market-taxonomy']);
+    $category->markets()->sync([$spain->getKey()]);
+
+    $local = callMcpTool('cms_list_filter_dimensions', ['module' => $module, 'market' => 'es', 'locale' => 'en']);
+    $foreign = callMcpTool('cms_list_filter_dimensions', ['module' => $module, 'market' => 'us', 'locale' => 'en']);
+    expect(json_encode($local, JSON_THROW_ON_ERROR))->toContain('Selected market taxonomy');
+    expect(json_encode($foreign, JSON_THROW_ON_ERROR))->not->toContain('Selected market taxonomy');
+})->with(['blog', 'shop']);

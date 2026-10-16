@@ -6,7 +6,7 @@ use App\Core\Updates\ProjectUpdatePlanner;
 
 function updateProjectProfile(): array
 {
-    return ['schema' => 1, 'name' => 'sample', 'brand' => 'termocms', 'themes' => ['db-minimal'], 'default_theme' => 'db-minimal', 'core' => ['repository' => 'dbravoan/dbcms', 'version' => '1.2.0', 'sha' => str_repeat('a', 40)]];
+    return ['schema' => 1, 'name' => 'sample', 'brand' => 'termocms', 'themes' => ['db-minimal'], 'default_theme' => 'db-minimal', 'deployment' => 'github-actions', 'core' => ['repository' => 'dbravoan/dbcms', 'version' => '1.2.0', 'sha' => str_repeat('a', 40)]];
 }
 
 test('project update compares upstream base local and target without overwriting customizations', function (): void {
@@ -62,12 +62,6 @@ test('deployment projection keeps only selected official controls and preserves 
     'none' => ['none', []],
 ]);
 
-test('legacy deployment projection retains alternatives without guessing a driver', function (): void {
-    $target = ['.github/workflows/deploy.yml' => 'rsync', '.github/workflows/deploy-docker.yml' => 'docker', '.github/workflows/deploy-ansistrano.yml' => 'ansistrano', '.github/workflows/prepare-project.yml' => 'bootstrap'];
-    $plan = (new ProjectUpdatePlanner)->compare([], [], $target, updateProjectProfile());
-    expect(array_column($plan->changes, 'path'))->toBe(['.github/workflows/deploy-ansistrano.yml', '.github/workflows/deploy-docker.yml', '.github/workflows/deploy.yml']);
-});
-
 test('excluded deployment controls already customized locally are untouched during core updates', function (): void {
     $plan = (new ProjectUpdatePlanner)->compare(['bin/deploy-container.sh' => 'base'], ['bin/deploy-container.sh' => 'own'], ['bin/deploy-container.sh' => 'upstream'], [...updateProjectProfile(), 'deployment' => 'rsync']);
     expect($plan->changes)->toBeEmpty()->and($plan->conflicts)->toBeEmpty()->and($plan->excluded)->toContain('bin/deploy-container.sh');
@@ -77,3 +71,42 @@ test('local deployment excludes future upstream github controls without deleting
     $plan = (new ProjectUpdatePlanner)->compare([], ['.github/workflows/own.yml' => 'custom'], ['.github/dependabot.yml' => 'upstream', '.github/workflows/own.yml' => 'upstream'], [...updateProjectProfile(), 'deployment' => 'rsync']);
     expect($plan->changes)->toBeEmpty()->and($plan->conflicts)->toBeEmpty()->and($plan->excluded)->toContain('.github/dependabot.yml', '.github/workflows/own.yml');
 });
+
+test('curated updates retain selected source without restoring omitted extensions or showcase', function (): void {
+    $selection = ['module_directories' => ['Blog'], 'block_package_directories' => ['Basic'], 'include_showcase' => false];
+    $profile = [...updateProjectProfile(), 'source_selection' => $selection];
+    $base = ['modules/Blog/Post.php' => 'old', 'block-packages/Basic/Text.php' => 'old', 'modules/Shop/Shop.php' => 'omitted', 'database/seeders/PlatformShowcaseSeeder.php' => 'omitted', 'cms-project.json' => 'upstream'];
+    $local = ['modules/Blog/Post.php' => 'old', 'block-packages/Basic/Text.php' => 'old', 'modules/Own/private.php' => 'project-only', 'app/own.php' => 'project-only', 'cms-project.json' => 'project profile'];
+    $target = [...$base, 'modules/Blog/Post.php' => 'new', 'modules/Blog/New.php' => 'new', 'block-packages/Basic/Text.php' => 'new', 'block-packages/Charts/New.php' => 'new', 'modules/Future/New.php' => 'new', 'database/seeders/PlatformShowcaseSeeder.php' => 'new'];
+    $plan = (new ProjectUpdatePlanner)->compare($base, $local, $target, $profile);
+
+    expect(array_column($plan->changes, 'path'))->toBe(['block-packages/Basic/Text.php', 'modules/Blog/New.php', 'modules/Blog/Post.php'])
+        ->and($plan->conflicts)->toBeEmpty()
+        ->and($plan->excluded)->toContain('modules/Shop/Shop.php', 'block-packages/Charts/New.php', 'modules/Future/New.php', 'database/seeders/PlatformShowcaseSeeder.php', 'cms-project.json');
+});
+
+test('source projection is explicit and generic profiles retain the upstream source catalogue', function (): void {
+    $files = ['modules/Shop/New.php' => 'new', 'block-packages/Charts/New.php' => 'new', 'database/seeders/PlatformShowcaseSeeder.php' => 'new'];
+    $planner = new ProjectUpdatePlanner;
+    $generic = $planner->compare([], [], $files, updateProjectProfile());
+    expect(array_column($generic->changes, 'path'))->toBe(['block-packages/Charts/New.php', 'database/seeders/PlatformShowcaseSeeder.php', 'modules/Shop/New.php']);
+
+    $coreOnly = [...updateProjectProfile(), 'source_selection' => ['module_directories' => [], 'block_package_directories' => [], 'include_showcase' => true]];
+    $projected = $planner->compare([], [], $files, $coreOnly);
+    expect(array_column($projected->changes, 'path'))->toBe(['database/seeders/PlatformShowcaseSeeder.php']);
+});
+
+test('malformed source projection fails even when the upstream inventory is empty', function (mixed $selection): void {
+    expect(fn () => (new ProjectUpdatePlanner)->compare([], [], [], [...updateProjectProfile(), 'source_selection' => $selection]))->toThrow(DomainException::class);
+})->with([
+    'null declaration' => [null],
+    'missing list' => [['module_directories' => ['Blog'], 'include_showcase' => false]],
+    'unknown field' => [['module_directories' => ['Blog'], 'block_package_directories' => ['Basic'], 'include_showcase' => false, 'other' => true]],
+    'directory map' => [['module_directories' => ['selected' => 'Blog'], 'block_package_directories' => ['Basic'], 'include_showcase' => false]],
+    'duplicate module' => [['module_directories' => ['Blog', 'Blog'], 'block_package_directories' => ['Basic'], 'include_showcase' => false]],
+    'duplicate package' => [['module_directories' => ['Blog'], 'block_package_directories' => ['Basic', 'Basic'], 'include_showcase' => false]],
+    'module traversal' => [['module_directories' => ['../Blog'], 'block_package_directories' => ['Basic'], 'include_showcase' => false]],
+    'package path' => [['module_directories' => ['Blog'], 'block_package_directories' => ['Basic/Other'], 'include_showcase' => false]],
+    'invalid directory value' => [['module_directories' => [7], 'block_package_directories' => ['Basic'], 'include_showcase' => false]],
+    'nonboolean showcase' => [['module_directories' => ['Blog'], 'block_package_directories' => ['Basic'], 'include_showcase' => 'false']],
+]);

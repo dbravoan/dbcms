@@ -6,35 +6,39 @@ namespace Modules\Blog\Widgets;
 
 use App\Core\Widgets\BaseWidgetComponent;
 use App\Models\Market;
-use Illuminate\Contracts\View\View;
 use Modules\Blog\Models\Post;
 
 class LatestPostsGridWidget extends BaseWidgetComponent
 {
-    public static function getKey(): string
+    public function getRequiredModule(): ?string
+    {
+        return 'blog';
+    }
+
+    public function getType(): string
     {
         return 'blog.latest_posts_grid';
     }
 
-    public static function getTitle(): string
+    public function getName(): string
     {
         return 'Latest Blog Posts Grid';
     }
 
-    public static function getOptionsSchema(): array
+    public function getEditorSchema(): array
     {
         return [
             'limit' => ['type' => 'number', 'default' => 6, 'label' => 'Total Posts'],
-            'columns' => ['type' => 'select', 'options' => [2, 3, 4], 'default' => 3],
+            'grid_columns' => ['type' => 'select', 'options' => [2, 3, 4], 'default' => 3],
         ];
     }
 
-    public function render(array $parameters = []): View|string
+    public function render(array $parameters = [], ?Market $market = null, ?string $locale = null): string
     {
         $limit = isset($parameters['limit']) && is_numeric($parameters['limit']) ? (int) $parameters['limit'] : 6;
         /** @var Market|null $market */
-        $market = app()->bound('current.market') ? app('current.market') : null;
-        $locale = app()->getLocale();
+        $market ??= app()->bound('current.market') ? app('current.market') : null;
+        $locale ??= app()->getLocale();
 
         $posts = Post::published()
             ->forMarket($market)

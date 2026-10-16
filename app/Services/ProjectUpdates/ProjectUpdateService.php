@@ -194,9 +194,11 @@ final class ProjectUpdateService implements ProjectUpdateServiceInterface
                 throw new \DomainException('Invalid project theme identifier.');
             }
         }
-        if (array_key_exists('deployment', $profile) && ! in_array($profile['deployment'], ProjectDeploymentPolicy::DRIVERS, true)) {
+        if (! in_array($profile['deployment'] ?? null, ProjectDeploymentPolicy::DRIVERS, true)) {
             throw new \DomainException('Invalid project deployment selection.');
         }
+
+        (new ProjectUpdatePlanner)->validateSourceSelection($profile);
 
         return $profile;
     }

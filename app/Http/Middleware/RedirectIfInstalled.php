@@ -13,9 +13,11 @@ class RedirectIfInstalled
     public function handle(Request $request, Closure $next): Response
     {
         $isInstalled = file_exists(storage_path('installed'));
-        $shouldEnforce = ! app()->environment('testing') || config('cms.testing_enforce_installed_middleware', false);
+        if (! $isInstalled && $request->routeIs('install.step5')) {
+            return redirect()->route('install.step1');
+        }
 
-        if ($isInstalled && $shouldEnforce) {
+        if ($isInstalled) {
             // Allow the completion screen right after a successful install.
             if ($request->routeIs('install.step5') && $request->session()->get('install.just_installed') === true) {
                 return $next($request);

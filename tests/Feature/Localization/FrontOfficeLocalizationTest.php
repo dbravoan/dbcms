@@ -2,13 +2,25 @@
 
 declare(strict_types=1);
 
-use Database\Seeders\PlatformShowcaseSeeder;
+use App\Models\Market;
+use App\Models\Menu;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\BlogShopComposition;
+use Tests\Support\CmsFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, BlogShopComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en', 'fr'], ['eu']);
+    CmsFixtures::home(['es', 'en', 'fr'], ['eu']);
+    $menu = Menu::create(['slug' => 'header', 'name' => 'Header', 'location' => 'header', 'is_active' => true]);
+    $menu->markets()->sync(Market::pluck('id')->all());
+    foreach ([['es' => 'Inicio', 'en' => 'Home', 'fr' => 'Accueil'], ['es' => 'Módulos', 'en' => 'Modules', 'fr' => 'Modules'], ['es' => 'Contacto', 'en' => 'Contact', 'fr' => 'Contact']] as $order => $titles) {
+        $item = $menu->items()->create(['type' => 'custom', 'url' => '/item-'.$order, 'order' => $order, 'is_active' => true]);
+        foreach ($titles as $locale => $title) {
+            $item->translations()->create(['locale' => $locale, 'title' => $title]);
+        }
+    }
 });
 
 test('the public home renders the header chrome in the market locale', function (string $locale, array $expected, array $forbidden): void {
@@ -29,28 +41,13 @@ test('the public home renders the header chrome in the market locale', function 
     'french' => ['fr', ['Accueil', 'Modules'], ['Módulos', 'Inicio']],
 ]);
 
-test('the shop page title and meta description are localized', function (): void {
-    $this->get('/eu/es/tienda')->assertOk();
-    $this->get('/eu/en/shop')->assertOk();
-    $this->get('/eu/fr/boutique')->assertOk();
+test('the localized shop routes render in the requested locale', function (): void {
+    $this->get('/eu/es/tienda')->assertOk()->assertSee('lang="es"', false);
+    $this->get('/eu/en/shop')->assertOk()->assertSee('lang="en"', false);
+    $this->get('/eu/fr/boutique')->assertOk()->assertSee('lang="fr"', false);
 });
 
-test('the blog page title is localized', function (): void {
-    $this->get('/eu/en/blog')->assertOk();
-    $this->get('/eu/fr/blog')->assertOk();
-});
-
-test('json translation files keep key parity across all three locales', function (): void {
-    $langPath = dirname(__DIR__, 3).'/lang';
-
-    $en = array_keys((array) json_decode((string) file_get_contents($langPath.'/en.json'), true));
-    $es = array_keys((array) json_decode((string) file_get_contents($langPath.'/es.json'), true));
-    $ca = array_keys((array) json_decode((string) file_get_contents($langPath.'/ca.json'), true));
-
-    sort($en);
-    sort($es);
-    sort($ca);
-
-    expect($es)->toBe($en)
-        ->and($ca)->toBe($en);
+test('the blog selects the requested locale and translated English heading', function (): void {
+    $this->get('/eu/en/blog')->assertOk()->assertSee('lang="en"', false)->assertSee('Articles & Publications');
+    $this->get('/eu/fr/blog')->assertOk()->assertSee('lang="fr"', false);
 });

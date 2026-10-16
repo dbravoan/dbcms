@@ -2,23 +2,33 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Modules\AiAssistant\Contracts\AiAssistantDomainServiceInterface;
 use Modules\AiAssistant\Services\BlockIntelligenceService;
 use Modules\Blog\Models\Post;
 use Modules\Gallery\Models\Gallery;
-use Modules\Pages\Models\Page;
 use Modules\Shop\Models\Product;
+use Tests\Support\AiCompletionFixture;
+use Tests\Support\AiVisualModulesComposition;
+use Tests\Support\CmsFixtures;
+use Tests\Support\VisualContentFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, AiVisualModulesComposition::class);
 
 beforeEach(function (): void {
     config(['services.gemini.key' => 'fake-gemini-key']);
     Http::preventStrayRequests();
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    VisualContentFixtures::home();
+    VisualContentFixtures::form();
+    VisualContentFixtures::post();
+    VisualContentFixtures::product();
+    VisualContentFixtures::gallery();
+    AiCompletionFixture::configure();
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
 });
 

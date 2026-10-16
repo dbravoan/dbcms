@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
+import { createBlockManager } from '../../resources/js/block-manager.js';
 
 const source = readFileSync(new URL('../../modules/AiAssistant/Resources/views/admin/partials/entity_translation.blade.php', import.meta.url), 'utf8');
 const script = source.match(/<script[^>]*>([\s\S]*?)<\/script>/)[1];
@@ -75,12 +76,15 @@ test('page, post and product forms apply the target without changing its slug or
 });
 
 test('block manager applies translated nested structure only to its named locale and form', () => {
-    const manager = readFileSync(new URL('../../resources/views/components/admin/block-manager.blade.php', import.meta.url), 'utf8');
-    const handler = manager.match(/addEventListener\('cms-translation-blocks', \(event\) => \{([\s\S]*?)\n                \}\);/)[1];
+    const listeners = new Map();
+    const previousWindow = globalThis.window;
+    globalThis.window = { addEventListener: (name, handler) => listeners.set(name, handler) };
     const form = {};
-    const state = { $el: { closest: () => form }, languages: [{ code: 'es' }, { code: 'en' }], activeLocale: 'es', sectionsByLocale: { es: [{ id: 'original' }] }, syncBlocksToLocale() {} };
+    const state = createBlockManager({ es: [{ id: 'original' }] }, 'es', [], [{ code: 'es' }, { code: 'en' }]);
+    state.$el = { closest: () => form };
+    try { state.init(); } finally { globalThis.window = previousWindow; }
     const blocks = [{ id: 'sec_1', columns: [{ id: 'col_1', blocks: [{ id: 'block_1', title: 'Hello' }] }] }];
-    const apply = detail => Function('event', handler).call(state, { detail });
+    const apply = detail => listeners.get('cms-translation-blocks')({ detail });
     apply({ form: {}, targetLocale: 'en', blocks });
     assert.equal(state.sectionsByLocale.en, undefined);
     apply({ form, targetLocale: 'en', blocks });

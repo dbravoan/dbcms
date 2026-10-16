@@ -10,11 +10,8 @@ use App\Core\Modules\Contracts\MaintenanceModeInterface;
 use App\Core\Modules\ModuleManager;
 use App\DTOs\Admin\AdminNavigationItem;
 use App\DTOs\Admin\AdminNavigationSection;
-use App\Models\CmsModule;
 use App\Models\User;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Modules\Shop\Models\ShopSetting;
 
 class AdminNavigationService implements AdminNavigationServiceInterface
 {
@@ -27,34 +24,7 @@ class AdminNavigationService implements AdminNavigationServiceInterface
      */
     public function getActiveModuleIdentifiers(): array
     {
-        try {
-            if (Schema::hasTable('cms_modules')) {
-                $modules = CmsModule::all();
-                $enabled = [];
-                foreach ($modules as $module) {
-                    $id = (string) $module->identifier;
-                    if ($this->moduleManager->isModuleEnabled($id)) {
-                        $enabled[] = strtolower($id);
-                    }
-                }
-
-                return $enabled;
-            }
-        } catch (\Throwable) {
-            // DB not ready or migrated
-        }
-
-        return [];
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function isModuleVisible(string $identifier): bool
-    {
-        $normalized = strtolower($identifier);
-
-        return in_array($normalized, $this->getActiveModuleIdentifiers(), true);
+        return array_keys($this->moduleManager->getActiveModules());
     }
 
     /**
@@ -62,10 +32,6 @@ class AdminNavigationService implements AdminNavigationServiceInterface
      */
     public function getPendingAuditCount(): int
     {
-        if (! $this->isModuleVisible('content_audit')) {
-            return 0;
-        }
-
         try {
             $actor = auth()->user();
             if ($actor instanceof User) {
@@ -95,26 +61,6 @@ class AdminNavigationService implements AdminNavigationServiceInterface
     /**
      * {@inheritDoc}
      */
-    public function getShopMode(): string
-    {
-        if (! $this->isModuleVisible('shop')) {
-            return 'none';
-        }
-
-        try {
-            if (class_exists(ShopSetting::class)) {
-                return (string) ShopSetting::get('shop.mode', 'full_shop');
-            }
-        } catch (\Throwable) {
-            // Settings store not ready
-        }
-
-        return 'full_shop';
-    }
-
-    /**
-     * {@inheritDoc}
-     */
     public function getNavigationSections(?User $user = null): array
     {
         /** @var User|null $user */
@@ -125,8 +71,6 @@ class AdminNavigationService implements AdminNavigationServiceInterface
         return array_values(array_filter([
             $this->generalSection($context),
             $this->contentSection($context),
-            $this->shopSection($context),
-            $this->formsSection($context),
             $this->designSection($context),
             $this->extensionsSection($context),
             $this->systemSection($context),
@@ -205,7 +149,7 @@ class AdminNavigationService implements AdminNavigationServiceInterface
         $items = [];
 
         // Pages
-        if ($this->isModuleVisible('pages') && ($isAdmin || $isEditor || $isViewer || $can('manage:pages'))) {
+        if (($isAdmin || $isEditor || $isViewer || $can('manage:pages'))) {
             $items[] = new AdminNavigationItem(
                 id: 'nav-pages',
                 label: __('admin.nav.items.pages'),
@@ -213,171 +157,11 @@ class AdminNavigationService implements AdminNavigationServiceInterface
                 icon: 'fa-solid fa-file-lines',
                 createRoute: ($isAdmin || $isEditor || $can('manage:pages')) ? 'admin.pages.create' : null,
                 createTooltip: __('admin.nav.create.page'),
-                active: request()->routeIs('admin.pages.*'),
-                module: 'pages'
-            );
-        }
-
-        // Blog
-        if ($this->isModuleVisible('blog') && ($isAdmin || $isEditor || $isAuthor || $isViewer || $can('manage:posts'))) {
-            $blogChildren = [];
-            if ($isAdmin || $isEditor || $isViewer || $can('manage:posts')) {
-                $blogChildren[] = new AdminNavigationItem(
-                    id: 'nav-blog-categories',
-                    label: __('admin.nav.items.blog_categories'),
-                    route: 'admin.blog.categories.index',
-                    icon: 'fa-solid fa-tag',
-                    active: request()->routeIs('admin.blog.categories.*'),
-                    module: 'blog'
-                );
-            }
-
-            $items[] = new AdminNavigationItem(
-                id: 'nav-blog',
-                label: __('admin.nav.items.blog_posts'),
-                route: 'admin.blog.posts.index',
-                icon: 'fa-solid fa-pen-to-square',
-                createRoute: ($isAdmin || $isEditor || $isAuthor || $can('manage:posts')) ? 'admin.blog.posts.create' : null,
-                createTooltip: __('admin.nav.create.post'),
-                active: request()->routeIs('admin.blog.posts.*'),
-                module: 'blog',
-                children: $blogChildren
-            );
-        }
-
-        // Gallery
-        if ($this->isModuleVisible('gallery') && ($isAdmin || $isEditor || $isViewer || $can('manage:media'))) {
-            $items[] = new AdminNavigationItem(
-                id: 'nav-gallery',
-                label: __('admin.nav.items.galleries'),
-                route: 'admin.galleries.index',
-                icon: 'fa-solid fa-images',
-                createRoute: ($isAdmin || $isEditor || $can('manage:media')) ? 'admin.galleries.create' : null,
-                createTooltip: __('admin.nav.create.album'),
-                active: request()->routeIs('admin.galleries.*'),
-                module: 'gallery'
-            );
-        }
-
-        // Content Audit
-        if ($this->isModuleVisible('content_audit') && ($isAdmin || $isEditor || $isAuthor || $isViewer || $can('access:admin'))) {
-            $pendingCount = $this->getPendingAuditCount();
-            $items[] = new AdminNavigationItem(
-                id: 'nav-audit',
-                label: __('admin.nav.items.content_audit'),
-                route: 'admin.audit.index',
-                icon: 'fa-solid fa-clipboard-check',
-                badgeText: $pendingCount > 0 ? (string) $pendingCount : null,
-                badgeClass: 'px-1.5 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-extrabold animate-pulse',
-                active: request()->routeIs('admin.audit.*'),
-                module: 'content_audit'
-            );
-        }
-
-        // AI Copilot Studio
-        if ($this->isModuleVisible('ai_assistant') && ($isAdmin || $isEditor || $isAuthor || $isViewer || $can('access:admin'))) {
-            $items[] = new AdminNavigationItem(
-                id: 'nav-ai-assistant',
-                label: __('admin.nav.items.ai_assistant'),
-                route: 'admin.ai_assistant.workbench',
-                icon: 'fa-solid fa-wand-magic-sparkles text-purple-400',
-                badgeText: 'IA',
-                badgeClass: 'px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[9px] font-bold',
-                active: request()->routeIs('admin.ai_assistant.*'),
-                module: 'ai_assistant'
+                active: request()->routeIs('admin.pages.*')
             );
         }
 
         return empty($items) ? null : new AdminNavigationSection(__('admin.nav.sections.content'), $items, true);
-    }
-
-    /**
-     * @param  array{isAdmin: bool, isViewer: bool, isEditor: bool, isAuthor: bool, isMarketing: bool, can: callable(string): bool}  $ctx
-     */
-    private function shopSection(array $ctx): ?AdminNavigationSection
-    {
-        $isAdmin = $ctx['isAdmin'];
-        $isEditor = $ctx['isEditor'];
-        $isMarketing = $ctx['isMarketing'];
-        $isViewer = $ctx['isViewer'];
-        $can = $ctx['can'];
-
-        if (! $this->isModuleVisible('shop') || ! ($isAdmin || $isEditor || $isMarketing || $isViewer || $can('manage:shop') || $can('manage:posts'))) {
-            return null;
-        }
-
-        $shopChildren = [
-            new AdminNavigationItem(
-                id: 'nav-shop-categories',
-                label: __('admin.nav.items.shop_categories'),
-                route: 'admin.shop.categories.index',
-                icon: 'fa-solid fa-tags',
-                active: request()->routeIs('admin.shop.categories.*'),
-                module: 'shop'
-            ),
-        ];
-
-        $items = [];
-        $items[] = new AdminNavigationItem(
-            id: 'nav-products',
-            label: __('admin.nav.items.shop_products'),
-            route: 'admin.shop.products.index',
-            icon: 'fa-solid fa-bag-shopping',
-            createRoute: ($isAdmin || $isEditor || $can('manage:shop')) ? 'admin.shop.products.create' : null,
-            createTooltip: __('admin.nav.create.product'),
-            active: request()->routeIs('admin.shop.products.*'),
-            module: 'shop',
-            children: $shopChildren
-        );
-
-        if ($this->getShopMode() !== 'catalog_only') {
-            $items[] = new AdminNavigationItem(
-                id: 'nav-orders',
-                label: __('admin.nav.items.shop_orders'),
-                route: 'admin.shop.orders.index',
-                icon: 'fa-solid fa-box',
-                active: request()->routeIs('admin.shop.orders.*'),
-                module: 'shop'
-            );
-        }
-
-        return new AdminNavigationSection(__('admin.nav.sections.shop'), $items, true);
-    }
-
-    /**
-     * @param  array{isAdmin: bool, isViewer: bool, isEditor: bool, isAuthor: bool, isMarketing: bool, can: callable(string): bool}  $ctx
-     */
-    private function formsSection(array $ctx): ?AdminNavigationSection
-    {
-        $isAdmin = $ctx['isAdmin'];
-        $isMarketing = $ctx['isMarketing'];
-        $isViewer = $ctx['isViewer'];
-        $can = $ctx['can'];
-
-        if (! $this->isModuleVisible('forms') || ! ($isAdmin || $isMarketing || $isViewer || $can('manage:forms'))) {
-            return null;
-        }
-
-        $items = [
-            new AdminNavigationItem(
-                id: 'nav-forms',
-                label: __('admin.nav.items.forms'),
-                route: 'admin.forms.index',
-                icon: 'fa-solid fa-clipboard-list',
-                active: request()->routeIs('admin.forms.index'),
-                module: 'forms'
-            ),
-            new AdminNavigationItem(
-                id: 'nav-form-submissions',
-                label: __('admin.nav.items.form_submissions'),
-                route: 'admin.forms.submissions',
-                icon: 'fa-solid fa-inbox',
-                active: request()->routeIs('admin.forms.submissions'),
-                module: 'forms'
-            ),
-        ];
-
-        return new AdminNavigationSection(__('admin.nav.sections.forms'), $items, true);
     }
 
     /**
@@ -427,57 +211,13 @@ class AdminNavigationService implements AdminNavigationServiceInterface
         $isAdmin = $ctx['isAdmin'];
         $can = $ctx['can'];
 
-        $knownCoreModules = ['pages', 'blog', 'gallery', 'content_audit', 'ai_assistant', 'shop', 'forms', 'maintenance', 'mcp'];
         $items = [];
-
-        foreach ($this->moduleManager->getActiveModules() as $identifier => $moduleInstance) {
-            if (in_array(strtolower($identifier), $knownCoreModules, true)) {
-                continue;
-            }
-
-            try {
-                $navConfig = $moduleInstance->getAdminNavigation();
-                if (empty($navConfig)) {
-                    continue;
+        foreach ($this->moduleManager->getActiveModules() as $identifier => $module) {
+            foreach ($module->getAdminNavigation() as $item) {
+                $navigation = $this->moduleNavigationItem($identifier, $item, $ctx);
+                if ($navigation !== null) {
+                    $items[] = $navigation;
                 }
-
-                foreach ($navConfig as $item) {
-                    if (! empty($item['permission']) && ! ($isAdmin || $can($item['permission']))) {
-                        continue;
-                    }
-
-                    $route = $item['route'];
-                    $children = [];
-                    if (isset($item['children'])) {
-                        foreach ($item['children'] as $child) {
-                            $childRoute = $child['route'];
-                            $children[] = new AdminNavigationItem(
-                                id: 'nav-'.strtolower($identifier).'-'.Str::slug($child['title']),
-                                label: $child['title'],
-                                route: $childRoute,
-                                icon: $child['icon'] ?? 'fa-solid fa-circle-dot',
-                                active: $this->routeIsActive($childRoute),
-                                module: $identifier
-                            );
-                        }
-                    }
-
-                    $items[] = new AdminNavigationItem(
-                        id: 'nav-'.strtolower($identifier).'-'.Str::slug($item['title']),
-                        label: $item['title'],
-                        route: $route,
-                        icon: $item['icon'],
-                        createRoute: $item['createRoute'] ?? null,
-                        createTooltip: $item['createTooltip'] ?? null,
-                        badgeText: $item['badgeText'] ?? null,
-                        badgeClass: $item['badgeClass'] ?? null,
-                        active: $this->routeIsActive($route),
-                        module: $identifier,
-                        children: $children
-                    );
-                }
-            } catch (\Throwable) {
-                // Safeguard against third-party module navigation errors
             }
         }
 
@@ -493,7 +233,7 @@ class AdminNavigationService implements AdminNavigationServiceInterface
         $isViewer = $ctx['isViewer'];
         $can = $ctx['can'];
 
-        if (! ($isAdmin || $isViewer || $can('manage:modules') || $can('manage:users') || $can('manage:storage') || $can('manage:updates'))) {
+        if (! ($isAdmin || $isViewer || $can('manage:modules') || $can('manage:users') || $can('manage:storage') || $can('manage:updates') || $can('manage:blocks'))) {
             return null;
         }
 
@@ -516,36 +256,20 @@ class AdminNavigationService implements AdminNavigationServiceInterface
                 active: request()->routeIs('admin.modules.index')
             );
 
-            if ($this->isModuleVisible('maintenance')) {
-                $items[] = new AdminNavigationItem(
-                    id: 'nav-maintenance',
-                    label: __('admin.nav.items.maintenance'),
-                    route: 'admin.modules.settings',
-                    icon: 'fa-solid fa-screwdriver-wrench',
-                    active: request()->is('*modules/maintenance/settings*'),
-                    module: 'maintenance',
-                    routeParameters: ['identifier' => 'maintenance']
-                );
-            }
-
-            if ($this->isModuleVisible('mcp')) {
-                $items[] = new AdminNavigationItem(
-                    id: 'nav-mcp',
-                    label: __('admin.nav.items.mcp'),
-                    route: 'admin.modules.settings',
-                    icon: 'fa-solid fa-network-wired',
-                    active: request()->is('*modules/mcp/settings*'),
-                    module: 'mcp',
-                    routeParameters: ['identifier' => 'mcp']
-                );
-            }
-
             $items[] = new AdminNavigationItem(
                 id: 'nav-markets',
                 label: __('admin.nav.items.markets'),
                 route: 'admin.markets.index',
                 icon: 'fa-solid fa-globe',
                 active: request()->routeIs('admin.markets.*')
+            );
+        }
+
+        if ($isAdmin || $can('manage:blocks')) {
+            $items[] = new AdminNavigationItem(
+                id: 'nav-block-packages', label: 'Paquetes de bloques',
+                route: 'admin.block-packages.index', icon: 'fa-solid fa-cubes',
+                active: request()->routeIs('admin.block-packages.*')
             );
         }
 
@@ -588,6 +312,40 @@ class AdminNavigationService implements AdminNavigationServiceInterface
         }
 
         return empty($items) ? null : new AdminNavigationSection(__('admin.nav.sections.system'), $items, true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     * @param  array<string, mixed>  $context
+     */
+    private function moduleNavigationItem(string $identifier, array $item, array $context): ?AdminNavigationItem
+    {
+        if (! empty($item['permission']) && ! ($context['isAdmin'] || $context['can']($item['permission']))) {
+            return null;
+        }
+        $route = $item['route'] ?? '';
+        $parameters = $item['params'] ?? [];
+        $children = [];
+        foreach ($item['children'] ?? [] as $child) {
+            $navigation = $this->moduleNavigationItem($identifier, $child, $context);
+            if ($navigation !== null) {
+                $children[] = $navigation;
+            }
+        }
+        $icon = $item['icon'] ?? 'puzzle-piece';
+        $active = $parameters === [] ? $this->routeIsActive($item['activePattern'] ?? $route) : request()->fullUrlIs(route($route, $parameters));
+
+        return new AdminNavigationItem(
+            id: 'nav-'.$identifier.'-'.Str::slug($item['title']),
+            label: $item['title'], route: $route,
+            icon: str_contains($icon, ' ') ? $icon : 'fa-solid fa-'.$icon,
+            createRoute: $item['createRoute'] ?? null,
+            createTooltip: $item['createTooltip'] ?? null,
+            badgeText: $item['badgeText'] ?? null,
+            badgeClass: $item['badgeClass'] ?? null,
+            active: $active, module: $identifier, children: $children,
+            routeParameters: $parameters, url: $item['url'] ?? null
+        );
     }
 
     /**

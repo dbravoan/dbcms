@@ -25,7 +25,7 @@ final class ModuleSettingsAdministrationService implements ModuleSettingsAdminis
         $customView = $identifier.'::admin.settings';
         $view = view()->exists($customView) ? $customView : 'admin.modules.settings';
 
-        return new ModuleSettingsViewDTO($view, array_merge(['module' => $module, 'schema' => $this->settings->getSchema($identifier), 'settings' => $this->settings->getAll($identifier)], $this->extensions->view($identifier)));
+        return new ModuleSettingsViewDTO($view, array_merge(['module' => $module, 'schema' => $this->settings->getSchema($identifier), 'settings' => $this->settings->getAll($identifier), 'configured' => $this->settings->isConfigured($identifier)], $this->extensions->view($identifier)));
     }
 
     public function update(string $identifier, ModuleSettingsUpdateDTO $settings): string
@@ -61,7 +61,7 @@ final class ModuleSettingsAdministrationService implements ModuleSettingsAdminis
             $validated = Validator::make($payload, $rules)->validate();
             try {
                 $this->settings->setMany($identifier, $validated);
-            } catch (\InvalidArgumentException $error) {
+            } catch (\InvalidArgumentException|\DomainException $error) {
                 throw ValidationException::withMessages(['settings' => $error->getMessage()]);
             }
         });

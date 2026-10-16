@@ -4,10 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\CreativeStudio\Services;
 
-use App\Contracts\Services\CreativeGenerationGatewayInterface;
-use App\Contracts\Services\MarketingArtifactStoreInterface;
-use App\DTOs\Marketing\ArtifactDescriptor;
-use App\DTOs\Marketing\GenerationReceipt;
 use App\Services\Media\RemoteMediaUrlPolicy;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
@@ -19,6 +15,10 @@ use Modules\AiAssistant\DTOs\ImageGenerationRequest;
 use Modules\AiAssistant\DTOs\VideoGenerationRequest;
 use Modules\AiAssistant\Exceptions\AiProviderPendingException;
 use Modules\AiAssistant\Services\AiProviderSettings;
+use Modules\Marketing\Contracts\CreativeGenerationGatewayInterface;
+use Modules\Marketing\Contracts\MarketingArtifactStoreInterface;
+use Modules\Marketing\DTOs\ArtifactDescriptor;
+use Modules\Marketing\DTOs\GenerationReceipt;
 use RuntimeException;
 
 final class AiAssistantCreativeGateway implements CreativeGenerationGatewayInterface

@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\SocialPublishing\Connectors;
 
-use App\Contracts\Services\MarketingArtifactStoreInterface;
-use App\DTOs\Marketing\CreativePackage;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
+use Modules\Marketing\Contracts\MarketingArtifactStoreInterface;
+use Modules\Marketing\DTOs\CreativePackage;
 use Modules\SocialPublishing\Contracts\SocialConnector;
 use Modules\SocialPublishing\DTOs\OperationResult;
 use Modules\SocialPublishing\Models\SocialAccount;

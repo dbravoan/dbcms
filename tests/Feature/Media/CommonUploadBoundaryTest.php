@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Services\Capabilities\CmsActionService;
 use App\Services\Media\MediaManagerService;
+use App\Services\Media\MediaUploadService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 
@@ -13,7 +13,7 @@ test('shared media boundary rejects a misleading extension before storing it', f
 });
 
 test('MCP upload rejects content that the backoffice also refuses', function (): void {
-    expect(fn () => app(CmsActionService::class)->mediaUpload([
+    expect(fn () => app(MediaUploadService::class)->mediaUpload([
         'filename' => 'portrait.jpg', 'content_base64' => base64_encode('<html>not an image</html>'),
     ]))->toThrow(ValidationException::class);
 });

@@ -24,12 +24,12 @@
     foreach ($allLangs as $lang) {
         $trans = $product ? $product->translations->where('locale', $lang->code)->first() : null;
         $translationsMap[$lang->code] = [
-            'name' => old("translations.{$lang->code}.name", old("title_{$lang->code}", $trans?->name ?? '')),
-            'slug' => old("translations.{$lang->code}.slug", old("slug_{$lang->code}", $trans?->slug ?? '')),
-            'summary' => old("translations.{$lang->code}.summary", old("summary_{$lang->code}", $trans?->summary ?? '')),
-            'description' => old("translations.{$lang->code}.description", old("description_{$lang->code}", $trans?->description ?? '')),
-            'meta_title' => old("translations.{$lang->code}.meta_title", old("meta_title_{$lang->code}", $trans?->meta_title ?? '')),
-            'meta_description' => old("translations.{$lang->code}.meta_description", old("meta_description_{$lang->code}", $trans?->meta_description ?? '')),
+            'name' => old("translations.{$lang->code}.name", $trans?->name ?? ''),
+            'slug' => old("translations.{$lang->code}.slug", $trans?->slug ?? ''),
+            'summary' => old("translations.{$lang->code}.summary", $trans?->summary ?? ''),
+            'description' => old("translations.{$lang->code}.description", $trans?->description ?? ''),
+            'meta_title' => old("translations.{$lang->code}.meta_title", $trans?->meta_title ?? ''),
+            'meta_description' => old("translations.{$lang->code}.meta_description", $trans?->meta_description ?? ''),
             'schema_type' => old("translations.{$lang->code}.schema_type", $trans?->schema_type ?? 'Product'),
         ];
     }
@@ -40,50 +40,7 @@
     }
 
 
-    // Extract sections per locale
-    $sectionsByLocale = [];
-    foreach ($allLangs as $lang) {
-        $sectionsByLocale[$lang->code] = [];
-    }
-
-    if ($product && $product->sections && $product->sections->isNotEmpty()) {
-        foreach ($product->sections as $sec) {
-            $styling = is_array($sec->styling_json) ? $sec->styling_json : [];
-            foreach ($allLangs as $lang) {
-                $trans = $sec->translations->where('locale', $lang->code)->first();
-                $item = $styling;
-                $item['id'] = 'sec_' . $sec->id;
-                $item['type'] = $sec->type;
-                if ($trans && isset($trans->content_json) && is_array($trans->content_json)) {
-                    $item = array_merge($item, $trans->content_json);
-                }
-                $sectionsByLocale[$lang->code][] = $item;
-            }
-        }
-    } else {
-        $sectionsByLocale['es'][] = [
-            'id' => 'sec_initial_1',
-            'type' => 'hero',
-            'title' => !empty($translationsMap['es']['name']) ? $translationsMap['es']['name'] : 'Características del Producto',
-            'content' => !empty($translationsMap['es']['summary']) ? $translationsMap['es']['summary'] : 'Descripción técnica y rendimiento de alta fiabilidad.',
-            'animation' => 'fadeInUp',
-            'animation_delay' => '0.2s',
-            'animation_duration' => '1s',
-            'container_style' => 'cyber-card',
-            'content_width' => 'centered',
-            'bg_type' => 'none',
-            'border_top' => ['enabled' => false, 'color' => '#00FF99', 'width' => '2px', 'style' => 'solid'],
-            'border_bottom' => ['enabled' => false, 'color' => '#00FF99', 'width' => '2px', 'style' => 'solid'],
-            'divider_top' => ['type' => 'none', 'color' => '#0E0E0E', 'height' => 60, 'flip' => false],
-            'divider_bottom' => ['type' => 'none', 'color' => '#0E0E0E', 'height' => 60, 'flip' => false],
-            'scroll_magic' => ['behavior' => 'fadeInUp', 'delay' => '0.2s', 'duration' => '1s', 'scrub' => 'none'],
-            'is_collapsed' => false,
-            'items' => [],
-            'cta_text' => 'Comprar ahora',
-            'cta_url' => '/checkout',
-        ];
-    }
-    $sectionsData = $sectionsByLocale;
+    $sectionsData = old('sections_json', $sectionsData ?? []);
 @endphp
 
 <form method="POST" action="{{ $actionUrl }}" class="space-y-8 font-mono text-xs" x-on:locale-tab-change="switchLocale($event.detail.locale)"
@@ -306,7 +263,7 @@
                     </div>
 
                     <!-- Preserve every inactive locale through the shared nested request contract. -->
-                    <template x-for="code in allLanguages" :key="'legacy-' + code">
+                    <template x-for="code in allLanguages" :key="'translation-' + code">
                         <div>
                             <input type="hidden" :name="'translations[' + code + '][name]'" :value="translations[code]?.name || ''">
                             <input type="hidden" :name="'translations[' + code + '][slug]'" :value="translations[code]?.slug || ''">

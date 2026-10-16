@@ -2,11 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Models\CmsModule;
+use App\Core\Modules\ModuleManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\ViewErrorBag;
-use Modules\Captcha\CaptchaModuleServiceProvider;
 use Modules\Captcha\Services\CaptchaService;
 use Modules\Forms\Blocks\CustomFormBlock;
 use Modules\Forms\Http\Controllers\Admin\Concerns\ValidatesFormPayload;
@@ -17,24 +16,14 @@ use Modules\Forms\Models\FormFieldTranslation;
 use Modules\Forms\Models\FormSubmission;
 use Modules\Forms\Services\FormSchemaService;
 use Modules\Forms\Support\FieldTypeOptions;
+use Tests\Support\FormsCaptchaComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, FormsCaptchaComposition::class);
 
 function setCaptchaModule(bool $active): void
 {
-    CmsModule::updateOrCreate(
-        ['identifier' => 'captcha'],
-        [
-            'name' => 'Security & Dynamic Captcha',
-            'version' => '1.0.0',
-            'description' => 'test',
-            'provider' => CaptchaModuleServiceProvider::class,
-            'is_pageable' => false,
-            'is_installed' => true,
-            'is_active' => $active,
-            'settings' => null,
-        ],
-    );
+    $manager = app(ModuleManager::class);
+    $active ? $manager->activate('captcha') : $manager->deactivate('captcha');
 }
 
 function makeContactForm(bool $withCaptcha = true): CustomForm

@@ -2,14 +2,15 @@
 
 declare(strict_types=1);
 
-use App\Core\Modules\ModuleManager;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\File;
 use Modules\Maintenance\Services\MaintenanceService;
+use Tests\Support\MaintenanceComposition;
+
+uses(MaintenanceComposition::class);
 
 test('a role without backoffice access does not bypass public maintenance', function (): void {
-    app(ModuleManager::class)->discoverModules();
     app(MaintenanceService::class)->enable();
     $user = User::factory()->create();
     $user->assignRole(Role::firstOrCreate(['slug' => 'custom-no-access'], ['name' => 'No backoffice access']));

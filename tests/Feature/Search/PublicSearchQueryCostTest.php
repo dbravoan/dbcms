@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
 use App\Core\Search\SearchEngine;
 use App\Core\Search\SearchIndexer;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Support\Facades\DB;
-use Modules\Pages\Models\Page;
+use Tests\Support\CmsFixtures;
 
 test('public search resolves its market once per result set rather than once per hit', function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en'], ['es', 'us']);
     app(SearchIndexer::class)->batch(function (): void {
         foreach (range(1, 10) as $number) {
             $page = Page::create(['is_published' => true, 'template' => 'default']);

@@ -6,6 +6,7 @@ namespace App\Services\Media;
 
 use App\Services\Storage\ExternalStorageService;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Single source of truth for resolving a stored media file to a servable URL.
@@ -23,15 +24,10 @@ final class MediaUrlResolver
 
     /**
      * Absolute filesystem path of the local uploads directory.
-     *
-     * Mirrors the test isolation used by the media manager so tests never touch
-     * the real `public/uploads` directory.
      */
     public function uploadDir(): string
     {
-        $dir = app()->environment('testing')
-            ? storage_path('framework/testing/disks/uploads')
-            : public_path('uploads');
+        $dir = rtrim(Storage::disk('uploads')->path(''), DIRECTORY_SEPARATOR);
 
         if (! File::exists($dir)) {
             File::makeDirectory($dir, 0755, true);

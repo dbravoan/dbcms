@@ -46,8 +46,6 @@ services:
         depends_on:
             mysql:
                 condition: service_healthy
-            redis:
-                condition: service_healthy
 
     mysql:
         image: 'mysql/mysql-server:8.0'
@@ -75,6 +73,7 @@ services:
             timeout: 5s
 
     redis:
+        profiles: [redis, creative, social]
         image: 'redis:alpine'
         ports:
             - '${FORWARD_REDIS_PORT:-6379}:6379'
@@ -110,25 +109,34 @@ services:
 
     creative-generation:
         <<: *marketing-worker
+        profiles: [creative]
         command: php artisan queue:work marketing --queue=creative-generation --sleep=2 --tries=1 --timeout=720
 
     creative-render:
         <<: *marketing-worker
+        profiles: [creative]
         command: php artisan queue:work marketing --queue=creative-render --sleep=2 --tries=1 --timeout=300
 
     social-delivery:
         <<: *marketing-worker
+        profiles: [social]
         command: php artisan queue:work marketing --queue=social-delivery --sleep=2 --tries=1 --timeout=600
 
     social-reconciliation:
         <<: *marketing-worker
+        profiles: [social]
         command: php artisan queue:work marketing --queue=social-reconciliation --sleep=3 --tries=1 --timeout=180
 
     scheduler:
         <<: *marketing-worker
+        profiles: [workers, creative, social]
+        depends_on:
+            mysql:
+                condition: service_healthy
         command: php artisan schedule:work
 
     queue:
+        profiles: [workers, creative, social]
         image: sail-8.3/app
         restart: unless-stopped
         command: php artisan queue:work --sleep=1 --tries=1 --timeout=1200
@@ -144,8 +152,6 @@ services:
             - sail
         depends_on:
             mysql:
-                condition: service_healthy
-            redis:
                 condition: service_healthy
 
 networks:

@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Illuminate\Encryption\Encrypter;
+use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Process\Process;
 
 function installerPrebootstrapSource(): string
 {
@@ -93,4 +95,59 @@ test('release smoke contract exercises the unpacked first web request and comple
         ->and($builder)->toMatch('/(?:php\s+-S|apache|curl)[\s\S]{0,5000}(?:install|APP_KEY)/i')
         ->and($builder)->toContain('/up')
         ->and($builder)->toMatch('/(?:login|control)/i');
+});
+
+test('host packaging gives Docker read only Git source and a distinct writable artifact directory', function (): void {
+    $root = dirname(__DIR__, 2);
+    $temporary = sys_get_temp_dir().'/dbcms-release-wrapper-'.bin2hex(random_bytes(6));
+    mkdir($temporary.'/bin', 0755, true);
+    mkdir($temporary.'/mock');
+    mkdir($temporary.'/storage');
+    copy($root.'/bin/build-release-zip.sh', $temporary.'/bin/build-release-zip.sh');
+    file_put_contents($temporary.'/.env', 'PRIVATE_ENV_SENTINEL');
+    file_put_contents($temporary.'/storage/installed', 'INSTALLATION_SENTINEL');
+    file_put_contents($temporary.'/signing.pem', 'EXTERNAL_KEY_SENTINEL');
+    // Simulate the host filesystem boundary when this regression runs in CI.
+    // The production wrapper itself is executed unchanged.
+    file_put_contents($temporary.'/host-environment.sh', <<<'BASH'
+function [() {
+    if [[ "$#" == 4 && "$1" == '!' && "$2" == '-f' && "$3" == '/.dockerenv' ]]; then
+        return 0
+    fi
+    builtin [ "$@"
+}
+BASH);
+    file_put_contents($temporary.'/mock/docker', <<<'BASH'
+#!/usr/bin/env bash
+printf '%s\0' "$@" > "$PACKAGING_TEST_LOG"
+printf '%s' "$PWD" > "$PACKAGING_TEST_LOG.cwd"
+exit 0
+BASH);
+    chmod($temporary.'/mock/docker', 0755);
+    try {
+        $process = new Process(['bash', $temporary.'/bin/build-release-zip.sh', '--version=9.8.7'], sys_get_temp_dir(), [
+            'PATH' => $temporary.'/mock:'.getenv('PATH'),
+            'BASH_ENV' => $temporary.'/host-environment.sh',
+            'PACKAGING_TEST_LOG' => $temporary.'/docker.args',
+            'DBCMS_UPDATE_SIGNING_KEY_FILE' => $temporary.'/signing.pem',
+            'DBCMS_UPDATE_SIGNING_KEY_ID' => 'fixture-key',
+        ]);
+        expect($process->run())->toBe(0, $process->getErrorOutput());
+        $arguments = explode("\0", rtrim((string) file_get_contents($temporary.'/docker.args'), "\0"));
+        expect($arguments)->toBe([
+            'compose', '-f', 'docker/ci/compose.yml', 'run', '--build', '--rm',
+            '--volume', $temporary.':/var/www/html:ro',
+            '--volume', $temporary.'/dist:/var/www/html/dist:rw',
+            '--volume', $temporary.'/signing.pem:/run/secrets/updates-signing.pem:ro',
+            '--env', 'DBCMS_UPDATE_SIGNING_KEY_FILE=/run/secrets/updates-signing.pem',
+            '--env', 'DBCMS_UPDATE_SIGNING_KEY_ID=fixture-key',
+            'app', 'bash', 'bin/build-release-zip.sh', '--version=9.8.7',
+        ])->and(file_get_contents($temporary.'/docker.args.cwd'))->toBe($temporary)
+            ->and(is_dir($temporary.'/dist'))->toBeTrue()
+            ->and(file_get_contents($temporary.'/.env'))->toBe('PRIVATE_ENV_SENTINEL')
+            ->and(file_get_contents($temporary.'/storage/installed'))->toBe('INSTALLATION_SENTINEL')
+            ->and(file_get_contents($temporary.'/signing.pem'))->toBe('EXTERNAL_KEY_SENTINEL');
+    } finally {
+        (new Filesystem)->remove($temporary);
+    }
 });

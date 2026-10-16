@@ -1,4 +1,4 @@
-@extends('themes.default-clean.layouts.app')
+@extends('themes::default-clean.layouts.app')
 
 @section('title', __('Blog'))
 

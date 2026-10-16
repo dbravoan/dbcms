@@ -1,4 +1,4 @@
-@extends('themes.db-editorial.layouts.app')
+@extends('themes::db-editorial.layouts.app')
 
 @php
     $trans = $post->translations->where('locale', app()->getLocale())->first()

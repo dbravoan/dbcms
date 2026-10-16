@@ -2,7 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.3.0] - Unreleased
+## [2.0.0] - 2026-10-16
+
+### Added
+- Opt-in IA en práctica publication with editable Spanish task guides, departmental cheatsheets, agent workflows and desktop interaction training; no AI account is needed to operate the site.
+- Self-contained ia-practica public theme with accessible mobile navigation and selected asset bundles.
+- Physical Blog + Basic distribution verification: fresh installation, production caches, HTTP authentication/publication, public routes, links and semantic discovery.
+
+### Changed
+- Pages, installation, localization, media, publication and technical SEO belong to the working core; optional modules install explicitly and discovery never activates every directory.
+- Blocks and widgets share definitions and availability; disabled packages preserve stored instances, hide executable/public content and restore it on activation.
+- Editorial snapshots accept only schema 3. This major release targets new installations and does not offer an automatic upgrade from 1.x.
+- Fast tests use the project's own database credentials and identify checks outside a physically pruned artifact. Integration/release gates use disposable filesystems and databases.
+
+### Fixed
+- Core-only pages no longer advertise a nonexistent Blog search action.
+- Semantic article exports produce readable paragraphs while preserving literal teaching examples.
+- Starter-generated home metadata avoids a duplicated site name; repeated provisioning preserves editorial changes.
+
+## [1.3.0] - Development history (unreleased)
 
 ### Added
 - Independent project initialization through GitHub templates or Docker/Composer, with required brand and frozen public-theme selections.
@@ -26,7 +44,7 @@ All notable changes to this project will be documented in this file.
 - Added a signed recognition baseline for immutable 1.1.0 source and published runtime ZIP, alongside 1.0.0 and 1.0.1.
 - Release policy explicitly reviews additive marketing migrations for standalone update compatibility; automatic code rollback remains forbidden once migrations start, and database recovery requires verified backups.
 
-Validation of the final integrated SHA and external provider pilots remains pending; see [the integration matrix](docs/RELEASE_1.2.0_INTEGRATION.md). Historical validation is not evidence for this release.
+Validation of the final integrated SHA and external provider pilots remains pending; see [the integration matrix](docs/archive/RELEASE_1.2.0_INTEGRATION.md). Historical validation is not evidence for this release.
 
 ## [1.1.0] - 2026-10-14
 
@@ -101,7 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Domain/read services and immutable DTOs replace oversized controller responsibilities; architecture regressions, strict static analysis and containerized builds verify these boundaries.
 - Version tagging is performed explicitly after committing and validating the release. The deprecated `app:version --tag` option fails before changing version files.
 
-Local and remote release evidence is tracked separately in [the publication validation](docs/RELEASE_VALIDATION_2026-10-13.md). Providers and deployments require their own configured connections; this release does not certify external hosting or search rankings.
+Local and remote release evidence is tracked separately in [the publication validation](docs/archive/RELEASE_VALIDATION_2026-10-13.md). Providers and deployments require their own configured connections; this release does not certify external hosting or search rankings.
 
 [1.0.2]: https://github.com/dbravoan/dbcms/releases/tag/v1.0.2
 [1.0.1]: https://github.com/dbravoan/dbcms/releases/tag/v1.0.1

@@ -28,7 +28,7 @@ const ALIASES = {
 
 /** Collect icon class names + style used anywhere in the project. */
 function collectUsedIcons() {
-    const dirs = ['themes', 'modules', 'resources', 'app'].map((d) => resolve(root, d)).join(' ');
+    const dirs = ['themes', 'modules', 'block-packages', 'resources', 'app'].map((d) => resolve(root, d)).join(' ');
     const raw = execSync(
         `grep -rhoE "fa-(solid|regular|brands)[[:space:]]+fa-[a-z0-9-]+" ${dirs} 2>/dev/null || true`,
         { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }

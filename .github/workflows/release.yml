@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (e.g. 1.3.0)"
+        description: "Release version (e.g. 2.0.0)"
         required: true
-        default: "1.3.0"
+        default: "2.0.0"
       sha:
         description: "Exact 40-character commit SHA already validated by CI"
         required: true
@@ -119,9 +119,16 @@ jobs:
             )] | length == 1
           ' <<< "$response"
 
+  release-quality:
+    needs: [verify-ci]
+    uses: ./.github/workflows/quality.yml
+    with:
+      suite: release
+      ref: ${{ needs.verify-ci.outputs.target_sha }}
+
   build-standalone-zip:
     name: Build Standalone Versioned ZIP
-    needs: [verify-ci]
+    needs: [verify-ci, release-quality]
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -156,7 +163,7 @@ jobs:
 
   docker-publish:
     name: Build & Verify Docker Image (${{ matrix.arch }})
-    needs: [verify-ci]
+    needs: [verify-ci, release-quality]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     strategy:
@@ -221,8 +228,10 @@ jobs:
         run: |
           IMAGE_DIGEST="${{ steps.build.outputs.digest }}"
           docker run --rm \
-            --env APP_ENV=testing \
+            --network none --env APP_ENV=production \
             --env APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+            --env DB_CONNECTION=sqlite --env DB_DATABASE=:memory: \
+            --env SESSION_DRIVER=file --env CACHE_STORE=file --env QUEUE_CONNECTION=sync \
             "${REGISTRY_IMAGE}@${IMAGE_DIGEST}" php artisan --version
 
       - name: Export image digest

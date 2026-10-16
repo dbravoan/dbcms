@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Contracts\Services\ModuleSettingsServiceInterface;
+use App\Core\Content\Contracts\EditorialWorkflowInterface;
 use App\Core\Modules\ModuleManager;
 use App\Models\Language;
 use App\Models\Market;
@@ -13,7 +14,10 @@ use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Modules\Blog\Models\Category;
 use Modules\Blog\Models\Post;
-use Modules\Mcp\Services\McpServerService;
+use Tests\Support\McpEditorialComposition;
+use Tests\Support\McpProtocolClient;
+
+uses(McpEditorialComposition::class);
 
 beforeEach(function (): void {
     $spanish = Language::firstOrCreate(
@@ -94,10 +98,10 @@ test('approvers are exempt from the editorial gate', function (): void {
 });
 
 test('mcp publishing rejects robotic content when enforcement is active', function (): void {
-    /** @var McpServerService $mcp */
-    $mcp = app(McpServerService::class);
+    /** @var McpProtocolClient $mcp */
+    $mcp = app(McpProtocolClient::class);
     $admin = User::factory()->create();
-    $admin->roles()->sync([Role::where('slug', 'admin')->firstOrFail()->getKey()]);
+    $admin->roles()->sync([Role::where('slug', 'author')->firstOrFail()->getKey()]);
     mcpTestBindIdentity($admin);
 
     $response = $mcp->handle([
@@ -105,12 +109,14 @@ test('mcp publishing rejects robotic content when enforcement is active', functi
         'id' => 1,
         'method' => 'tools/call',
         'params' => [
-            'name' => 'cms_publish_post',
+            'name' => 'cms_entity_create',
             'arguments' => [
-                'title' => 'La Transformación Digital De Las Empresas',
-                'content' => 'En la era digital actual, la tecnología avanza. Las empresas deben adaptarse. Los cambios son constantes. La innovación es clave. Los datos son importantes. Es crucial destacar la relevancia de la transformación digital en las organizaciones modernas.',
-                'locale' => 'es',
-                'confirm' => true,
+                'type' => 'post',
+                'publish' => true,
+                'translations' => ['es' => [
+                    'title' => 'La Transformación Digital De Las Empresas',
+                    'content' => 'En la era digital actual, la tecnología avanza. Las empresas deben adaptarse. Los cambios son constantes. La innovación es clave. Los datos son importantes. Es crucial destacar la relevancia de la transformación digital en las organizaciones modernas.',
+                ]],
             ],
         ],
     ]);
@@ -121,19 +127,18 @@ test('mcp publishing rejects robotic content when enforcement is active', functi
     expect(Post::count())->toBe(0);
     $execution = Execution::findOrFail($data['execution']['id']);
     $step = $execution->steps()->firstOrFail();
-    $this->actingAs($admin, 'web')->postJson(route('admin.orchestration.approve', $execution->getKey()), ['step' => $step->key, 'binding_hash' => $step->binding_hash])->assertSuccessful();
+    $this->actingAs($admin, 'web')->postJson(route('admin.executions.approve', $execution->getKey()), ['step' => $step->key, 'binding_hash' => $step->binding_hash])->assertSuccessful();
     $step->refresh();
     expect($step->status)->toBe('failed');
-    expect($step->result['success'])->toBeFalse()
-        ->and($step->result['error'])->toBe('editorial_quality_rejected');
+    expect($step->result['validation'])->toHaveKey('editorial_quality');
     expect(Post::count())->toBe(0);
 });
 
-test('mcp publishing accepts human-grade content when enforcement is active', function (): void {
-    /** @var McpServerService $mcp */
-    $mcp = app(McpServerService::class);
+test('mcp creation accepts reviewed style and keeps restricted authors content pending', function (): void {
+    /** @var McpProtocolClient $mcp */
+    $mcp = app(McpProtocolClient::class);
     $admin = User::factory()->create();
-    $admin->roles()->sync([Role::where('slug', 'admin')->firstOrFail()->getKey()]);
+    $admin->roles()->sync([Role::where('slug', 'author')->firstOrFail()->getKey()]);
     mcpTestBindIdentity($admin);
 
     $response = $mcp->handle([
@@ -141,12 +146,14 @@ test('mcp publishing accepts human-grade content when enforcement is active', fu
         'id' => 2,
         'method' => 'tools/call',
         'params' => [
-            'name' => 'cms_publish_post',
+            'name' => 'cms_entity_create',
             'arguments' => [
-                'title' => 'El impacto del nuevo reglamento europeo de IA en las pymes',
-                'content' => "## Análisis de la nueva directiva\n\nEl Parlamento Europeo establece requisitos estrictos. No hay marcha atrás.\n\n### Preguntas frecuentes\n¿Afecta a todas las empresas? Principalmente a aquellas que desarrollan o integran modelos de alto riesgo, aunque el alcance se ampliará con el tiempo.",
-                'locale' => 'es',
-                'confirm' => true,
+                'type' => 'post',
+                'publish' => true,
+                'translations' => ['es' => [
+                    'title' => 'El impacto del nuevo reglamento europeo de IA en las pymes',
+                    'content' => "## Análisis de la nueva directiva\n\nEl Parlamento Europeo establece requisitos estrictos. No hay marcha atrás.\n\n### Preguntas frecuentes\n¿Afecta a todas las empresas? Principalmente a aquellas que desarrollan o integran modelos de alto riesgo, aunque el alcance se ampliará con el tiempo.",
+                ]],
             ],
         ],
     ]);
@@ -156,6 +163,8 @@ test('mcp publishing accepts human-grade content when enforcement is active', fu
     expect($data['confirmation_required'])->toBeTrue();
     expect(Post::count())->toBe(0);
     $approved = mcpTestHumanApproval($data, $admin);
-    expect($approved['success'])->toBeTrue();
-    expect(Post::findOrFail($approved['post_id'])->is_published)->toBeTrue();
+    expect($approved)->toHaveKey('id');
+    $post = Post::findOrFail($approved['id']);
+    expect($post->is_published)->toBeFalse();
+    expect(app(EditorialWorkflowInterface::class)->status($post))->toBe('pending_review');
 });

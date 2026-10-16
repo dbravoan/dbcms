@@ -1,8 +1,17 @@
 {
-    "version": "1.3.0",
+    "version": "2.0.0",
     "min_php": "8.3.0",
-    "extensions": ["openssl", "pdo_mysql", "mbstring", "zip", "fileinfo", "dom"],
-    "supported_from": ["1.0.0", "1.0.1", "1.1.0", "1.2.0", "1.3.0"],
-    "rollback_compatible": true,
-    "review": "1.3.0 adds project profiles, Git-source update proposals, theme assets and deployment workflows without adding database migrations. Existing 1.2.0 module migration compatibility review remains applicable. Source conflicts require human review. Deployment failures after migration starts remain closed for guided recovery; no automatic database rollback."
+    "extensions": [
+        "openssl",
+        "pdo_mysql",
+        "mbstring",
+        "zip",
+        "fileinfo",
+        "dom"
+    ],
+    "supported_from": [
+        "2.0.0"
+    ],
+    "rollback_compatible": false,
+    "review": "2.0.0 is a fresh-installation major release: Pages is core, optional modules and visual packages have explicit lifecycles, and editorial snapshots use only schema 3. Historical module layouts, migrations and payloads are not converted. Automatic upgrades from 1.x are unsupported. New projects start from this release; migration of an existing 1.x installation requires a separate reviewed data migration and backups."
 }

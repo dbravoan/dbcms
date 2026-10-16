@@ -6,6 +6,7 @@ namespace Modules\AiAssistant\Services;
 
 use App\Core\Blocks\Contracts\BlockRegistryInterface;
 use App\Core\Blocks\Contracts\BlockTypeInterface;
+use Illuminate\Validation\ValidationException;
 
 class BlockIntelligenceService
 {
@@ -18,7 +19,7 @@ class BlockIntelligenceService
      */
     public function getBlockDefinition(string $type): ?BlockTypeInterface
     {
-        return $this->blockRegistry->get($type);
+        return $this->blockRegistry->isAvailable($type) ? $this->blockRegistry->get($type) : null;
     }
 
     /**
@@ -41,16 +42,6 @@ class BlockIntelligenceService
         }
 
         return $taxonomy;
-    }
-
-    /**
-     * Alias for getBlockTaxonomy.
-     *
-     * @return array<string, array{name: string, description: string, category: string, default_payload: array<string, mixed>}>
-     */
-    public function getAvailableBlocks(): array
-    {
-        return $this->getBlockTaxonomy();
     }
 
     /**
@@ -97,7 +88,7 @@ class BlockIntelligenceService
     {
         $block = $this->getBlockDefinition($type);
         if ($block === null) {
-            return $data;
+            throw ValidationException::withMessages(['block_type' => 'This block is unavailable: '.$type]);
         }
 
         $default = $block->getDefaultPayload();
@@ -144,7 +135,7 @@ class BlockIntelligenceService
         $rows = match (true) {
             $type === 'charts' && $chartType === 'metric' => [['label' => $payload['metric_label'] ?? '', 'value' => $payload['metric_value'] ?? null]],
             $type === 'charts' && $chartType === 'donut' => [['label' => $payload['donut_label'] ?? '', 'value' => $payload['donut_percentage'] ?? null]],
-            default => (array) ($payload['items'] ?? $payload['metrics'] ?? []),
+            default => (array) ($payload['items'] ?? []),
         };
         if ($rows === []) {
             return false;
@@ -153,8 +144,8 @@ class BlockIntelligenceService
             if (! is_array($row)) {
                 return false;
             }
-            $label = trim((string) ($row['label'] ?? $row['point'] ?? ''));
-            $value = $row['value'] ?? $row['number'] ?? null;
+            $label = trim((string) ($row['label'] ?? ''));
+            $value = $row['value'] ?? null;
             if ($label === '' || (! is_string($value) && ! is_int($value) && ! is_float($value)) || ! str_contains($lower, mb_strtolower($label))) {
                 return false;
             }
@@ -283,7 +274,7 @@ class BlockIntelligenceService
         $recommendations = [];
 
         foreach ($types as $type) {
-            $block = $this->blockRegistry->get($type);
+            $block = $this->getBlockDefinition($type);
 
             if ($block === null) {
                 continue; // Never emit a type that is not available.

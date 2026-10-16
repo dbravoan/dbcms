@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Core\Modules\BaseModuleServiceProvider;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -16,8 +15,6 @@ use Illuminate\Support\Facades\Schema;
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
-
     // Create temporary isolated module authenticatable class for testing
     if (! class_exists('TestCustomerUser')) {
         eval('
@@ -94,7 +91,7 @@ test('isolated module users authenticate independently from core CMS users', fun
         'password' => bcrypt('password123'),
     ]);
 
-    $coreUser = User::first();
+    User::factory()->create();
 
     // 3. Authenticate customer on module guard
     Auth::guard('test_customer')->login($customer);

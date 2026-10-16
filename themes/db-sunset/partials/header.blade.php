@@ -4,14 +4,7 @@
     $navDesktopClass = ($nav['layout'] ?? 'inline') === 'stacked'
         ? 'hidden md:flex flex-col items-start gap-3'
         : 'hidden md:flex items-center space-x-6';
-    $navFallback = [
-        ['title' => __('Inicio'), 'url' => $localization->url('/', $currentMarket)],
-        ['title' => __('Blog'), 'url' => $localization->url('/blog', $currentMarket)],
-        ['title' => __('Tienda'), 'url' => $localization->url('/shop', $currentMarket)],
-        ['title' => __('Galería'), 'url' => $localization->url("/{$galPrefix}", $currentMarket)],
-        ['title' => __('Nosotros'), 'url' => $localization->url('/sobre-nosotros', $currentMarket)],
-        ['title' => __('Contacto'), 'url' => $localization->url('/contacto', $currentMarket)],
-    ];
+    $navFallback = [['title' => __('Inicio'), 'url' => $localization->url('/', $currentMarket)]];
 @endphp
 <header class="border-b border-white/10 bg-[#0a0712]/80 backdrop-blur-xl sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4 sm:gap-6">
@@ -25,7 +18,7 @@
 
             <!-- Desktop Navigation Menu (disposición configurable) -->
             @if($desktopNavVisible)
-                @include('themes.components.nav-items', [
+                @include('themes::components.nav-items', [
                     'items' => $headerMenu,
                     'fallback' => $navFallback,
                     'class' => $navDesktopClass.' text-xs font-medium uppercase tracking-wider text-slate-300',
@@ -81,7 +74,7 @@
             @endif
 
             <!-- Cart Indicator -->
-            @if($shopService?->isShopEnabled())
+            @if(($isShopEnabled ?? false))
                 <a href="{{ $localization->url('/cart', $currentMarket) }}"
                    class="relative p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition-all flex items-center"
                    title="{{ __('Carrito') }}">
@@ -94,21 +87,21 @@
                 </a>
             @endif
 
-            @include('themes.components.nav-admin', [
+            @include('themes::components.nav-admin', [
                 'frontNav' => $nav,
                 'class' => 'hidden sm:inline-block px-3.5 py-1.5 bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white rounded-xl font-semibold transition-all shadow-md shadow-rose-500/20',
                 'label' => 'Admin',
             ])
 
             <!-- Mobile menu toggle -->
-            @include('themes.components.nav-toggle', [
+            @include('themes::components.nav-toggle', [
                 'frontNav' => $nav,
                 'class' => 'p-2 text-slate-400 hover:text-white',
             ])
         </div>
     </div>
 
-    @include('themes.components.nav-panel', [
+    @include('themes::components.nav-panel', [
         'frontNav' => $nav,
         'items' => $headerMenu,
         'fallback' => $navFallback,

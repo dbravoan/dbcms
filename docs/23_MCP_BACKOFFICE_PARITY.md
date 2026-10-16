@@ -17,7 +17,7 @@ Two independent gates are enforced on every call:
 
 | Gate | Question | Source |
 | :--- | :--- | :--- |
-| **OAuth ability** | may this *token* do it? | `mcp:read` / `mcp:write` / `mcp:destructive` (or `*`; `mcp:publish` still works as the legacy alias of write) |
+| **OAuth ability** | may this *token* do it? | `mcp:read` / `mcp:write` / `mcp:destructive` (or a permitted `*` grant) |
 | **Backoffice permission** | may this *user* do it? | the same permission the admin screen requires (`manage:shop`, `manage:seo`, `access:admin`…) |
 
 Machine-to-machine tokens (`client_credentials`) require an explicit CMS service
@@ -43,8 +43,8 @@ agent → MCP protocol adapter → common ExecutorCore (CapabilityExecutor)
 ```
 
 Web, API, MCP and queued jobs use `App\Core\Capabilities`; transport adapters
-are not separate authorization engines. Some former module class names remain
-compatibility aliases for existing extensions.
+share the same authorization engine. Consumers use the canonical classes
+directly; historical module aliases have been removed.
 
 | Piece | Responsibility |
 | :--- | :--- |
@@ -53,9 +53,9 @@ compatibility aliases for existing extensions.
 | `App\Core\Capabilities\AvailableCapabilities` | live manifest filtered by identity, RBAC, scopes and active modules |
 | `App\Core\Capabilities\CapabilityAuthorizer` | validates current identity, token/client revocation, service binding and permissions |
 | `App\Core\Capabilities\CapabilityExecutor` | shared validation, authorization, sensitive-effect gate, execution and audit |
-| `App\Services\Capabilities\EntityCrudService` | CRUD over available registered entities |
+| `EntityReadService`, `EntityMutationService`, `EntityTranslationWriter` | Read and mutate available registered entities |
 | `App\Services\Capabilities\ResourceCrudService` + `PlatformResourceCatalog` | validated platform resource operations |
-| `App\Services\Capabilities\CmsActionService` + `CmsActionCatalog` | shared non-CRUD domain operations |
+| `CmsActionCatalog` and domain action services | Core non-CRUD operations; optional catalogs belong to their modules |
 | `Modules\Mcp\Services\McpToolDispatcher` | protocol adapter; returns persisted human-review references |
 
 ### Engines instead of one tool per screen
@@ -147,12 +147,12 @@ new CapabilityResource(
 );
 ```
 
-**A new action** — add an `ActionTool` entry to `CmsActionCatalog` and the method
-to `CmsActionService`; declare the permission it needs and whether it can destroy
-data.
+**A new action** — register it in the catalog of its owning domain or module,
+with the owning service as handler. Declare authorization, effect and optional
+dependencies. Core actions belong to platform administration, accounts, content
+sections, media or filter landing services.
 
-Both catalogs are plain data, so the whole agent surface stays reviewable in two
-files, and `tests/Feature/Mcp/McpBackofficeCapabilitiesTest.php` proves the
+Catalog metadata stays beside its owner; `tests/Feature/Mcp/McpBackofficeCapabilitiesTest.php` proves the
 contract end to end.
 
 ---
@@ -182,8 +182,8 @@ contract end to end.
 ./vendor/bin/sail artisan cms:create-m2m-client --role=editor --scopes=mcp:access,mcp:read,mcp:write,mcp:destructive,m2m:service
 
 # agentes
-curl -X POST https://cms/api/mcp -H "Authorization: Bearer <token>" \
-     -H 'Content-Type: application/json' \
+curl -X POST https://cms/mcp/cms -H "Authorization: Bearer <token>" \
+     -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
      -d '{"jsonrpc":"2.0","id":1,"method":"tools/call",
           "params":{"name":"cms_entity_list","arguments":{"type":"post","per_page":5}}}'
 ```
@@ -191,11 +191,12 @@ curl -X POST https://cms/api/mcp -H "Authorization: Bearer <token>" \
 `--role=editor` must identify an existing role with the requested permissions;
 choose the minimum role explicitly. Provisioning never expands that role.
 
-From the backoffice: **Administración → Servidor MCP & Agentes** issues a token in
-one click and documents the transports (`/api/mcp`, `/api/mcp/sse`,
-`/api/mcp/message`), the tool manifest (`GET /api/mcp/tools`) and the scopes.
+From the backoffice: **Administración → Servidor MCP & Agentes** issues an
+OAuth token and documents the `/mcp/cms` endpoint and scopes. Complete MCP
+`initialize` before using `tools/list` or `tools/call`; see the
+[connection walkthrough](24_MCP_REAL_CONNECTION_WALKTHROUGH.md).
 
-Audit reading: `cms_mcp_audit` (agent) or the `mcp_audit_logs` table (overview).
+Audit reading: `cms_mcp_audit` (agent) or the `capability_audit_logs` table.
 
 ---
 

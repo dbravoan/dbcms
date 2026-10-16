@@ -4,9 +4,15 @@ services:
       context: ../..
       dockerfile: docker/production/Dockerfile
       target: ci
+      args:
+        WITH_CREATIVE_TOOLS: 'true'
     working_dir: /var/www/html
     environment:
       APP_ENV: testing
+      DBCMS_TEST_ISOLATED: '1'
+      DBCMS_TEST_DATABASE: testing
+      DBCMS_TEST_DB_ADMIN_USER: root
+      DBCMS_TEST_DB_ADMIN_PASSWORD: ci-only-password
       DB_CONNECTION: mysql
       DB_HOST: mysql
       DB_DATABASE: testing

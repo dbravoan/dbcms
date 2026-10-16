@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Content\Pages\Models\Page;
+use App\Content\Pages\Models\PageSection;
+use App\Content\Pages\Models\PageTranslation;
+use App\Content\Pages\Models\SectionTranslation;
+use App\Contracts\Services\ModuleSettingsServiceInterface;
+use App\Core\Modules\ModuleManager;
 use App\Core\Search\SearchIndexer;
-use App\Models\CmsModule;
 use App\Models\Market;
 use App\Models\Menu;
 use App\Models\MenuItem;
@@ -16,34 +21,22 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Modules\Blog\BlogModuleServiceProvider;
 use Modules\Blog\Models\Category;
 use Modules\Blog\Models\CategoryTranslation;
 use Modules\Blog\Models\Post;
 use Modules\Blog\Models\PostTranslation;
-use Modules\Charts\ChartsModuleServiceProvider;
-use Modules\Forms\FormsModuleServiceProvider;
 use Modules\Forms\Models\CustomForm;
 use Modules\Forms\Models\CustomFormTranslation;
 use Modules\Forms\Models\FormField;
 use Modules\Forms\Models\FormFieldTranslation;
 use Modules\Forms\Models\FormSubmission;
-use Modules\Gallery\GalleryModuleServiceProvider;
 use Modules\Gallery\Models\Gallery;
 use Modules\Gallery\Models\GalleryItem;
 use Modules\Gallery\Models\GalleryTranslation;
-use Modules\Pages\Models\Page;
-use Modules\Pages\Models\PageSection;
-use Modules\Pages\Models\PageTranslation;
-use Modules\Pages\Models\SectionTranslation;
-use Modules\Pages\PagesModuleServiceProvider;
-use Modules\Search\SearchModuleServiceProvider;
 use Modules\Shop\Models\Product;
 use Modules\Shop\Models\ProductCategory;
 use Modules\Shop\Models\ProductCategoryTranslation;
 use Modules\Shop\Models\ProductTranslation;
-use Modules\Shop\Models\ShopSetting;
-use Modules\Shop\ShopModuleServiceProvider;
 
 /**
  * Narrative demo: the platform explaining itself.
@@ -52,7 +45,7 @@ use Modules\Shop\ShopModuleServiceProvider;
  * what the CMS is, how the multi-market matrix works, and one section + one
  * article per module (pages, blog, shop, gallery, forms, search, MCP, AI).
  *
- * Runs on top of {@see CmsFoundationSeeder} (languages, markets, trunk module),
+ * Runs on top of {@see CmsFoundationSeeder} (languages and markets),
  * is idempotent, and every visible string follows the active product brand.
  *
  * Content matrix:
@@ -62,6 +55,9 @@ use Modules\Shop\ShopModuleServiceProvider;
  */
 class PlatformShowcaseSeeder extends Seeder
 {
+    /** Explicit composition of the demonstration site, not the core default. */
+    public const MODULES = ['blog', 'forms', 'gallery', 'shop', 'search', 'mcp', 'ai_assistant', 'content_audit', 'marketing', 'analytics', 'orchestration'];
+
     public function run(): void
     {
         app(SearchIndexer::class)->batch(fn () => $this->seedShowcase());
@@ -108,30 +104,8 @@ class PlatformShowcaseSeeder extends Seeder
      */
     protected function registerModules(): void
     {
-        $modules = [
-            ['pages', 'Composite Page Builder', PagesModuleServiceProvider::class, 'Página compuesta por secciones y widgets, con columnas, fondos y animaciones.', true],
-            ['blog', 'Blog & SEO Hub', BlogModuleServiceProvider::class, 'Artículos con taxonomías, autores, comentarios y optimización GEO.', true],
-            ['forms', 'Dynamic Forms Engine', FormsModuleServiceProvider::class, 'Formularios interactivos con antispam y buzón de contactos.', true],
-            ['gallery', 'Multi-Market Gallery', GalleryModuleServiceProvider::class, 'Álbumes multimedia localizados con marcado Schema.org.', true],
-            ['shop', 'Product Catalog & E-Commerce', ShopModuleServiceProvider::class, 'Catálogo con precios por mercado, stock y pasarela de pago.', true],
-            ['search', 'General Search', SearchModuleServiceProvider::class, 'Buscador general con URL amigable y facetas por entidad.', true],
-            ['charts', 'Charts & Data Visualization', ChartsModuleServiceProvider::class, 'Métricas animadas, KPIs y gráficos interactivos para tus páginas.', false],
-        ];
-
-        foreach ($modules as [$identifier, $name, $provider, $description, $pageable]) {
-            CmsModule::updateOrCreate(
-                ['identifier' => $identifier],
-                [
-                    'name' => $name,
-                    'provider' => $provider,
-                    'description' => $description,
-                    'version' => '1.0.0',
-                    'is_pageable' => $pageable,
-                    'is_installed' => true,
-                    'is_active' => true,
-                ]
-            );
-        }
+        config(['cms.modules' => self::MODULES]);
+        app(ModuleManager::class)->installConfiguredModules();
     }
 
     protected function seedRolesAndUsers(): void
@@ -141,6 +115,7 @@ class PlatformShowcaseSeeder extends Seeder
             'access:admin' => 'Acceder al panel de administración',
             'manage:users' => 'Gestionar usuarios y roles',
             'manage:modules' => 'Gestionar módulos',
+            'manage:blocks' => 'Gestionar paquetes de bloques',
             'manage:themes' => 'Gestionar plantillas y temas',
             'manage:pages' => 'Gestionar páginas',
             'manage:posts' => 'Gestionar artículos y categorías',
@@ -657,9 +632,9 @@ class PlatformShowcaseSeeder extends Seeder
      */
     protected function seedShop(array $regions): void
     {
-        ShopSetting::set('shop_mode', 'full_shop');
-        ShopSetting::set('catalog_show_prices', true);
-        ShopSetting::set('currency', 'EUR');
+        app(ModuleSettingsServiceInterface::class)->set('shop', 'shop_mode', 'full_shop');
+        app(ModuleSettingsServiceInterface::class)->set('shop', 'catalog_show_prices', true);
+        app(ModuleSettingsServiceInterface::class)->set('shop', 'currency', 'EUR');
 
         // Storefront catalogue: one category per product family.
         $catalogue = [
@@ -1038,65 +1013,65 @@ class PlatformShowcaseSeeder extends Seeder
                     'es' => [
                         'columns_layout' => '3',
                         'columns' => [
-                            ['blocks' => [['type' => 'text', 'headline' => 'Entidad', 'content' => 'La página, el artículo o el producto. Existe una sola vez, sin duplicados.']]],
-                            ['blocks' => [['type' => 'text', 'headline' => 'Traducción', 'content' => 'El contenido de esa entidad en cada idioma: título, slug, secciones y SEO.']]],
-                            ['blocks' => [['type' => 'text', 'headline' => 'Mercado', 'content' => 'Dónde se publica esa entidad. Añadir un país es añadir un mercado.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Entidad', 'content' => 'La página, el artículo o el producto. Existe una sola vez, sin duplicados.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Traducción', 'content' => 'El contenido de esa entidad en cada idioma: título, slug, secciones y SEO.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Mercado', 'content' => 'Dónde se publica esa entidad. Añadir un país es añadir un mercado.']]],
                         ],
                     ],
                     'en' => [
                         'columns_layout' => '3',
                         'columns' => [
-                            ['blocks' => [['type' => 'text', 'headline' => 'Entity', 'content' => 'The page, the article or the product. It exists once, with no duplicates.']]],
-                            ['blocks' => [['type' => 'text', 'headline' => 'Translation', 'content' => 'That entity’s content in each language: title, slug, sections and SEO.']]],
-                            ['blocks' => [['type' => 'text', 'headline' => 'Market', 'content' => 'Where that entity is published. Adding a country means adding a market.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Entity', 'content' => 'The page, the article or the product. It exists once, with no duplicates.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Translation', 'content' => 'That entity’s content in each language: title, slug, sections and SEO.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Market', 'content' => 'Where that entity is published. Adding a country means adding a market.']]],
                         ],
                     ],
                     'fr' => [
                         'columns_layout' => '3',
                         'columns' => [
-                            ['blocks' => [['type' => 'text', 'headline' => 'Entité', 'content' => 'La page, l’article ou le produit. Il existe une seule fois, sans doublons.']]],
-                            ['blocks' => [['type' => 'text', 'headline' => 'Traduction', 'content' => 'Le contenu de cette entité dans chaque langue : titre, slug, sections et SEO.']]],
-                            ['blocks' => [['type' => 'text', 'headline' => 'Marché', 'content' => 'Où cette entité est publiée. Ajouter un pays, c’est ajouter un marché.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Entité', 'content' => 'La page, l’article ou le produit. Il existe une seule fois, sans doublons.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Traduction', 'content' => 'Le contenu de cette entité dans chaque langue : titre, slug, sections et SEO.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Marché', 'content' => 'Où cette entité est publiée. Ajouter un pays, c’est ajouter un marché.']]],
                         ],
                     ],
                     'it' => [
                         'columns_layout' => '3',
                         'columns' => [
-                            ['blocks' => [['type' => 'text', 'headline' => 'Entità', 'content' => 'La pagina, l’articolo o il prodotto. Esiste una sola volta, senza duplicati.']]],
-                            ['blocks' => [['type' => 'text', 'headline' => 'Traduzione', 'content' => 'Il contenuto di quell’entità in ogni lingua: titolo, slug, sezioni e SEO.']]],
-                            ['blocks' => [['type' => 'text', 'headline' => 'Mercato', 'content' => 'Dove viene pubblicata quell’entità. Aggiungere un paese significa aggiungere un mercato.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Entità', 'content' => 'La pagina, l’articolo o il prodotto. Esiste una sola volta, senza duplicati.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Traduzione', 'content' => 'Il contenuto di quell’entità in ogni lingua: titolo, slug, sezioni e SEO.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Mercato', 'content' => 'Dove viene pubblicata quell’entità. Aggiungere un paese significa aggiungere un mercato.']]],
                         ],
                     ],
                     'pt' => [
                         'columns_layout' => '3',
                         'columns' => [
-                            ['blocks' => [['type' => 'text', 'headline' => 'Entidade', 'content' => 'A página, o artigo ou o produto. Existe uma única vez, sem duplicados.']]],
-                            ['blocks' => [['type' => 'text', 'headline' => 'Tradução', 'content' => 'O conteúdo dessa entidade em cada idioma: título, slug, secções e SEO.']]],
-                            ['blocks' => [['type' => 'text', 'headline' => 'Mercado', 'content' => 'Onde essa entidade é publicada. Adicionar um país é adicionar um mercado.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Entidade', 'content' => 'A página, o artigo ou o produto. Existe uma única vez, sem duplicados.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Tradução', 'content' => 'O conteúdo dessa entidade em cada idioma: título, slug, secções e SEO.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Mercado', 'content' => 'Onde essa entidade é publicada. Adicionar um país é adicionar um mercado.']]],
                         ],
                     ],
                     'de' => [
                         'columns_layout' => '3',
                         'columns' => [
-                            ['blocks' => [['type' => 'text', 'headline' => 'Entität', 'content' => 'Die Seite, der Artikel oder das Produkt. Es existiert nur einmal, ohne Duplikate.']]],
-                            ['blocks' => [['type' => 'text', 'headline' => 'Übersetzung', 'content' => 'Der Inhalt dieser Entität in jeder Sprache: Titel, Slug, Sektionen und SEO.']]],
-                            ['blocks' => [['type' => 'text', 'headline' => 'Markt', 'content' => 'Wo diese Entität veröffentlicht wird. Ein neues Land ist ein neuer Markt.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Entität', 'content' => 'Die Seite, der Artikel oder das Produkt. Es existiert nur einmal, ohne Duplikate.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Übersetzung', 'content' => 'Der Inhalt dieser Entität in jeder Sprache: Titel, Slug, Sektionen und SEO.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'Markt', 'content' => 'Wo diese Entität veröffentlicht wird. Ein neues Land ist ein neuer Markt.']]],
                         ],
                     ],
                     'zh-CN' => [
                         'columns_layout' => '3',
                         'columns' => [
-                            ['blocks' => [['type' => 'text', 'headline' => '实体', 'content' => '页面、文章或产品。只存在一次，绝不重复。']]],
-                            ['blocks' => [['type' => 'text', 'headline' => '翻译', 'content' => '该实体在各语言下的内容：标题、别名、版块与 SEO。']]],
-                            ['blocks' => [['type' => 'text', 'headline' => '市场', 'content' => '实体在哪里发布。增加一个国家，就是增加一个市场。']]],
+                            ['blocks' => [['type' => 'text', 'title' => '实体', 'content' => '页面、文章或产品。只存在一次，绝不重复。']]],
+                            ['blocks' => [['type' => 'text', 'title' => '翻译', 'content' => '该实体在各语言下的内容：标题、别名、版块与 SEO。']]],
+                            ['blocks' => [['type' => 'text', 'title' => '市场', 'content' => '实体在哪里发布。增加一个国家，就是增加一个市场。']]],
                         ],
                     ],
                     'ar' => [
                         'columns_layout' => '3',
                         'columns' => [
-                            ['blocks' => [['type' => 'text', 'headline' => 'الكيان', 'content' => 'الصفحة أو المقال أو المنتج. يوجد مرة واحدة فقط، دون تكرار.']]],
-                            ['blocks' => [['type' => 'text', 'headline' => 'الترجمة', 'content' => 'محتوى ذلك الكيان في كل لغة: العنوان والرابط والأقسام وSEO.']]],
-                            ['blocks' => [['type' => 'text', 'headline' => 'السوق', 'content' => 'مكان نشر ذلك الكيان. إضافة بلد جديد تعني إضافة سوق جديد.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'الكيان', 'content' => 'الصفحة أو المقال أو المنتج. يوجد مرة واحدة فقط، دون تكرار.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'الترجمة', 'content' => 'محتوى ذلك الكيان في كل لغة: العنوان والرابط والأقسام وSEO.']]],
+                            ['blocks' => [['type' => 'text', 'title' => 'السوق', 'content' => 'مكان نشر ذلك الكيان. إضافة بلد جديد تعني إضافة سوق جديد.']]],
                         ],
                     ],
                 ],
@@ -1508,14 +1483,14 @@ CODE;
                 'type' => 'text',
                 'styling' => ['container_style' => 'cyber-card', 'animation' => 'fadeInUp'],
                 'translations' => [
-                    'es' => ['headline' => 'Entidad, traducción y mercado', 'body' => "1. **Entidad**: la página, el artículo o el producto. Existe una sola vez.\n2. **Traducción**: el contenido de esa entidad en cada idioma.\n3. **Mercado**: dónde se publica esa entidad.\n\nAl entrar en `/eu/es/...` se resuelven mercado e idioma y se sirve la pieza correcta. Añadir un país nuevo es añadir un mercado, no duplicar contenido."],
-                    'en' => ['headline' => 'Entity, translation and market', 'body' => "1. **Entity**: the page, article or product. It exists once.\n2. **Translation**: that entity's content in each language.\n3. **Market**: where that entity is published.\n\nLanding on `/eu/en/...` resolves market and language and serves the right piece. Adding a new country means adding a market, not duplicating content."],
-                    'fr' => ['headline' => 'Entité, traduction et marché', 'body' => "1. **Entité** : la page, l’article ou le produit. Il existe une seule fois.\n2. **Traduction** : le contenu de cette entité dans chaque langue.\n3. **Marché** : où cette entité est publiée.\n\nEn arrivant sur `/eu/fr/...`, le marché et la langue sont résolus et la bonne pièce est servie. Ajouter un pays, c’est ajouter un marché, pas dupliquer du contenu."],
-                    'it' => ['headline' => 'Entità, traduzione e mercato', 'body' => "1. **Entità**: la pagina, l’articolo o il prodotto. Esiste una sola volta.\n2. **Traduzione**: il contenuto di quell’entità in ogni lingua.\n3. **Mercato**: dove viene pubblicata quell’entità.\n\nEntrando su `/eu/it/...` si risolvono mercato e lingua e si serve il pezzo giusto. Aggiungere un paese significa aggiungere un mercato, non duplicare contenuti."],
-                    'pt' => ['headline' => 'Entidade, tradução e mercado', 'body' => "1. **Entidade**: a página, o artigo ou o produto. Existe uma única vez.\n2. **Tradução**: o conteúdo dessa entidade em cada idioma.\n3. **Mercado**: onde essa entidade é publicada.\n\nAo entrar em `/eu/pt/...`, resolvem-se mercado e idioma e serve-se a peça certa. Adicionar um país é adicionar um mercado, não duplicar conteúdo."],
-                    'de' => ['headline' => 'Entität, Übersetzung und Markt', 'body' => "1. **Entität**: die Seite, der Artikel oder das Produkt. Es existiert nur einmal.\n2. **Übersetzung**: der Inhalt dieser Entität in jeder Sprache.\n3. **Markt**: wo diese Entität veröffentlicht wird.\n\nBeim Aufruf von `/eu/de/...` werden Markt und Sprache aufgelöst und das richtige Stück ausgeliefert. Ein neues Land ist ein neuer Markt, keine duplizierten Inhalte."],
-                    'zh-CN' => ['headline' => '实体、翻译与市场', 'body' => "1. **实体**：页面、文章或产品，只存在一次。\n2. **翻译**：该实体在各语言下的内容。\n3. **市场**：实体在哪里发布。\n\n访问 `/eu/zh-CN/...` 时解析市场与语言，输出正确内容。新增国家就是新增市场，而不是复制内容。"],
-                    'ar' => ['headline' => 'الكيان والترجمة والسوق', 'body' => "1. **الكيان**: الصفحة أو المقال أو المنتج، يوجد مرة واحدة.\n2. **الترجمة**: محتوى ذلك الكيان في كل لغة.\n3. **السوق**: مكان نشر ذلك الكيان.\n\nعند زيارة `/eu/ar/...` تُحل السوق واللغة ويُعرض المحتوى الصحيح. إضافة بلد جديد تعني إضافة سوق، لا تكرار المحتوى."],
+                    'es' => ['title' => 'Entidad, traducción y mercado', 'content' => "1. **Entidad**: la página, el artículo o el producto. Existe una sola vez.\n2. **Traducción**: el contenido de esa entidad en cada idioma.\n3. **Mercado**: dónde se publica esa entidad.\n\nAl entrar en `/eu/es/...` se resuelven mercado e idioma y se sirve la pieza correcta. Añadir un país nuevo es añadir un mercado, no duplicar contenido."],
+                    'en' => ['title' => 'Entity, translation and market', 'content' => "1. **Entity**: the page, article or product. It exists once.\n2. **Translation**: that entity's content in each language.\n3. **Market**: where that entity is published.\n\nLanding on `/eu/en/...` resolves market and language and serves the right piece. Adding a new country means adding a market, not duplicating content."],
+                    'fr' => ['title' => 'Entité, traduction et marché', 'content' => "1. **Entité** : la page, l’article ou le produit. Il existe une seule fois.\n2. **Traduction** : le contenu de cette entité dans chaque langue.\n3. **Marché** : où cette entité est publiée.\n\nEn arrivant sur `/eu/fr/...`, le marché et la langue sont résolus et la bonne pièce est servie. Ajouter un pays, c’est ajouter un marché, pas dupliquer du contenu."],
+                    'it' => ['title' => 'Entità, traduzione e mercato', 'content' => "1. **Entità**: la pagina, l’articolo o il prodotto. Esiste una sola volta.\n2. **Traduzione**: il contenuto di quell’entità in ogni lingua.\n3. **Mercato**: dove viene pubblicata quell’entità.\n\nEntrando su `/eu/it/...` si risolvono mercato e lingua e si serve il pezzo giusto. Aggiungere un paese significa aggiungere un mercato, non duplicare contenuti."],
+                    'pt' => ['title' => 'Entidade, tradução e mercado', 'content' => "1. **Entidade**: a página, o artigo ou o produto. Existe uma única vez.\n2. **Tradução**: o conteúdo dessa entidade em cada idioma.\n3. **Mercado**: onde essa entidade é publicada.\n\nAo entrar em `/eu/pt/...`, resolvem-se mercado e idioma e serve-se a peça certa. Adicionar um país é adicionar um mercado, não duplicar conteúdo."],
+                    'de' => ['title' => 'Entität, Übersetzung und Markt', 'content' => "1. **Entität**: die Seite, der Artikel oder das Produkt. Es existiert nur einmal.\n2. **Übersetzung**: der Inhalt dieser Entität in jeder Sprache.\n3. **Markt**: wo diese Entität veröffentlicht wird.\n\nBeim Aufruf von `/eu/de/...` werden Markt und Sprache aufgelöst und das richtige Stück ausgeliefert. Ein neues Land ist ein neuer Markt, keine duplizierten Inhalte."],
+                    'zh-CN' => ['title' => '实体、翻译与市场', 'content' => "1. **实体**：页面、文章或产品，只存在一次。\n2. **翻译**：该实体在各语言下的内容。\n3. **市场**：实体在哪里发布。\n\n访问 `/eu/zh-CN/...` 时解析市场与语言，输出正确内容。新增国家就是新增市场，而不是复制内容。"],
+                    'ar' => ['title' => 'الكيان والترجمة والسوق', 'content' => "1. **الكيان**: الصفحة أو المقال أو المنتج، يوجد مرة واحدة.\n2. **الترجمة**: محتوى ذلك الكيان في كل لغة.\n3. **السوق**: مكان نشر ذلك الكيان.\n\nعند زيارة `/eu/ar/...` تُحل السوق واللغة ويُعرض المحتوى الصحيح. إضافة بلد جديد تعني إضافة سوق، لا تكرار المحتوى."],
                 ],
             ],
             [
@@ -1612,14 +1587,14 @@ CODE;
                         'type' => 'hero',
                         'styling' => ['is_fullwidth' => true, 'bg_color' => '#0A0A0A'],
                         'translations' => [
-                            'es' => ['headline' => 'Un CMS para publicar en todos tus mercados e idiomas', 'subheadline' => 'Una sola base de datos · Contenido por idioma · Visibilidad por mercado', 'cta_text' => 'Ver los módulos', 'cta_url' => '/modulos'],
-                            'en' => ['headline' => 'A CMS to publish in every market and language', 'subheadline' => 'One database · Content per language · Visibility per market', 'cta_text' => 'Explore the modules', 'cta_url' => '/modulos'],
-                            'fr' => ['headline' => 'Un CMS pour publier sur tous vos marchés et langues', 'subheadline' => 'Une seule base de données · Contenu par langue · Visibilité par marché', 'cta_text' => 'Voir les modules', 'cta_url' => '/modulos'],
-                            'it' => ['headline' => 'Un CMS per pubblicare in tutti i tuoi mercati e lingue', 'subheadline' => 'Un solo database · Contenuti per lingua · Visibilità per mercato', 'cta_text' => 'Scopri i moduli', 'cta_url' => '/modulos'],
-                            'pt' => ['headline' => 'Um CMS para publicar em todos os teus mercados e idiomas', 'subheadline' => 'Uma única base de dados · Conteúdo por idioma · Visibilidade por mercado', 'cta_text' => 'Ver os módulos', 'cta_url' => '/modulos'],
-                            'de' => ['headline' => 'Ein CMS für alle deine Märkte und Sprachen', 'subheadline' => 'Eine Datenbank · Inhalte pro Sprache · Sichtbarkeit pro Markt', 'cta_text' => 'Module entdecken', 'cta_url' => '/modulos'],
-                            'zh-CN' => ['headline' => '面向所有市场和语言的 CMS', 'subheadline' => '一个数据库 · 按语言管理内容 · 按市场控制可见性', 'cta_text' => '查看模块', 'cta_url' => '/modulos'],
-                            'ar' => ['headline' => 'نظام إدارة محتوى للنشر في كل الأسواق واللغات', 'subheadline' => 'قاعدة بيانات واحدة · محتوى لكل لغة · ظهور لكل سوق', 'cta_text' => 'استعرض الوحدات', 'cta_url' => '/modulos'],
+                            'es' => ['title' => 'Un CMS para publicar en todos tus mercados e idiomas', 'content' => 'Una sola base de datos · Contenido por idioma · Visibilidad por mercado', 'cta_text' => 'Ver los módulos', 'cta_url' => '/modulos'],
+                            'en' => ['title' => 'A CMS to publish in every market and language', 'content' => 'One database · Content per language · Visibility per market', 'cta_text' => 'Explore the modules', 'cta_url' => '/modulos'],
+                            'fr' => ['title' => 'Un CMS pour publier sur tous vos marchés et langues', 'content' => 'Une seule base de données · Contenu par langue · Visibilité par marché', 'cta_text' => 'Voir les modules', 'cta_url' => '/modulos'],
+                            'it' => ['title' => 'Un CMS per pubblicare in tutti i tuoi mercati e lingue', 'content' => 'Un solo database · Contenuti per lingua · Visibilità per mercato', 'cta_text' => 'Scopri i moduli', 'cta_url' => '/modulos'],
+                            'pt' => ['title' => 'Um CMS para publicar em todos os teus mercados e idiomas', 'content' => 'Uma única base de dados · Conteúdo por idioma · Visibilidade por mercado', 'cta_text' => 'Ver os módulos', 'cta_url' => '/modulos'],
+                            'de' => ['title' => 'Ein CMS für alle deine Märkte und Sprachen', 'content' => 'Eine Datenbank · Inhalte pro Sprache · Sichtbarkeit pro Markt', 'cta_text' => 'Module entdecken', 'cta_url' => '/modulos'],
+                            'zh-CN' => ['title' => '面向所有市场和语言的 CMS', 'content' => '一个数据库 · 按语言管理内容 · 按市场控制可见性', 'cta_text' => '查看模块', 'cta_url' => '/modulos'],
+                            'ar' => ['title' => 'نظام إدارة محتوى للنشر في كل الأسواق واللغات', 'content' => 'قاعدة بيانات واحدة · محتوى لكل لغة · ظهور لكل سوق', 'cta_text' => 'استعرض الوحدات', 'cta_url' => '/modulos'],
                         ],
                     ],
                     [
@@ -1687,15 +1662,15 @@ CODE;
                     [
                         'type' => 'text',
                         'translations' => [
-                            'es' => ['headline' => 'Un módulo por cada necesidad', 'body' => "Cada capacidad de dbCMS es un **módulo desacoplado**. Actívalo o desactívalo sin tocar el resto del sistema.\n\n- **Páginas**: secciones, columnas, fondos y animaciones.\n- **Blog**: artículos con taxonomías y comentarios.\n- **Tienda**: catálogo con precios por mercado.\n- **Galería**: álbumes multimedia localizados.\n- **Formularios**: contacto con antispam y buzón.\n- **Búsqueda**: buscador con URL amigable.\n- **MCP/IA**: asistentes con permisos acotados."],
-                            'en' => ['headline' => 'One module for every need', 'body' => "Every dbCMS capability is a **decoupled module**. Enable or disable it without touching the rest of the system.\n\n- **Pages**: sections, columns, backgrounds and animations.\n- **Blog**: articles with taxonomies and comments.\n- **Shop**: catalog with per-market pricing.\n- **Gallery**: localized media albums.\n- **Forms**: contact with antispam and inbox.\n- **Search**: friendly-URL search.\n- **MCP/AI**: assistants with scoped permissions."],
-                            'fr' => ['headline' => 'Un module pour chaque besoin', 'body' => "Chaque capacité de dbCMS est un **module découplé**. Activez-le ou désactivez-le sans toucher au reste du système.\n\n- **Pages** : sections, colonnes, arrière-plans et animations.\n- **Blog** : articles avec taxonomies et commentaires.\n- **Boutique** : catalogue avec prix par marché.\n- **Galerie** : albums multimédia localisés.\n- **Formulaires** : contact avec antispam et boîte de réception.\n- **Recherche** : recherche à URL conviviale.\n- **MCP/IA** : assistants avec permissions limitées."],
-                            'it' => ['headline' => 'Un modulo per ogni esigenza', 'body' => "Ogni capacità di dbCMS è un **modulo disaccoppiato**. Attivalo o disattivalo senza toccare il resto del sistema.\n\n- **Pagine**: sezioni, colonne, sfondi e animazioni.\n- **Blog**: articoli con tassonomie e commenti.\n- **Negozio**: catalogo con prezzi per mercato.\n- **Galleria**: album multimediali localizzati.\n- **Moduli**: contatto con antispam e casella di posta.\n- **Ricerca**: ricerca con URL amichevole.\n- **MCP/IA**: assistenti con permessi limitati."],
-                            'pt' => ['headline' => 'Um módulo para cada necessidade', 'body' => "Cada capacidade do dbCMS é um **módulo desacoplado**. Ativa-o ou desativa-o sem tocar no resto do sistema.\n\n- **Páginas**: secções, colunas, fundos e animações.\n- **Blogue**: artigos com taxonomias e comentários.\n- **Loja**: catálogo com preços por mercado.\n- **Galeria**: álbuns multimédia localizados.\n- **Formulários**: contacto com antispam e caixa de entrada.\n- **Pesquisa**: pesquisa com URL amigável.\n- **MCP/IA**: assistentes com permissões limitadas."],
-                            'de' => ['headline' => 'Ein Modul für jeden Bedarf', 'body' => "Jede dbCMS-Fähigkeit ist ein **entkoppeltes Modul**. Aktiviere oder deaktiviere es, ohne den Rest des Systems anzufassen.\n\n- **Seiten**: Sektionen, Spalten, Hintergründe und Animationen.\n- **Blog**: Artikel mit Taxonomien und Kommentaren.\n- **Shop**: Katalog mit Preisen pro Markt.\n- **Galerie**: lokalisierte Medienalben.\n- **Formulare**: Kontakt mit Antispam und Postfach.\n- **Suche**: Suche mit sprechender URL.\n- **MCP/KI**: Assistenten mit eingeschränkten Rechten."],
-                            'zh-CN' => ['headline' => '按需启用模块', 'body' => "dbCMS 的每一项能力都是**解耦模块**，可随时启用或停用，不影响系统其他部分。\n\n- **页面**：区块、分栏、背景与动画。\n- **博客**：带分类与评论的文章。\n- **商店**：按市场定价的目录。\n- **图库**：本地化媒体相册。\n- **表单**：带防垃圾与收件箱。\n- **搜索**：友好 URL 搜索。\n- **MCP/AI**：权限受限的助手。".
+                            'es' => ['title' => 'Un módulo por cada necesidad', 'content' => "Cada capacidad de dbCMS es un **módulo desacoplado**. Actívalo o desactívalo sin tocar el resto del sistema.\n\n- **Páginas**: secciones, columnas, fondos y animaciones.\n- **Blog**: artículos con taxonomías y comentarios.\n- **Tienda**: catálogo con precios por mercado.\n- **Galería**: álbumes multimedia localizados.\n- **Formularios**: contacto con antispam y buzón.\n- **Búsqueda**: buscador con URL amigable.\n- **MCP/IA**: asistentes con permisos acotados."],
+                            'en' => ['title' => 'One module for every need', 'content' => "Every dbCMS capability is a **decoupled module**. Enable or disable it without touching the rest of the system.\n\n- **Pages**: sections, columns, backgrounds and animations.\n- **Blog**: articles with taxonomies and comments.\n- **Shop**: catalog with per-market pricing.\n- **Gallery**: localized media albums.\n- **Forms**: contact with antispam and inbox.\n- **Search**: friendly-URL search.\n- **MCP/AI**: assistants with scoped permissions."],
+                            'fr' => ['title' => 'Un module pour chaque besoin', 'content' => "Chaque capacité de dbCMS est un **module découplé**. Activez-le ou désactivez-le sans toucher au reste du système.\n\n- **Pages** : sections, colonnes, arrière-plans et animations.\n- **Blog** : articles avec taxonomies et commentaires.\n- **Boutique** : catalogue avec prix par marché.\n- **Galerie** : albums multimédia localisés.\n- **Formulaires** : contact avec antispam et boîte de réception.\n- **Recherche** : recherche à URL conviviale.\n- **MCP/IA** : assistants avec permissions limitées."],
+                            'it' => ['title' => 'Un modulo per ogni esigenza', 'content' => "Ogni capacità di dbCMS è un **modulo disaccoppiato**. Attivalo o disattivalo senza toccare il resto del sistema.\n\n- **Pagine**: sezioni, colonne, sfondi e animazioni.\n- **Blog**: articoli con tassonomie e commenti.\n- **Negozio**: catalogo con prezzi per mercato.\n- **Galleria**: album multimediali localizzati.\n- **Moduli**: contatto con antispam e casella di posta.\n- **Ricerca**: ricerca con URL amichevole.\n- **MCP/IA**: assistenti con permessi limitati."],
+                            'pt' => ['title' => 'Um módulo para cada necessidade', 'content' => "Cada capacidade do dbCMS é um **módulo desacoplado**. Ativa-o ou desativa-o sem tocar no resto do sistema.\n\n- **Páginas**: secções, colunas, fundos e animações.\n- **Blogue**: artigos com taxonomias e comentários.\n- **Loja**: catálogo com preços por mercado.\n- **Galeria**: álbuns multimédia localizados.\n- **Formulários**: contacto com antispam e caixa de entrada.\n- **Pesquisa**: pesquisa com URL amigável.\n- **MCP/IA**: assistentes com permissões limitadas."],
+                            'de' => ['title' => 'Ein Modul für jeden Bedarf', 'content' => "Jede dbCMS-Fähigkeit ist ein **entkoppeltes Modul**. Aktiviere oder deaktiviere es, ohne den Rest des Systems anzufassen.\n\n- **Seiten**: Sektionen, Spalten, Hintergründe und Animationen.\n- **Blog**: Artikel mit Taxonomien und Kommentaren.\n- **Shop**: Katalog mit Preisen pro Markt.\n- **Galerie**: lokalisierte Medienalben.\n- **Formulare**: Kontakt mit Antispam und Postfach.\n- **Suche**: Suche mit sprechender URL.\n- **MCP/KI**: Assistenten mit eingeschränkten Rechten."],
+                            'zh-CN' => ['title' => '按需启用模块', 'content' => "dbCMS 的每一项能力都是**解耦模块**，可随时启用或停用，不影响系统其他部分。\n\n- **页面**：区块、分栏、背景与动画。\n- **博客**：带分类与评论的文章。\n- **商店**：按市场定价的目录。\n- **图库**：本地化媒体相册。\n- **表单**：带防垃圾与收件箱。\n- **搜索**：友好 URL 搜索。\n- **MCP/AI**：权限受限的助手。".
                                 "\n\n请随意切换语言：本页展示同一内容如何以多语言、多市场呈现。"],
-                            'ar' => ['headline' => 'وحدة لكل احتياج', 'body' => "كل قدرة في dbCMS هي **وحدة مستقلة**، يمكنك تفعيلها أو تعطيلها دون التأثير على بقية النظام.\n\n- **الصفحات**: أقسام وأعمدة وخلفيات وحركات.\n- **المدونة**: مقالات مع تصنيفات وتعليقات.\n- **المتجر**: كتالوج بأسعار لكل سوق.\n- **المعرض**: ألبومات وسائط مترجمة.\n- **النماذج**: تواصل مع مكافحة الرسائل المزعجة.\n- **البحث**: بحث بروابط صديقة.\n- **MCP/الذكاء الاصطناعي**: مساعدون بصلاحيات محدودة."],
+                            'ar' => ['title' => 'وحدة لكل احتياج', 'content' => "كل قدرة في dbCMS هي **وحدة مستقلة**، يمكنك تفعيلها أو تعطيلها دون التأثير على بقية النظام.\n\n- **الصفحات**: أقسام وأعمدة وخلفيات وحركات.\n- **المدونة**: مقالات مع تصنيفات وتعليقات.\n- **المتجر**: كتالوج بأسعار لكل سوق.\n- **المعرض**: ألبومات وسائط مترجمة.\n- **النماذج**: تواصل مع مكافحة الرسائل المزعجة.\n- **البحث**: بحث بروابط صديقة.\n- **MCP/الذكاء الاصطناعي**: مساعدون بصلاحيات محدودة."],
                         ],
                     ],
                 ],
@@ -1738,8 +1713,8 @@ CODE;
                     [
                         'type' => 'text',
                         'translations' => [
-                            'es' => ['headline' => 'Hablemos', 'body' => 'Rellena el formulario y te responderemos en menos de 24 horas.'],
-                            'en' => ['headline' => 'Let’s talk', 'body' => 'Fill in the form and we will reply within 24 hours.'],
+                            'es' => ['title' => 'Hablemos', 'content' => 'Rellena el formulario y te responderemos en menos de 24 horas.'],
+                            'en' => ['title' => 'Let’s talk', 'content' => 'Fill in the form and we will reply within 24 hours.'],
                         ],
                     ],
                     [
@@ -1762,8 +1737,8 @@ CODE;
                     [
                         'type' => 'text',
                         'translations' => [
-                            'es' => ['headline' => 'Política de privacidad', 'body' => 'Texto de ejemplo para la política de privacidad.'],
-                            'en' => ['headline' => 'Privacy Policy', 'body' => 'Sample text for the privacy policy.'],
+                            'es' => ['title' => 'Política de privacidad', 'content' => 'Texto de ejemplo para la política de privacidad.'],
+                            'en' => ['title' => 'Privacy Policy', 'content' => 'Sample text for the privacy policy.'],
                         ],
                     ],
                 ],
@@ -1778,8 +1753,8 @@ CODE;
                     [
                         'type' => 'text',
                         'translations' => [
-                            'es' => ['headline' => 'Términos de servicio', 'body' => 'Texto de ejemplo para los términos de servicio.'],
-                            'en' => ['headline' => 'Terms of Service', 'body' => 'Sample text for the terms of service.'],
+                            'es' => ['title' => 'Términos de servicio', 'content' => 'Texto de ejemplo para los términos de servicio.'],
+                            'en' => ['title' => 'Terms of Service', 'content' => 'Sample text for the terms of service.'],
                         ],
                     ],
                 ],

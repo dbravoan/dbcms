@@ -9,13 +9,12 @@ use App\Models\Market;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityMutationService;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Support\Facades\Event;
 use Modules\Blog\Models\Category;
 use Modules\Blog\Models\Post;
 use Modules\Blog\Models\PostTranslation;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
 use Modules\ContentAudit\Contracts\Services\DiffEngineServiceInterface;
 use Modules\ContentAudit\Enums\AuditAction;
 use Modules\ContentAudit\Enums\AuditStatus;
@@ -23,8 +22,14 @@ use Modules\ContentAudit\Events\ContentApprovedEvent;
 use Modules\ContentAudit\Events\ContentRejectedEvent;
 use Modules\ContentAudit\Models\ContentAudit;
 use Modules\ContentAudit\Models\ContentAuditRevision;
+use Modules\ContentAudit\Services\AuditEntityPresentation;
+use Modules\ContentAudit\Services\AuditRevisionService;
+use Modules\ContentAudit\Services\EditorialWorkflow;
 use Modules\Shop\Models\Product;
 use Modules\Shop\Models\ProductTranslation;
+use Tests\Support\BlogShopAuditComposition;
+
+uses(BlogShopAuditComposition::class);
 
 beforeEach(function (): void {
     // Seed language and market
@@ -78,8 +83,8 @@ test('content audit module is discovered by ModuleManager', function (): void {
     expect($module['name'])->toBe('Auditoría de Contenidos & Control de Calidad')
         ->and($module['version'])->toBe('1.0.0');
 
-    /** @var ContentAuditServiceInterface $auditService */
-    $auditService = app(ContentAuditServiceInterface::class);
+    /** @var EditorialWorkflow $auditService */
+    $auditService = app(EditorialWorkflow::class);
     expect($auditService->isEnabled())->toBeTrue();
 });
 
@@ -89,8 +94,8 @@ test('restricted author cannot publish directly and content requires review', fu
     $author = User::factory()->create();
     $author->roles()->sync([$authorRole->id]);
 
-    /** @var ContentAuditServiceInterface $auditService */
-    $auditService = app(ContentAuditServiceInterface::class);
+    /** @var EditorialWorkflow $auditService */
+    $auditService = app(EditorialWorkflow::class);
 
     expect($auditService->canPublishDirectly($author))->toBeFalse()
         ->and($auditService->requiresAudit(new Post, $author))->toBeTrue();
@@ -129,8 +134,8 @@ test('admin can publish directly without review requirement', function (): void 
     $admin = User::factory()->create();
     $admin->roles()->sync([$adminRole->id]);
 
-    /** @var ContentAuditServiceInterface $auditService */
-    $auditService = app(ContentAuditServiceInterface::class);
+    /** @var EditorialWorkflow $auditService */
+    $auditService = app(EditorialWorkflow::class);
 
     expect($auditService->canPublishDirectly($admin))->toBeTrue()
         ->and($auditService->requiresAudit(new Post, $admin))->toBeFalse();
@@ -173,8 +178,8 @@ test('auditor can approve pending content and trigger auto-publishing', function
         'schema_type' => 'TechArticle',
     ]);
 
-    /** @var ContentAuditServiceInterface $auditService */
-    $auditService = app(ContentAuditServiceInterface::class);
+    /** @var EditorialWorkflow $auditService */
+    $auditService = app(EditorialWorkflow::class);
     $auditService->submitForReview($post, $author, 'Revisar ortografía');
 
     $review = $this->actingAs($auditor)->get(route('admin.audit.review', ['type' => 'posts', 'id' => $post->id]));
@@ -190,7 +195,7 @@ test('auditor can approve pending content and trigger auto-publishing', function
     $post->refresh();
     expect((bool) $post->is_published)->toBeTrue();
 
-    $audit = $auditService->getAudit($post);
+    $audit = app(AuditRevisionService::class)->auditFor($post);
     expect($audit)->not->toBeNull()
         ->and($audit->status)->toBe(AuditStatus::APPROVED->value)
         ->and($audit->reviewed_by)->toBe($auditor->id)
@@ -220,8 +225,8 @@ test('auditor can reject pending content with required reason', function (): voi
         'schema_type' => 'TechArticle',
     ]);
 
-    /** @var ContentAuditServiceInterface $auditService */
-    $auditService = app(ContentAuditServiceInterface::class);
+    /** @var EditorialWorkflow $auditService */
+    $auditService = app(EditorialWorkflow::class);
     $auditService->submitForReview($post, $author);
 
     // Validation failure: missing reason
@@ -246,7 +251,7 @@ test('auditor can reject pending content with required reason', function (): voi
     $post->refresh();
     expect((bool) $post->is_published)->toBeFalse();
 
-    $audit = $auditService->getAudit($post);
+    $audit = app(AuditRevisionService::class)->auditFor($post);
     expect($audit)->not->toBeNull()
         ->and($audit->status)->toBe(AuditStatus::REJECTED->value)
         ->and($audit->rejection_reason)->toBe('Faltan fuentes bibliográficas en la sección técnica.')
@@ -271,9 +276,9 @@ test('diff engine computes differences between content revisions', function (): 
         'schema_type' => 'TechArticle',
     ]);
 
-    /** @var ContentAuditServiceInterface $auditService */
-    $auditService = app(ContentAuditServiceInterface::class);
-    $rev1 = $auditService->recordChange($post, $author, AuditAction::CREATED->value);
+    /** @var EditorialWorkflow $auditService */
+    $auditService = app(EditorialWorkflow::class);
+    $rev1 = app(AuditRevisionService::class)->record($post, $author, AuditAction::CREATED->value);
 
     // Make changes to post translation
     $translation = $post->translations()->where('locale', 'es')->first();
@@ -282,7 +287,7 @@ test('diff engine computes differences between content revisions', function (): 
         'content' => "Primera línea modificada.\nSegunda línea sin cambios.\nTercera línea nueva.",
     ]);
 
-    $rev2 = $auditService->recordChange($post, $author, AuditAction::UPDATED->value);
+    $rev2 = app(AuditRevisionService::class)->record($post, $author, AuditAction::UPDATED->value);
 
     /** @var DiffEngineServiceInterface $diffEngine */
     $diffEngine = app(DiffEngineServiceInterface::class);
@@ -312,15 +317,15 @@ test('rollback restores historical snapshot version', function (): void {
         'schema_type' => 'TechArticle',
     ]);
 
-    /** @var ContentAuditServiceInterface $auditService */
-    $auditService = app(ContentAuditServiceInterface::class);
-    $rev1 = $auditService->recordChange($post, $author, AuditAction::CREATED->value);
+    /** @var EditorialWorkflow $auditService */
+    $auditService = app(EditorialWorkflow::class);
+    $rev1 = app(AuditRevisionService::class)->record($post, $author, AuditAction::CREATED->value);
 
     // Change title
     $post->translations()->where('locale', 'es')->update([
         'title' => 'Título Dañado o No Deseado',
     ]);
-    $rev2 = $auditService->recordChange($post, $author, AuditAction::UPDATED->value);
+    $rev2 = app(AuditRevisionService::class)->record($post, $author, AuditAction::UPDATED->value);
 
     // Perform rollback using the exact historical choice shown in this review.
     $review = $this->actingAs($auditor)->get(route('admin.audit.review', ['type' => 'posts', 'id' => $post->id]));
@@ -370,8 +375,8 @@ test('admin can update content audit module settings', function (): void {
 });
 
 test('describeEntity is strict-mode safe across entity shapes', function (): void {
-    /** @var ContentAuditServiceInterface $service */
-    $service = app(ContentAuditServiceInterface::class);
+    /** @var EditorialWorkflow $service */
+    $service = app(EditorialWorkflow::class);
 
     $author = User::factory()->create();
 
@@ -385,7 +390,7 @@ test('describeEntity is strict-mode safe across entity shapes', function (): voi
         'schema_type' => 'TechArticle',
     ]);
 
-    $postDescription = $service->describeEntity($post->fresh('translations'));
+    $postDescription = app(AuditEntityPresentation::class)->describe($post->fresh('translations'));
     expect($postDescription['title'])->toBe('Artículo Descrito')
         ->and($postDescription['is_published'])->toBeTrue();
 
@@ -399,7 +404,7 @@ test('describeEntity is strict-mode safe across entity shapes', function (): voi
         'description' => 'Descripción del producto',
     ]);
 
-    $productDescription = $service->describeEntity($product->fresh('translations'));
+    $productDescription = app(AuditEntityPresentation::class)->describe($product->fresh('translations'));
     expect($productDescription['title'])->toBe('Producto Descrito')
         ->and($productDescription['is_published'])->toBeFalse();
 });
@@ -446,8 +451,8 @@ test('quality queue index lists posts and products without tripping strict mode'
     $admin->roles()->sync([$adminRole->id]);
     $author = User::factory()->create();
 
-    /** @var ContentAuditServiceInterface $service */
-    $service = app(ContentAuditServiceInterface::class);
+    /** @var EditorialWorkflow $service */
+    $service = app(EditorialWorkflow::class);
 
     $post = Post::create(['user_id' => $author->id, 'is_published' => false]);
     PostTranslation::create([
@@ -482,7 +487,7 @@ test('legacy approval binds the pending revision that the auditor actually viewe
     $auditor = User::factory()->create();
     $auditor->roles()->sync([Role::where('slug', 'admin')->firstOrFail()->getKey()]);
     $this->actingAs($auditor);
-    $crud = app(EntityCrudService::class);
+    $crud = app(EntityMutationService::class);
     $created = $crud->create('post', ['publish' => true, 'translations' => ['es' => ['title' => 'Public version', 'content' => 'Public body']]], $auditor);
     $crud->update('post', $created['id'], ['translations' => ['es' => ['title' => 'Pending version A']]]);
     $reviewRoute = route('admin.audit.review', ['type' => 'posts', 'id' => $created['id']]);
@@ -505,7 +510,7 @@ test('legacy approval rejects absent forged expired or another auditors binding'
     $auditor->roles()->sync([$role->getKey()]);
     $other->roles()->sync([$role->getKey()]);
     $this->actingAs($auditor);
-    $crud = app(EntityCrudService::class);
+    $crud = app(EntityMutationService::class);
     $created = $crud->create('post', ['translations' => ['es' => ['title' => 'Awaiting review', 'content' => 'Draft body']]], $auditor);
     $approveRoute = route('admin.audit.approve', ['type' => 'posts', 'id' => $created['id']]);
     $review = $this->get(route('admin.audit.review', ['type' => 'posts', 'id' => $created['id']]))->assertOk();

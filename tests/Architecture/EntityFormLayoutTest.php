@@ -20,7 +20,7 @@ function entityFormFiles(): array
         'resources/views/admin/blog/posts/_form.blade.php' => 'Blog posts',
         'resources/views/admin/shop/products/_form.blade.php' => 'Shop products',
         'resources/views/admin/galleries/_form.blade.php' => 'Galleries',
-        'resources/views/admin/forms/_form.blade.php' => 'Forms',
+        'modules/Forms/Resources/views/admin/_form.blade.php' => 'Forms',
         'resources/views/admin/blog/categories/_form.blade.php' => 'Blog categories',
         'resources/views/admin/shop/categories/_form.blade.php' => 'Shop categories',
     ];

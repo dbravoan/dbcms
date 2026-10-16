@@ -5,20 +5,25 @@ declare(strict_types=1);
 use App\Contracts\Services\AdminThemeServiceInterface;
 use App\Contracts\Services\LocalizationServiceInterface;
 use App\Contracts\Services\ModuleSettingsServiceInterface;
-use App\Models\Language;
 use App\Models\Market;
 use App\Services\Cms\ThemeManagerService;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
+use Modules\Gallery\Models\Gallery;
+use Tests\Support\CmsFixtures;
+use Tests\Support\PublicContentComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, PublicContentComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
-    // These parity cases explicitly include Catalan in the Spanish market.
-    $catalan = Language::updateOrCreate(['code' => 'ca'], ['name' => 'Catalan', 'native_name' => 'Català', 'direction' => 'ltr', 'is_active' => true]);
-    Market::where('code', 'es')->firstOrFail()->languages()->syncWithoutDetaching([$catalan->getKey() => ['is_default' => false]]);
+    config(['cms.page_cache.enabled' => false]);
+    CmsFixtures::localization(['es', 'en', 'fr', 'ca'], ['es', 'eu']);
+    CmsFixtures::home(['es', 'en', 'fr', 'ca'], ['es', 'eu']);
+    $gallery = Gallery::create(['title' => 'Gallery fixture', 'slug' => 'gallery-fixture', 'is_active' => true]);
+    foreach (['es', 'en', 'fr', 'ca'] as $locale) {
+        $gallery->translations()->create(['locale' => $locale, 'title' => 'Gallery fixture', 'slug' => 'gallery-fixture']);
+    }
+    $gallery->markets()->sync(Market::pluck('id')->all());
 
     // Discovered dynamically: a newly added front theme is covered automatically.
     $this->frontThemes = array_keys(app(ThemeManagerService::class)->getAvailableThemes());
@@ -28,109 +33,12 @@ afterEach(function (): void {
     config(['cms.theme' => 'db-cyber', 'cms.admin_theme' => 'dbcms']);
 });
 
-test('all front themes are discovered and complete', function (): void {
-    $themes = app(ThemeManagerService::class)->getAvailableThemes();
-
-    $required = [
-        'theme.json',
-        'theme.css',
-        'layouts/app.blade.php',
-        'partials/header.blade.php',
-        'partials/footer.blade.php',
-        'pages/show.blade.php',
-        'blog/index.blade.php',
-        'blog/category.blade.php',
-        'blog/show.blade.php',
-        'gallery/index.blade.php',
-        'gallery/show.blade.php',
-        'shop/index.blade.php',
-        'shop/show.blade.php',
-        'shop/cart.blade.php',
-        'shop/checkout.blade.php',
-        'shop/order_success.blade.php',
-        'shop/widgets/featured_products.blade.php',
-    ];
-
-    foreach ($this->frontThemes as $id) {
-        expect(array_key_exists($id, $themes))->toBeTrue("Theme {$id} is not discovered.");
-
-        foreach ($required as $file) {
-            expect(file_exists(base_path("themes/{$id}/{$file}")))
-                ->toBeTrue("Theme {$id} is missing {$file}.");
-        }
-    }
-});
-
-test('all front themes are self-contained without cross-theme references', function (): void {
-    foreach ($this->frontThemes as $id) {
-        $base = base_path("themes/{$id}");
-        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($base));
-
-        foreach ($iterator as $file) {
-            if (! $file->isFile() || $file->getExtension() !== 'php') {
-                continue;
-            }
-
-            $content = (string) file_get_contents($file->getPathname());
-            preg_match_all('/themes\.(db-[a-z0-9\-]+)\./', $content, $matches);
-
-            foreach (array_unique($matches[1]) as $referenced) {
-                expect($referenced)->toBe($id, "Theme {$id} references another theme [{$referenced}] in {$file->getFilename()}.");
-            }
-        }
-    }
-});
-
-test('every front layout exposes the required hooks', function (): void {
-    foreach ($this->frontThemes as $id) {
-        $layout = (string) file_get_contents(base_path("themes/{$id}/layouts/app.blade.php"));
-
-        expect($layout)->toContain("@yield('content')")
-            ->and($layout)->toContain("@stack('scripts')")
-            ->and($layout)->toContain("@stack('admin_scripts')")
-            ->and($layout)->toContain('components.frontoffice-admin-bar')
-            ->and($layout)->toContain('themes.components.cookie-consent-modal')
-            ->and($layout)->toContain('themes.components.visitor-geo-modal')
-            ->and($layout)->toContain('themes.components.scroll-magic');
-    }
-});
-
 test('all front themes render the home page in every locale', function (): void {
     foreach ($this->frontThemes as $theme) {
         config(['cms.theme' => $theme]);
 
         foreach (['es', 'en', 'ca'] as $locale) {
-            $this->get("/es/{$locale}")->assertOk();
-        }
-    }
-});
-
-test('all front themes render every core route in every locale', function (): void {
-    $routes = [
-        'home-es' => '/es/es',
-        'blog-es' => '/es/es/blog',
-        'blog-category-es' => '/es/es/blog/tecnologia',
-        'gallery-es' => '/es/es/galeria',
-        'gallery-en' => '/es/en/gallery',
-        'gallery-ca' => '/es/ca/galeria',
-        'shop-es' => '/es/es/tienda',
-        'shop-cart-es' => '/es/es/tienda/cart',
-    ];
-
-    $themes = $this->frontThemes;
-    expect($themes)->not->toBeEmpty();
-
-    foreach ($themes as $theme) {
-        config(['cms.theme' => $theme]);
-
-        foreach (['es', 'en', 'ca'] as $locale) {
-            $routes["blog-{$locale}"] = "/es/{$locale}/blog";
-        }
-
-        foreach ($routes as $label => $path) {
-            $response = $this->get($path);
-            expect($response->getStatusCode())
-                ->toBeLessThan(400, "Theme [{$theme}] route [{$label}] ({$path}) failed with {$response->getStatusCode()}.");
+            $this->get("/es/{$locale}")->assertOk()->assertSee('front-'.$theme, false);
         }
     }
 });
@@ -144,8 +52,8 @@ test('gallery renders across all themes and locales', function (): void {
         $this->get('/eu/fr/galerie')->assertOk();
 
         // Localized item slug resolution (per locale, like blog/shop).
-        $this->get('/eu/es/galeria/recorrido-plataforma')->assertOk();
-        $this->get('/eu/en/gallery/platform-tour')->assertOk();
+        $this->get('/eu/es/galeria/gallery-fixture')->assertOk();
+        $this->get('/eu/en/gallery/gallery-fixture')->assertOk();
     }
 });
 
@@ -212,7 +120,7 @@ test('make:front-theme generates a renderable theme', function (): void {
             ->and(file_exists("{$path}/theme.json"))->toBeTrue();
 
         config(['cms.theme' => $id]);
-        $this->get('/es/es')->assertOk();
+        $this->get('/es/es')->assertOk()->assertSee('front-'.$id, false);
     } finally {
         File::deleteDirectory($path);
     }

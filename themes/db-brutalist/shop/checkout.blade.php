@@ -1,4 +1,4 @@
-@extends('themes.db-brutalist.layouts.app')
+@extends('themes::db-brutalist.layouts.app')
 
 @section('title', __('Finalizar Compra - dbCMS Brutalist'))
 

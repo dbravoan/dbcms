@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+namespace Tests\Regression;
+
+use DOMDocument;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\View\Compilers\BladeCompiler;
 use PHPUnit\Framework\TestCase;

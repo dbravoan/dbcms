@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Projects;
 
-use App\Contracts\Services\ProjectDeploymentAdoptionServiceInterface;
 use App\Contracts\Services\ProjectInitializationServiceInterface;
 use App\Contracts\Services\SourceRevisionResolverInterface;
 use App\Core\Updates\ProjectDeploymentPolicy;
@@ -15,7 +14,7 @@ use RuntimeException;
 
 final class ProjectInitializationService implements ProjectInitializationServiceInterface
 {
-    public function __construct(private Filesystem $files, private SourceRevisionResolverInterface $source, private string $root, private ?ProjectDeploymentAdoptionServiceInterface $adoption = null) {}
+    public function __construct(private Filesystem $files, private SourceRevisionResolverInterface $source, private string $root) {}
 
     public function initialize(string $name, string $brand, string $themes, string $deployment): ProjectProfile
     {
@@ -39,7 +38,7 @@ final class ProjectInitializationService implements ProjectInitializationService
         $default = $themes === 'all' && in_array('db-cyber', $selection, true) ? 'db-cyber' : $selection[0];
         $existingPath = $this->root.'/cms-project.json';
         if ($this->files->exists($existingPath)) {
-            return $this->existing($existingPath, $name, $brand, $selection, $default, $deployment, $removals);
+            return $this->existing($existingPath, $name, $brand, $selection, $default, $deployment);
         }
         $metadata = json_decode($this->files->get($this->root.'/resources/updates/core-version.json'), true, 512, JSON_THROW_ON_ERROR);
         $version = is_array($metadata) && is_string($metadata['version'] ?? null) ? $metadata['version'] : '';
@@ -105,9 +104,8 @@ final class ProjectInitializationService implements ProjectInitializationService
 
     /**
      * @param  list<string>  $selection
-     * @param  list<string>  $removals
      */
-    private function existing(string $path, string $name, string $brand, array $selection, string $default, string $deployment, array $removals): ProjectProfile
+    private function existing(string $path, string $name, string $brand, array $selection, string $default, string $deployment): ProjectProfile
     {
         $data = json_decode($this->files->get($path), true, 512, JSON_THROW_ON_ERROR);
         if (! is_array($data) || ($data['schema'] ?? null) !== 1 || ($data['name'] ?? null) !== $name || ($data['brand'] ?? null) !== $brand || ($data['themes'] ?? null) !== $selection || ($data['default_theme'] ?? null) !== $default) {
@@ -118,23 +116,11 @@ final class ProjectInitializationService implements ProjectInitializationService
             throw new InvalidArgumentException('Invalid initialized project provenance.');
         }
 
-        $profile = new ProjectProfile($name, $brand, $selection, $default, $core['version'], $core['sha'], $deployment);
-        if (array_key_exists('deployment', $data)) {
-            if ($data['deployment'] !== $deployment) {
-                throw new InvalidArgumentException('Project already initialized with a different deployment profile.');
-            }
-
-            return $profile;
+        if (($data['deployment'] ?? null) !== $deployment) {
+            throw new InvalidArgumentException('Project already initialized with a different deployment profile.');
         }
-        if ($this->adoption === null) {
-            throw new RuntimeException('A signed baseline verifier is required to select a legacy deployment profile.');
-        }
-        $this->adoption->assertRemovable($this->root, $core, $removals);
-        $this->pruneDeployment($removals);
-        $data['deployment'] = $deployment;
-        $this->files->replace($path, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)."\n");
 
-        return $profile;
+        return new ProjectProfile($name, $brand, $selection, $default, $core['version'], $core['sha'], $deployment);
     }
 
     /**

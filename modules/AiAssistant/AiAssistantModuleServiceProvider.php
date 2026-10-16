@@ -6,9 +6,9 @@ namespace Modules\AiAssistant;
 
 use App\Contracts\Services\LocalizationServiceInterface;
 use App\Core\Capabilities\CapabilityRegistry;
-use App\Core\Capabilities\Contracts\PlannerInterface;
 use App\Core\Integrations\IntegrationGuideRegistry;
 use App\Core\Modules\BaseModuleServiceProvider;
+use App\Core\Modules\ModuleManager;
 use App\Core\Modules\ModuleSettingsExtensionRegistry;
 use App\Http\Middleware\EnsureAdminAuthenticated;
 use Illuminate\Support\Facades\Route;
@@ -36,8 +36,6 @@ use Modules\AiAssistant\Services\AiProviderSettings;
 use Modules\AiAssistant\Services\AiResearchService;
 use Modules\AiAssistant\Services\AiTaxonomyService;
 use Modules\AiAssistant\Services\BlockIntelligenceService;
-use Modules\AiAssistant\Services\BlockTranslationRegistry;
-use Modules\AiAssistant\Services\CmsNativePlanner;
 
 class AiAssistantModuleServiceProvider extends BaseModuleServiceProvider
 {
@@ -51,7 +49,6 @@ class AiAssistantModuleServiceProvider extends BaseModuleServiceProvider
 
     public function register(): void
     {
-        $this->app->bind(PlannerInterface::class, CmsNativePlanner::class);
         $this->mergeConfigFrom(__DIR__.'/config/providers.php', 'ai_providers');
         $this->mergeConfigFrom(__DIR__.'/config/taxonomy.php', 'ai_taxonomy');
 
@@ -83,7 +80,6 @@ class AiAssistantModuleServiceProvider extends BaseModuleServiceProvider
         $this->app->singleton(AiMultimodalOrchestratorService::class);
         $this->app->alias(AiMultimodalOrchestratorService::class, AiMultimodalOrchestratorInterface::class);
 
-        $this->app->singleton(BlockTranslationRegistry::class);
         $this->app->bind(AiEntityTranslationServiceInterface::class, AiEntityTranslationService::class);
         $this->app->singleton(AiActionRunner::class);
         $this->app->bind(AiGenerationContextResolverInterface::class, AiGenerationContextResolver::class);
@@ -103,6 +99,13 @@ class AiAssistantModuleServiceProvider extends BaseModuleServiceProvider
         $this->app->make(AiCapabilityRegistrar::class)->register($this->app->make(CapabilityRegistry::class));
         $this->app->make(IntegrationGuideRegistry::class)->register('ai_assistant', require __DIR__.'/Resources/guides/providers.php');
         $this->registerRoutes();
+        View::composer(['admin.dashboard', 'themes::admin.*.admin.dashboard', 'components.frontoffice-admin-bar'], function (\Illuminate\View\View $view): void {
+            if (! $this->app->make(ModuleManager::class)->isModuleEnabled('ai_assistant') || ! auth()->user()?->can('use:ai')) {
+                return;
+            }
+            $stack = $view->getName() === 'components.frontoffice-admin-bar' ? 'front_admin_actions' : 'admin_dashboard_actions';
+            $view->getFactory()->startPush($stack, view('ai_assistant::admin.partials.editorial_guide_link')->render());
+        });
         $this->registerLayoutExtensions();
         $this->registerCreateFill();
         $this->registerBlockManagerActions();

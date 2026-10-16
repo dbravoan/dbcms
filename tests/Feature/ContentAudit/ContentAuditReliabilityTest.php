@@ -13,22 +13,28 @@ use App\Models\Role;
 use App\Models\SystemNotification;
 use App\Models\User;
 use App\Services\Admin\AdminNavigationService;
-use App\Services\Capabilities\CmsActionService;
+use App\Services\Capabilities\ContentSectionActions;
 use App\Services\Capabilities\ContentSnapshotService;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityMutationService;
 use App\Services\Seo\PublicContentModifiedService;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Validation\ValidationException;
 use Modules\Blog\Models\Post;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
+use Modules\ContentAudit\Capabilities\EditorialActions;
 use Modules\ContentAudit\Enums\AuditAction;
 use Modules\ContentAudit\Events\ContentSubmittedForReviewEvent;
 use Modules\ContentAudit\Models\ContentAuditRevision;
 use Modules\ContentAudit\Services\AuditNotificationRecipientPolicy;
+use Modules\ContentAudit\Services\AuditRevisionService;
 use Modules\ContentAudit\Services\EditorialApprovalBinding;
-use Modules\Mcp\Services\McpServerService;
+use Modules\ContentAudit\Services\EditorialWorkflow;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Tests\Support\McpEditorialComposition;
+use Tests\Support\McpProtocolClient;
+
+uses(McpEditorialComposition::class);
 
 beforeEach(function (): void {
     config(['app.key' => 'base64:'.base64_encode(str_repeat('Q', 32))]);
@@ -42,8 +48,8 @@ beforeEach(function (): void {
     $this->reviewer = User::factory()->create();
     $this->reviewer->roles()->attach(Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Admin']));
     $this->actingAs($this->reviewer);
-    $this->audits = app(ContentAuditServiceInterface::class);
-    $this->crud = app(EntityCrudService::class);
+    $this->audits = app(EditorialWorkflow::class);
+    $this->crud = app(EntityMutationService::class);
 });
 
 function reliabilityPost(object $test): Post
@@ -56,7 +62,7 @@ function reliabilityPost(object $test): Post
 test('editorial approval returns the entity type rather than its numeric identifier', function (): void {
     $post = reliabilityPost($this);
     $this->audits->submitForReview($post, $this->reviewer);
-    $result = app(CmsActionService::class)->auditApprove(['type' => 'post', 'id' => $post->getKey()]);
+    $result = app(EditorialActions::class)->auditApprove(['type' => 'post', 'id' => $post->getKey()]);
     expect($result['entity'])->toBe(['type' => 'post', 'id' => $post->getKey()]);
 });
 
@@ -100,8 +106,9 @@ test('physically inactive audit module stops editorial enforcement and preserves
 
 test('historical snapshots retain all domain records rather than only normalized text', function (): void {
     $post = reliabilityPost($this);
-    $revision = $this->audits->recordChange($post, $this->reviewer, AuditAction::UPDATED->value);
-    expect($revision->snapshot)->toHaveKey('attributes')
+    $revision = app(AuditRevisionService::class)->record($post, $this->reviewer, AuditAction::UPDATED->value);
+    expect($revision->snapshot)->toHaveKey('snapshot_version', 3)->not->toHaveKey('translations')->not->toHaveKey('sections')
+        ->and($revision->snapshot)->toHaveKey('attributes')
         ->and((bool) $revision->snapshot['attributes']['is_featured'])->toBeTrue()
         ->and($revision->snapshot['translation_records'][0]['schema_type'])->toBe('TechArticle')
         ->and($revision->snapshot['market_ids'])->toBe([$this->market->getKey()]);
@@ -110,7 +117,7 @@ test('historical snapshots retain all domain records rather than only normalized
 test('rollback fully restores a staged revision and clears the obsolete pending pointer', function (): void {
     $post = reliabilityPost($this);
     $this->crud->update('post', $post->getKey(), ['attributes' => ['is_featured' => false], 'market_ids' => [$this->otherMarket->getKey()], 'translations' => ['es' => ['title' => 'Desired historic draft', 'schema_type' => 'Article', 'content' => 'Historical body']]]);
-    $revision = $this->audits->getAudit($post)->revisions()->whereKey($this->audits->getAudit($post)->pending_revision_id)->firstOrFail();
+    $revision = app(AuditRevisionService::class)->auditFor($post)->revisions()->whereKey(app(AuditRevisionService::class)->auditFor($post)->pending_revision_id)->firstOrFail();
     $this->crud->update('post', $post->getKey(), ['translations' => ['es' => ['title' => 'Obsolete pending draft']]]);
     $this->audits->rollback($post, $revision->version, $this->reviewer);
     $post->refresh();
@@ -118,7 +125,7 @@ test('rollback fully restores a staged revision and clears the obsolete pending 
         ->and($post->translations->first()->schema_type)->toBe('Article')
         ->and($post->is_featured)->toBeFalse()
         ->and($post->markets->modelKeys())->toBe([$this->otherMarket->getKey()])
-        ->and($this->audits->getAudit($post)->pending_revision_id)->toBeNull();
+        ->and(app(AuditRevisionService::class)->auditFor($post)->pending_revision_id)->toBeNull();
 });
 
 test('rejecting from an obsolete review screen cannot discard a newer draft', function (): void {
@@ -126,9 +133,9 @@ test('rejecting from an obsolete review screen cannot discard a newer draft', fu
     $this->crud->update('post', $post->getKey(), ['translations' => ['es' => ['title' => 'Review version A']]]);
     $review = app(EditorialApprovalBinding::class)->review($post, $this->reviewer);
     $this->crud->update('post', $post->getKey(), ['translations' => ['es' => ['title' => 'Review version B']]]);
-    $pending = $this->audits->getAudit($post)->pending_revision_id;
+    $pending = app(AuditRevisionService::class)->auditFor($post)->pending_revision_id;
     $this->postJson(route('admin.audit.reject', ['type' => 'posts', 'id' => $post->getKey()]), ['review_token' => $review['token'], 'rejection_reason' => 'Necesita fuentes comprobables'])->assertConflict();
-    expect($this->audits->getAudit($post)->pending_revision_id)->toBe($pending);
+    expect(app(AuditRevisionService::class)->auditFor($post)->pending_revision_id)->toBe($pending);
 });
 
 test('disabled administrative change tracking does not emit unsolicited history', function (): void {
@@ -155,7 +162,7 @@ test('quality gate checks a second locale of a published staged draft', function
 test('published content submitted for review appears in the pending queue while preserving live', function (): void {
     $post = reliabilityPost($this);
     $this->put(route('admin.blog.posts.update', $post), ['translations' => ['es' => ['title' => 'Queued replacement', 'content' => 'New draft']], 'is_published' => '1', 'audit_action' => 'submit_for_review'])->assertRedirect();
-    expect($this->audits->getAudit($post)->status)->toBe('pending_review')
+    expect(app(AuditRevisionService::class)->auditFor($post)->status)->toBe('pending_review')
         ->and($post->fresh()->translations->first()->title)->toBe('Public editorial version');
 });
 
@@ -177,11 +184,11 @@ test('approval without automatic publication keeps the live version until explic
     app(ModuleSettingsServiceInterface::class)->set('content_audit', 'auto_publish_on_approval', false);
     $this->audits->approve($post, $this->reviewer);
     expect($post->fresh()->translations->first()->title)->toBe('Public editorial version')
-        ->and($this->audits->getAudit($post)->status)->toBe('approved')
-        ->and($this->audits->getAudit($post)->pending_revision_id)->not->toBeNull();
+        ->and(app(AuditRevisionService::class)->auditFor($post)->status)->toBe('approved')
+        ->and(app(AuditRevisionService::class)->auditFor($post)->pending_revision_id)->not->toBeNull();
     $this->crud->update('post', $post->getKey(), ['publish' => true]);
     expect($post->fresh()->translations->first()->title)->toBe('Approved replacement')
-        ->and($this->audits->getAudit($post)->pending_revision_id)->toBeNull();
+        ->and(app(AuditRevisionService::class)->auditFor($post)->pending_revision_id)->toBeNull();
 });
 
 test('rollback from a stale screen cannot replace the current pending draft', function (): void {
@@ -189,10 +196,10 @@ test('rollback from a stale screen cannot replace the current pending draft', fu
     $historic = $post->auditRevisions()->firstOrFail();
     $screen = $this->get(route('admin.audit.review', ['type' => 'posts', 'id' => $post->getKey()]))->assertOk();
     $this->crud->update('post', $post->getKey(), ['translations' => ['es' => ['title' => 'Pending newer edit']]]);
-    $pending = $this->audits->getAudit($post)->pending_revision_id;
+    $pending = app(AuditRevisionService::class)->auditFor($post)->pending_revision_id;
     $tokens = $screen->original->getData()['rollbackTokens'] ?? [];
     $this->postJson(route('admin.audit.rollback', $historic->getKey()), ['review_token' => $tokens[$historic->getKey()] ?? $screen->viewData('reviewToken')])->assertConflict();
-    expect($this->audits->getAudit($post)->pending_revision_id)->toBe($pending);
+    expect(app(AuditRevisionService::class)->auditFor($post)->pending_revision_id)->toBe($pending);
 });
 
 test('rolled back submissions cannot emit review events or notifications', function (): void {
@@ -236,9 +243,9 @@ test('an explicit job author follows the same review workflow without a web sess
     $created = $this->crud->create('post', ['publish' => true, 'audit_action' => 'submit_for_review', 'audit_notes' => 'Revisar las fuentes', 'translations' => ['es' => ['title' => 'Borrador del trabajo', 'content' => 'Datos que requieren comprobación editorial.']]], $author);
     $post = Post::findOrFail($created['id']);
     expect($post->is_published)->toBeFalse()
-        ->and($this->audits->getAudit($post)->status)->toBe('pending_review')
-        ->and($this->audits->getAudit($post)->submitted_by)->toBe($author->getKey())
-        ->and($this->audits->getAudit($post)->revisions()->latest('version')->first()->snapshot['translation_records'][0]['title'])->toBe('Borrador del trabajo');
+        ->and(app(AuditRevisionService::class)->auditFor($post)->status)->toBe('pending_review')
+        ->and(app(AuditRevisionService::class)->auditFor($post)->submitted_by)->toBe($author->getKey())
+        ->and(app(AuditRevisionService::class)->auditFor($post)->revisions()->latest('version')->first()->snapshot['translation_records'][0]['title'])->toBe('Borrador del trabajo');
 });
 
 test('a notification is suppressed after its source module or revision ceases to be available', function (): void {
@@ -257,7 +264,7 @@ test('a notification is suppressed after its source module or revision ceases to
 test('rejecting live content from MCP waits for a bound human decision before changing visibility', function (): void {
     $post = reliabilityPost($this);
     mcpTestBindIdentity($this->reviewer);
-    $response = app(McpServerService::class)->handle(['jsonrpc' => '2.0', 'id' => 42, 'method' => 'tools/call', 'params' => ['name' => 'cms_audit_reject', 'arguments' => ['type' => 'post', 'id' => $post->getKey(), 'reason' => 'Faltan fuentes verificables']]]);
+    $response = app(McpProtocolClient::class)->handle(['jsonrpc' => '2.0', 'id' => 42, 'method' => 'tools/call', 'params' => ['name' => 'cms_audit_reject', 'arguments' => ['type' => 'post', 'id' => $post->getKey(), 'reason' => 'Faltan fuentes verificables']]]);
     $data = json_decode($response['result']['content'][0]['text'], true);
     expect($data)->toHaveKey('confirmation_required', true)
         ->and($post->fresh()->is_published)->toBeTrue();
@@ -288,4 +295,62 @@ test('a deleted entity keeps an exact final snapshot in its private revision his
     expect($last->action)->toBe('deleted')
         ->and($last->snapshot['translation_records'][0]['title'])->toBe('Public editorial version')
         ->and(Post::find($id))->toBeNull();
+});
+
+test('restoring a snapshot rolls back canonical rows when a related record cannot be restored', function (): void {
+    $post = reliabilityPost($this);
+    $snapshots = app(ContentSnapshotService::class);
+    $snapshot = $snapshots->capture($post);
+    $snapshot['attributes']['is_featured'] = false;
+    $snapshot['translation_records'][0]['title'] = 'Must not survive failed restore';
+    $snapshot['translation_records'][] = $snapshot['translation_records'][0];
+
+    expect(fn () => $snapshots->restore($post, $snapshot))->toThrow(QueryException::class);
+    $post->refresh();
+    expect($post->is_featured)->toBeTrue()
+        ->and($post->translations()->sole()->title)->toBe('Public editorial version');
+});
+
+test('an invalid publication convenience flag cannot silently unpublish content', function (): void {
+    $post = reliabilityPost($this);
+    expect(fn () => $this->crud->update('post', $post->getKey(), ['publish' => 'invalid']))
+        ->toThrow(ValidationException::class);
+    expect($post->fresh()->is_published)->toBeTrue();
+});
+
+test('approval rejects a stale live version even when automatic publication is disabled', function (bool $autoPublish): void {
+    $post = reliabilityPost($this);
+    $this->crud->update('post', $post->getKey(), ['translations' => ['es' => ['title' => 'Pending replacement']]]);
+    $pending = app(AuditRevisionService::class)->auditFor($post)->pending_revision_id;
+    $post->translations()->where('locale', 'es')->update(['title' => 'Concurrent live change']);
+    app(ModuleSettingsServiceInterface::class)->set('content_audit', 'auto_publish_on_approval', $autoPublish);
+
+    try {
+        $this->audits->approve($post, $this->reviewer);
+        $this->fail('A stale pending revision cannot be approved.');
+    } catch (HttpException $exception) {
+        expect($exception->getStatusCode())->toBe(409);
+    }
+    expect($post->fresh()->translations->first()->title)->toBe('Concurrent live change')
+        ->and(app(AuditRevisionService::class)->auditFor($post)->pending_revision_id)->toBe($pending)
+        ->and(app(AuditRevisionService::class)->auditFor($post)->status)->toBe('draft');
+})->with([true, false]);
+
+test('the section capability stages edits through the editorial boundary and reads its pending blocks', function (): void {
+    $post = reliabilityPost($this);
+    $actions = app(ContentSectionActions::class);
+    $result = $actions->sectionsSync([
+        'type' => 'post',
+        'id' => $post->getKey(),
+        'sections' => ['es' => [['type' => 'text', 'content' => 'Pending section content']]],
+    ]);
+
+    expect($result['live_preserved'])->toBeTrue()
+        ->and($result['pending_revision_id'])->toBeInt()
+        ->and($post->sections()->count())->toBe(0)
+        ->and($result['sections'][0]['translations']['es']['content'])->toBe('Pending section content');
+
+    $this->audits->approve($post, $this->reviewer);
+    expect($post->fresh()->publishedSections()->count())->toBe(1)
+        ->and($actions->sectionsGet(['type' => 'post', 'id' => $post->getKey()])['sections'][0]['translations']['es']['content'])->toBe('Pending section content');
 });

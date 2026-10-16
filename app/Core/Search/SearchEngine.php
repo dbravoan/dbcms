@@ -248,7 +248,7 @@ final class SearchEngine
     }
 
     /**
-     * The index is denormalized and may still contain legacy global rows.
+     * The index is denormalized and can outlive changes to public availability.
      * Live visibility must constrain the SQL query before count/facets/offset.
      *
      * @param  Builder<SearchDocumentIndex>  $builder

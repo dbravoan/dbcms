@@ -1,0 +1,128 @@
+{
+  "categories": [
+    {
+      "slug": "marketing",
+      "name": "Marketing",
+      "description": "Tareas prácticas de IA para el equipo de marketing."
+    },
+    {
+      "slug": "ventas",
+      "name": "Ventas",
+      "description": "Tareas prácticas de IA para el equipo de ventas."
+    },
+    {
+      "slug": "personas",
+      "name": "Personas",
+      "description": "Tareas prácticas de IA para el equipo de personas."
+    },
+    {
+      "slug": "operaciones",
+      "name": "Operaciones",
+      "description": "Tareas prácticas de IA para el equipo de operaciones."
+    },
+    {
+      "slug": "finanzas",
+      "name": "Finanzas",
+      "description": "Tareas prácticas de IA para el equipo de finanzas."
+    },
+    {
+      "slug": "tecnologia",
+      "name": "Tecnología",
+      "description": "Tareas prácticas de IA para el equipo de tecnología."
+    },
+    {
+      "slug": "agentes",
+      "name": "Agentes y flujos",
+      "description": "Decide cuándo basta una conversación y cuándo conviene un flujo con herramientas."
+    },
+    {
+      "slug": "escritorio",
+      "name": "IA y escritorio",
+      "description": "Entiende cómo una IA puede operar interfaces y qué debes verificar antes de permitir una acción."
+    }
+  ],
+  "articles": [
+    {
+      "slug": "del-brief-a-un-borrador-revisable",
+      "title": "Marketing: del brief al borrador revisable",
+      "summary": "Convierte un brief en tres propuestas de contenido y revisa hechos, tono y llamada a la acción.",
+      "category": "marketing",
+      "file": "articles/del-brief-a-un-borrador-revisable.md"
+    },
+    {
+      "slug": "preparar-una-reunion-comercial",
+      "title": "Ventas: preparar una reunión sin inventar contexto",
+      "summary": "Organiza notas autorizadas en una agenda comercial con preguntas, dudas y próximos pasos.",
+      "category": "ventas",
+      "file": "articles/preparar-una-reunion-comercial.md"
+    },
+    {
+      "slug": "convertir-un-proceso-en-guia-de-acogida",
+      "title": "Personas: convertir un proceso en una guía de acogida",
+      "summary": "Transforma un proceso aprobado en una guía útil y comprensible para nuevas incorporaciones.",
+      "category": "personas",
+      "file": "articles/convertir-un-proceso-en-guia-de-acogida.md"
+    },
+    {
+      "slug": "de-notas-a-procedimiento-operativo",
+      "title": "Operaciones: de notas dispersas a un procedimiento",
+      "summary": "Construye un procedimiento con entradas, pasos, incidencias y comprobación humana.",
+      "category": "operaciones",
+      "file": "articles/de-notas-a-procedimiento-operativo.md"
+    },
+    {
+      "slug": "explicar-desviaciones-de-un-presupuesto",
+      "title": "Finanzas: explicar desviaciones con datos comprobables",
+      "summary": "Prepara una explicación de diferencias presupuestarias sin delegar el cálculo ni la aprobación.",
+      "category": "finanzas",
+      "file": "articles/explicar-desviaciones-de-un-presupuesto.md"
+    },
+    {
+      "slug": "reproducir-un-fallo-antes-de-corregirlo",
+      "title": "Tecnología: reproducir un fallo antes de corregirlo",
+      "summary": "Convierte un informe impreciso en una reproducción, una hipótesis y una verificación.",
+      "category": "tecnologia",
+      "file": "articles/reproducir-un-fallo-antes-de-corregirlo.md"
+    },
+    {
+      "slug": "de-un-prompt-a-un-flujo-con-agentes",
+      "title": "De un prompt a un flujo con agentes",
+      "summary": "Decide cuándo basta una conversación y cuándo conviene un flujo con herramientas.",
+      "category": "agentes",
+      "file": "articles/de-un-prompt-a-un-flujo-con-agentes.md"
+    },
+    {
+      "slug": "mas-alla-de-los-agentes-control-del-escritorio",
+      "title": "Más allá de los agentes: trabajar con programas de escritorio",
+      "summary": "Entiende cómo una IA puede operar interfaces y qué debes verificar antes de permitir una acción.",
+      "category": "escritorio",
+      "file": "articles/mas-alla-de-los-agentes-control-del-escritorio.md"
+    }
+  ],
+  "pages": [
+    {
+      "slug": "home",
+      "title": "IA en práctica",
+      "description": "Formación práctica en inteligencia artificial: guías por tarea, cheatsheets por departamento, agentes y programas de escritorio.",
+      "file": "pages/home.md"
+    },
+    {
+      "slug": "ruta-de-aprendizaje",
+      "title": "Tu ruta de aprendizaje en IA",
+      "description": "Aprende a trabajar con IA: una tarea, un resultado verificable y una revisión humana antes de avanzar.",
+      "file": "pages/ruta-de-aprendizaje.md"
+    },
+    {
+      "slug": "cheatsheets",
+      "title": "Cheatsheets para trabajar entre equipos",
+      "description": "Guías de IA para marketing, ventas, personas, operaciones, finanzas y tecnología, con pasos, prompts y límites.",
+      "file": "pages/cheatsheets.md"
+    },
+    {
+      "slug": "metodologia",
+      "title": "Nuestro método: probar, comprobar y compartir",
+      "description": "Cómo elegimos tareas, protegemos datos y comprobamos resultados en esta publicación de formación práctica en IA.",
+      "file": "pages/metodologia.md"
+    }
+  ]
+}

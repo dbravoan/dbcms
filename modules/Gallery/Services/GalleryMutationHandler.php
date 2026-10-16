@@ -102,6 +102,18 @@ final class GalleryMutationHandler implements EntityMutationHandlerInterface, En
         return ['items' => $entity->items()->get()->map(static fn (GalleryItem $item): array => $item->getAttributes())->all()];
     }
 
+    public function validateRevision(array $revision): void
+    {
+        if (! isset($revision['items']) || ! is_array($revision['items']) || ! array_is_list($revision['items'])) {
+            throw new \DomainException('Gallery revisions require canonical item records.');
+        }
+        foreach ($revision['items'] as $item) {
+            if (! is_array($item) || $item === [] || array_is_list($item)) {
+                throw new \DomainException('Gallery revisions require canonical item rows.');
+            }
+        }
+    }
+
     public function hydrateRevision(Model $entity, array $snapshot): void
     {
         $items = [];

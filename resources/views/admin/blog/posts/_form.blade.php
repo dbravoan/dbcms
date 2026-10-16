@@ -20,17 +20,17 @@
         ]);
     }
 
-    $defaultLocale = 'es';
+    $defaultLocale = $defaultLocale ?? $allLangs->firstWhere('is_default', true)?->code ?? $allLangs->first()?->code ?? config('app.fallback_locale');
     $translationsMap = [];
     foreach ($allLangs as $lang) {
         $trans = $post ? $post->translations->where('locale', $lang->code)->first() : null;
         $translationsMap[$lang->code] = [
-            'title' => old("translations.{$lang->code}.title", old("title_{$lang->code}", $trans?->title ?? '')),
-            'slug' => old("translations.{$lang->code}.slug", old("slug_{$lang->code}", $trans?->slug ?? '')),
-            'summary' => old("translations.{$lang->code}.summary", old("summary_{$lang->code}", $trans?->summary ?? '')),
-            'content' => old("translations.{$lang->code}.content", old("content_{$lang->code}", $trans?->content ?? '')),
-            'meta_title' => old("translations.{$lang->code}.meta_title", old("meta_title_{$lang->code}", $trans?->meta_title ?? '')),
-            'meta_description' => old("translations.{$lang->code}.meta_description", old("meta_description_{$lang->code}", $trans?->meta_description ?? '')),
+            'title' => old("translations.{$lang->code}.title", $trans?->title ?? ''),
+            'slug' => old("translations.{$lang->code}.slug", $trans?->slug ?? ''),
+            'summary' => old("translations.{$lang->code}.summary", $trans?->summary ?? ''),
+            'content' => old("translations.{$lang->code}.content", $trans?->content ?? ''),
+            'meta_title' => old("translations.{$lang->code}.meta_title", $trans?->meta_title ?? ''),
+            'meta_description' => old("translations.{$lang->code}.meta_description", $trans?->meta_description ?? ''),
             'schema_type' => old("translations.{$lang->code}.schema_type", $trans?->schema_type ?? 'TechArticle'),
         ];
     }
@@ -41,57 +41,7 @@
     }
 
 
-    // Extract sections per locale from post
-    $sectionsByLocale = [];
-    foreach ($allLangs as $lang) {
-        $sectionsByLocale[$lang->code] = [];
-    }
-
-    if ($post && $post->sections && $post->sections->isNotEmpty()) {
-        foreach ($post->sections as $sec) {
-            $styling = is_array($sec->styling_json) ? $sec->styling_json : [];
-            foreach ($allLangs as $lang) {
-                $trans = $sec->translations->where('locale', $lang->code)->first();
-                if (!$trans) {
-                    continue;
-                }
-                $item = $styling;
-                $item['id'] = 'sec_' . $sec->id;
-                $item['type'] = $sec->type;
-                if ($trans && isset($trans->content_json) && is_array($trans->content_json)) {
-                    $item = array_merge($item, $trans->content_json);
-                }
-                $sectionsByLocale[$lang->code][] = $item;
-            }
-        }
-    } elseif (!empty($translationsMap['es']['content'])) {
-        $sectionsByLocale['es'][] = [
-            'id' => 'sec_initial_1',
-            'type' => 'text',
-            'title' => 'Cuerpo Principal',
-            'content' => $translationsMap['es']['content'],
-            'animation' => 'fadeInUp',
-            'animation_delay' => '0.2s',
-            'animation_duration' => '1s',
-            'container_style' => 'cyber-card',
-            'is_collapsed' => false,
-            'items' => [],
-        ];
-    } else {
-        $sectionsByLocale['es'][] = [
-            'id' => 'sec_initial_1',
-            'type' => 'text',
-            'title' => 'Cuerpo Principal',
-            'content' => '',
-            'animation' => 'fadeInUp',
-            'animation_delay' => '0.2s',
-            'animation_duration' => '1s',
-            'container_style' => 'cyber-card',
-            'is_collapsed' => false,
-            'items' => [],
-        ];
-    }
-    $sectionsData = $sectionsByLocale;
+    $sectionsData = old('sections_json', $sectionsData ?? []);
 @endphp
 
 <form method="POST" action="{{ $actionUrl }}" class="space-y-8 font-mono text-xs" x-on:locale-tab-change="switchLocale($event.detail.locale)"
@@ -99,7 +49,7 @@
       x-on:cms-translation-apply.window="if ($event.detail.form === $el && allLanguages.includes($event.detail.targetLocale)) { translations[$event.detail.targetLocale] = {...translations[$event.detail.targetLocale], ...$event.detail.values}; switchLocale($event.detail.targetLocale); }"
       @cms-set-featured-image.window="featuredImage = $event.detail.url"
       x-data="{
-    activeLocale: 'es',
+    activeLocale: @js($defaultLocale),
     translations: @js($translationsMap),
     prefilledFromDefault: {},
     allLanguages: @js($allLangs->pluck('code')),
@@ -122,7 +72,7 @@
     },
 
 
-    copySourceLocale: 'es',
+    copySourceLocale: @js($defaultLocale),
     copySuccessMessage: '',
     slugTouched: {},
 
@@ -288,7 +238,7 @@
                     </div>
 
                     <!-- Todos los idiomas viajan con el contrato de traducciones. -->
-                    <template x-for="code in allLanguages" :key="'legacy-' + code">
+                    <template x-for="code in allLanguages" :key="'translation-' + code">
                         <div x-show="activeLocale === code">
                             <input type="hidden" :name="'translations[' + code + '][title]'" :value="translations[code]?.title || ''" :disabled="!hasData(code)">
                             <input type="hidden" :name="'translations[' + code + '][slug]'" :value="translations[code]?.slug || ''" :disabled="!hasData(code)">

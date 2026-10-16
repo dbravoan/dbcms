@@ -58,15 +58,13 @@ final class AiProviderSettings
 
     public function apiKey(string $provider): ?string
     {
+        if ($provider === 'higgsfield') {
+            $parts = $this->higgsfieldCredentials();
+
+            return $parts['id'] !== null && $parts['secret'] !== null ? $parts['id'].':'.$parts['secret'] : null;
+        }
         $stored = $this->settings->get(self::MODULE, $this->key($provider, 'api_key'))
             ?: config("services.{$provider}.key");
-
-        if ($provider === 'higgsfield' && empty($stored)) {
-            $parts = $this->higgsfieldCredentials();
-            if ($parts['id'] !== null && $parts['secret'] !== null) {
-                return $parts['id'].':'.$parts['secret'];
-            }
-        }
 
         return ! empty($stored) ? (string) $stored : null;
     }
@@ -161,7 +159,10 @@ final class AiProviderSettings
         }
 
         $apiKey = $data['api_key'] ?? null;
-        if (is_string($apiKey) && trim($apiKey) !== '' && ! str_starts_with($apiKey, '••••')) {
+        if ($provider === 'higgsfield' && $this->unmasked($apiKey) !== null) {
+            throw ValidationException::withMessages(['api_key' => 'Higgsfield requires separate api_key_id and api_key_secret fields.']);
+        }
+        if ($provider !== 'higgsfield' && is_string($apiKey) && trim($apiKey) !== '' && ! str_starts_with($apiKey, '••••')) {
             $payload[$this->key($provider, 'api_key')] = $apiKey;
         }
 
@@ -204,15 +205,6 @@ final class AiProviderSettings
     /** @return array{id:?string,secret:?string} */
     public function higgsfieldCredentials(): array
     {
-        $legacy = $this->settings->get(self::MODULE, 'higgsfield_api_key') ?: config('services.higgsfield.key');
-        if (is_string($legacy) && $legacy !== '') {
-            if (! str_contains($legacy, ':')) {
-                return ['id' => null, 'secret' => null];
-            }
-            [$id,$secret] = explode(':', $legacy, 2);
-
-            return ['id' => $id !== '' ? $id : null, 'secret' => $secret !== '' ? $secret : null];
-        }
         $id = $this->settings->get(self::MODULE, 'higgsfield_api_key_id');
         $secret = $this->settings->get(self::MODULE, 'higgsfield_api_key_secret');
 
@@ -226,16 +218,9 @@ final class AiProviderSettings
     private function prepareHiggsfield(array $data): array
     {
         $parts = $this->higgsfieldCredentials();
-        $legacy = $this->unmasked($data['api_key'] ?? null);
         $id = $this->unmasked($data['api_key_id'] ?? null);
         $secret = $this->unmasked($data['api_key_secret'] ?? null);
-        if ($legacy !== null && str_contains($legacy, ':')) {
-            [$legacyId,$legacySecret] = explode(':', $legacy, 2);
-            $parts = ['id' => $legacyId, 'secret' => $legacySecret];
-        } elseif ($legacy !== null && $id === null && $secret === null) {
-            return [];
-        }
-        if ($legacy === null && $id === null && $secret === null) {
+        if ($id === null && $secret === null) {
             return [];
         }
         $id = $id ?? $parts['id'];
@@ -244,17 +229,12 @@ final class AiProviderSettings
             throw ValidationException::withMessages(['api_key_id' => 'Introduce el ID y el secreto del mismo par de Higgsfield. Los campos vacíos conservan una credencial completa existente.']);
         }
 
-        return ['higgsfield_api_key_id' => $id, 'higgsfield_api_key_secret' => $secret, 'higgsfield_api_key' => $id.':'.$secret];
+        return ['higgsfield_api_key_id' => $id, 'higgsfield_api_key_secret' => $secret];
     }
 
     private function unmasked(mixed $value): ?string
     {
         return is_string($value) && trim($value) !== '' && ! str_starts_with($value, '••••') ? trim($value) : null;
-    }
-
-    public function hasKey(string $provider): bool
-    {
-        return $this->hasApiKey($provider);
     }
 
     public function isConfigured(string $provider): bool

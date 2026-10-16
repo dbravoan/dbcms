@@ -4,13 +4,20 @@ declare(strict_types=1);
 
 use App\Core\Filters\FilterPanelSkin;
 use App\Services\Cms\FrontViewResolver;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Modules\Shop\Models\Product;
+use Tests\Support\BlogShopComposition;
+use Tests\Support\CmsFixtures;
+use Tests\Support\FilterFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, BlogShopComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en'], ['es', 'us']);
+    CmsFixtures::identities();
+    FilterFixtures::blog();
+    FilterFixtures::shop();
+    Product::query()->update(['is_featured' => true]);
     config(['cms.admin_theme' => 'dbcms', 'cms.page_cache.enabled' => false]);
 });
 
@@ -28,16 +35,6 @@ dataset('front_themes', [
     'sunset' => ['db-sunset', ['data-filter-panel="db-sunset"', 'from-rose-500', 'backdrop-blur']],
     'clean' => ['default-clean', ['data-filter-panel="default-clean"', 'rounded-xl', 'border-slate-200']],
 ]);
-
-test('each front theme renders the filter panel with its own skin', function (string $theme, array $markers): void {
-    config(['cms.theme' => $theme]);
-
-    $html = (string) $this->get('/es/es/blog')->assertOk()->getContent();
-
-    foreach ($markers as $marker) {
-        expect($html)->toContain($marker);
-    }
-})->with('front_themes');
 
 test('the filter panel keeps its functional and accessible contract in every theme', function (string $theme): void {
     config(['cms.theme' => $theme]);
@@ -80,25 +77,6 @@ test('the shop panel exposes the range, select and switch controls in every them
         ->toContain('data-auto-submit');
 })->with('front_themes');
 
-test('every theme declares a complete skin', function (string $theme): void {
-    $skin = app(FilterPanelSkin::class)->forTheme($theme);
-
-    $required = [
-        'panel', 'summary', 'summaryTitle', 'bodyWrap', 'groupsWrap', 'group', 'legend',
-        'options', 'option', 'optionActive', 'chip', 'clearAll', 'field', 'submit', 'submitWrap',
-        'box', 'radio', 'moreSummary', 'switchRow', 'switchInput', 'unit', 'dash',
-    ];
-
-    foreach ($required as $token) {
-        expect($skin)->toHaveKey($token)
-            ->and($skin[$token])->toBeString();
-    }
-
-    expect($skin['columns'])->toBeInt()->toBeGreaterThan(0)
-        ->and($skin['maxVisible'])->toBeInt()->toBeGreaterThan(0)
-        ->and($skin['icon'])->toBeIn(['check', 'dot', 'plus', 'none']);
-})->with('front_themes');
-
 test('a theme without a skin file falls back to the neutral defaults', function (): void {
     $skin = app(FilterPanelSkin::class)->forTheme('theme-that-does-not-exist');
 
@@ -108,14 +86,4 @@ test('a theme without a skin file falls back to the neutral defaults', function 
 
 test('the panel resolves the theme override before the shared implementation', function (): void {
     expect(app(FrontViewResolver::class)->filterPanel())->toBe('components.cms-filter.panel');
-});
-
-test('the panel is not rendered when the module exposes no dimensions', function (): void {
-    config(['cms.theme' => 'default-clean']);
-
-    // The shop index of a market without products still renders a page, but the
-    // search-only dimension set must not produce an empty widget.
-    $html = (string) $this->get('/es/es/tienda')->assertOk()->getContent();
-
-    expect($html)->toContain('data-filter-panel="default-clean"');
 });

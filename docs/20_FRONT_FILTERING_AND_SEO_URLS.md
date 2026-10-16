@@ -39,22 +39,20 @@ Examples:
 
 **Resolution order of a bare segment** (declared, deterministic — never a guess):
 
-1. explicit legacy markers (`etiqueta/laravel`) → parse, then **301** to canonical;
-2. reserved tokens (enum options and boolean markers) — they always win;
-3. localized shapes: dates (`desde-X`, `hasta-Y`) and ranges (`entre-X-Y-eur`);
-4. inline qualifier (`etiqueta-laravel`) — only used when a bare value is ambiguous;
-5. term vocabularies (hyphen backtracking, `+` joins values);
-6. search fallback (last segment only, when the module declares a `text` dimension).
+1. reserved tokens (enum options and boolean markers) — they always win;
+2. localized shapes: dates (`desde-X`, `hasta-Y`) and ranges (`entre-X-Y-eur`);
+3. inline qualifier (`etiqueta-laravel`) — only used when a bare value is ambiguous;
+4. term vocabularies (exact slugs; `+` joins values);
+5. search fallback (last segment only, when the module declares a `text` dimension).
 
-Unknown values and **genuinely ambiguous** payloads (two valid segmentations)
+Unknown values and **genuinely ambiguous** payloads (the same unqualified token in different dimensions)
 resolve to `null` → **404**, never a partial or ambiguous result. Connectors,
 markers and range units are localized (`config/front_filters.php`), and the range
 unit falls back to the **market currency**.
 
-**Legacy compatibility**: v1 marker URLs (`/orden/recientes`, `/precio/100-200`),
-compact ranges (`/100-200`), `_` joins and hyphen-joined values still parse; the
-canonicalizer answers them with a **301** to the v2 canonical form, so no link
-equity is lost.
+Hyphens belong to an exact slug. Multiple terms use `+`; dates and ranges use
+the localized connectors shown above. Retired marker/compact forms are not part
+of the accepted grammar.
 
 ### Non-canonical module prefixes → 301
 
@@ -229,12 +227,11 @@ segment**:
 | URL | Served by | Indexable |
 | :--- | :--- | :--- |
 | `/es/es/blog/tecnologia/ia-geo/modelos-llm` | the category archive (entity) | yes (taxonomy, sitemap) |
-| `/es/es/blog/tecnologia/ia-geo/modelos-llm/orden/recientes` | the filter page | only if curated |
-| `/es/es/blog/categoria/modelos-llm` | — | **301** to the bare canonical form |
+| `/es/es/blog/tecnologia/ia-geo/modelos-llm/recientes` | the filter page | only if curated |
 
 The sitemap, llms.txt and the facet links all publish the bare hierarchical path,
 so a taxonomy page has exactly one URL. Catalogue dimensions (tag, price, sort,
-search, dates…) keep their explicit localized markers.
+search, dates…) use reserved tokens, exact vocabularies and localized shapes.
 
 ## 7. Crawlable facets
 

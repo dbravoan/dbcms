@@ -16,7 +16,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
      <title>{{ $seoMeta?->title ?? $pageTitle ?? config('cms.name') }} | {{ config('cms.name') }}</title>
 
-    @include('themes.components.seo-head')
+    @include('themes::components.seo-head')
     @vite(cms_asset_entries(true))
 </head>
 <body class="min-h-full flex flex-col justify-between relative selection:bg-[#00FF99] selection:text-black">
@@ -26,8 +26,8 @@
 
     <!-- Header Navigation -->
     <div class="contents">
-    <!--cms-private:themes.db-cyber.partials.header:start-->
-        @include('themes.db-cyber.partials.header')
+    <!--cms-private:themes::db-cyber.partials.header:start-->
+        @include('themes::db-cyber.partials.header')
     <!--cms-private:end-->
     </div>
 
@@ -38,25 +38,25 @@
 
     <!-- Footer -->
     <div class="relative z-20">
-        @include('themes.db-cyber.partials.footer')
+        @include('themes::db-cyber.partials.footer')
     </div>
 
     <!-- First-Time Visitor Geolocation Preference Modal -->
-    <!--cms-private:themes.components.visitor-geo-modal:start-->
-    @include('themes.components.visitor-geo-modal')
+    <!--cms-private:themes::components.visitor-geo-modal:start-->
+    @include('themes::components.visitor-geo-modal')
     <!--cms-private:end-->
 
     <!-- Dynamic GDPR Cookie Consent Banner & Modal -->
-    <!--cms-private:themes.components.cookie-consent-modal:start-->
-    @include('themes.components.cookie-consent-modal')
+    <!--cms-private:themes::components.cookie-consent-modal:start-->
+    @include('themes::components.cookie-consent-modal')
     <!--cms-private:end-->
 
     <!-- Frontoffice Admin Bar & Real-Time SEO/GEO Quality Inspector -->
     @include('components.frontoffice-admin-bar')
 
     <!-- Google Analytics 4 (GDPR Consent Gated) -->
-    <!--cms-private:themes.components.analytics:start-->
-    @include('themes.components.analytics')
+    <!--cms-private:themes::components.analytics:start-->
+    @include('themes::components.analytics')
     <!--cms-private:end-->
 
     <!-- Generative Polygon Canvas & Scroll-Magic Scripts -->
@@ -163,7 +163,7 @@
     </script>
 
     <!-- Scroll-Magic & Interactive Scrub Engine -->
-    @include('themes.components.scroll-magic')
+    @include('themes::components.scroll-magic')
 
     @stack('admin_scripts')
     @stack('scripts')

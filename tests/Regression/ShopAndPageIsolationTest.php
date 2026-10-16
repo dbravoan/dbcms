@@ -19,7 +19,7 @@ it('never stores visitor fragments or csrf tokens in the shared snapshot', funct
     $themes = Mockery::mock(ThemeManagerService::class);
     $themes->shouldReceive('getAvailableThemes')->andReturn(['db-cyber' => []]);
     $personalization = new PublicPagePersonalization($themes);
-    $html = '<main>Public</main><!--cms-private:themes.db-cyber.partials.header:start--><b>Alice cart</b><!--cms-private:end--><input value="first-session-token">';
+    $html = '<main>Public</main><!--cms-private:themes::db-cyber.partials.header:start--><b>Alice cart</b><!--cms-private:end--><input value="first-session-token">';
     $snapshot = $personalization->snapshot($html, 'first-session-token');
     expect($snapshot)->not->toContain('Alice cart')->not->toContain('first-session-token');
     $second = $personalization->hydrate($snapshot, 'second-session-token', fn (string $view): string => '<b>Bob cart</b>');

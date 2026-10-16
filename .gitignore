@@ -9,6 +9,7 @@
 /storage/*.key
 /storage/oauth-*.key
 /storage/installed
+/storage/*.lock
 /vendor
 .env
 .env.backup
@@ -43,3 +44,6 @@ Thumbs.db
 *.zip
 *.tar.gz
 
+
+# Generated Laravel bootstrap manifests
+/bootstrap/cache/*.php

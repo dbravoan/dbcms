@@ -2,16 +2,18 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
+use App\Content\Pages\Schema\PageEntitySchemas;
 use App\Contracts\Services\LocalizationServiceInterface;
 use App\Core\Content\Contracts\EditorialWorkflowInterface;
 use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityMutationService;
+use App\Services\Capabilities\EntityReadService;
+use App\Services\Capabilities\EntityTranslationWriter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\TestCase;
 use Illuminate\Support\Facades\Schema;
-use Modules\Pages\Models\Page;
-use Modules\Pages\Schema\PageEntitySchemas;
 
 uses(TestCase::class);
 
@@ -23,7 +25,7 @@ beforeEach(function (): void {
         $table->string('code');
         $table->boolean('is_active');
     });
-    (require base_path('modules/Pages/Database/Migrations/2026_09_01_000033_create_page_tables.php'))->up();
+    (require base_path('app/Content/Pages/Database/Migrations/2026_09_01_000033_create_page_tables.php'))->up();
     $locale = Mockery::mock(LocalizationServiceInterface::class);
     $locale->shouldReceive('defaultLocale')->andReturn('es');
     $locale->shouldReceive('url')->andReturn('/qa');
@@ -32,7 +34,7 @@ beforeEach(function (): void {
     foreach (PageEntitySchemas::all() as $schema) {
         $registry->register($schema);
     }
-    $this->entities = new EntityCrudService($registry, $locale);
+    $this->entities = new EntityMutationService(new EntityReadService($registry, $locale), new EntityTranslationWriter);
     $audit = Mockery::mock(EditorialWorkflowInterface::class);
     $audit->shouldReceive('isEnabled')->andReturn(true);
     $audit->shouldReceive('pendingDraft')->andReturn(null);
@@ -58,7 +60,7 @@ it('publishes the existing reviewed draft sections when publication does not res
 
 it('does not expose sections when publication remains false', function (): void {
     Model::withoutEvents(function (): void {
-        $created = $this->entities->create('page', ['publish' => false, 'translations' => ['es' => ['title' => 'QA private blocks']], 'sections_json' => [['type' => 'text', 'content' => 'Private']]]);
+        $created = $this->entities->create('page', ['publish' => false, 'translations' => ['es' => ['title' => 'QA private blocks']], 'sections_json' => ['es' => [['type' => 'text', 'content' => 'Private']]]]);
         $this->entities->update('page', $created['id'], ['attributes' => ['template' => 'landing']]);
         expect(Page::findOrFail($created['id'])->publishedSections()->count())->toBe(0);
     });

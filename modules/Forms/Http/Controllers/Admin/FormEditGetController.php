@@ -15,6 +15,6 @@ final class FormEditGetController extends Controller
 
     public function __invoke(CustomForm $form): View
     {
-        return view('admin.forms.edit', $this->editor->editing($form)->viewData());
+        return view('forms::admin.edit', $this->editor->editing($form)->viewData());
     }
 }

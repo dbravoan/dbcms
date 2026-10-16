@@ -4,23 +4,20 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Models\CmsModule;
 use App\Models\Language;
 use App\Models\Market;
 use Illuminate\Database\Seeder;
 use Laravel\Passport\Client;
 use Laravel\Passport\ClientRepository;
-use Modules\Pages\PagesModuleServiceProvider;
 use Throwable;
 
 /**
  * The minimum a working installation needs: the language matrix, the market
- * matrix, the trunk module and a Passport personal access client.
+ * matrix and a Passport personal access client.
  *
  * Idempotent (`firstOrCreate`) and free of demo content: the narrative demo
- * lives in {@see PlatformShowcaseSeeder}. Every module the install activates is
- * registered here so the runtime config/module boot never depends on the
- * demo seeder having run.
+ * lives in {@see PlatformShowcaseSeeder}. Module installation is an explicit
+ * operation owned by the installer, never by this foundation seeder.
  */
 class CmsFoundationSeeder extends Seeder
 {
@@ -98,21 +95,6 @@ class CmsFoundationSeeder extends Seeder
 
             $market->languages()->syncWithoutDetaching($sync);
         }
-
-        // The trunk module is always present: it powers every page and section.
-        CmsModule::firstOrCreate(
-            ['identifier' => 'pages'],
-            [
-                'name' => 'Composite Page Builder',
-                'version' => '1.0.0',
-                'description' => 'Composite page builder with stylable sections, scroll-magic animations and widget embeds',
-                'provider' => PagesModuleServiceProvider::class,
-                'is_pageable' => true,
-                'is_core' => true,
-                'is_installed' => true,
-                'is_active' => true,
-            ]
-        );
 
         $this->ensurePersonalAccessClient();
     }

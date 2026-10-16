@@ -22,6 +22,8 @@ return new class extends Migration
             $table->string('action_url', 500)->nullable();
             $table->json('data')->nullable();
             $table->boolean('is_read')->default(false)->index();
+            $table->boolean('is_visible')->default(true);
+            $table->boolean('is_global')->default(true);
             $table->timestamp('read_at')->nullable();
             $table->timestamps();
         });

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\InstallerRuntime;
 use Tests\TestCase;
 
 require_once __DIR__.'/Support/McpIdentity.php';
@@ -12,10 +13,15 @@ require_once __DIR__.'/Support/McpIdentity.php';
 |--------------------------------------------------------------------------
 */
 
-uses(
-    TestCase::class,
-    RefreshDatabase::class,
-)->in('Feature', 'Unit');
+uses(TestCase::class)->in('Feature', 'Unit');
+// Installer requests reconnect MySQL and execute DDL: they cannot share a
+// transaction fixture. All other feature paths keep RefreshDatabase by default.
+$transactionalFeatures = array_values(array_filter(
+    glob(__DIR__.'/Feature/*') ?: [],
+    static fn (string $path): bool => basename($path) !== 'Install',
+));
+uses(RefreshDatabase::class)->in('Unit', ...$transactionalFeatures);
+uses(InstallerRuntime::class)->in('Feature/Install');
 
 // Architecture tests boot the app (to inspect Artisan/console metadata) but do
 // not touch the database.

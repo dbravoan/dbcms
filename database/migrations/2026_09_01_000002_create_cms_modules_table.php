@@ -18,7 +18,6 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('provider');                  // e.g. 'Modules\Blog\BlogModuleServiceProvider'
             $table->boolean('is_pageable')->default(false);
-            $table->boolean('is_core')->default(false);
             $table->boolean('is_installed')->default(false);
             $table->boolean('is_active')->default(false);
             $table->json('settings')->nullable();

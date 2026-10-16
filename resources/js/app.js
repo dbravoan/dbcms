@@ -6,12 +6,16 @@
  */
 import Alpine from 'alpinejs';
 import collapse from '@alpinejs/collapse';
+import { createBlockManager } from './block-manager';
+import { createGalleryEditor } from './gallery-editor';
 
 window.Alpine = Alpine;
 
 // The front themes use `x-collapse` for their own collapsible blocks, so the
 // plugin is bundled locally (no CDN) and registered before boot.
 Alpine.plugin(collapse);
+Alpine.data('blockManager', createBlockManager);
+Alpine.data('galleryEditor', createGalleryEditor);
 
 /**
  * Shared navigation state.

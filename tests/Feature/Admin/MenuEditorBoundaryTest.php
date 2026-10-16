@@ -2,13 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Database\Eloquent\Model;
-use Modules\Pages\Models\Page;
+use Tests\Support\CmsFixtures;
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
     $this->admin = User::whereHas('roles', fn ($q) => $q->where('slug', 'admin'))->firstOrFail();
     $this->actingAs($this->admin);
 });

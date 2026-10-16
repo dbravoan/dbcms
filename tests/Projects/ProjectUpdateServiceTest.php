@@ -3,12 +3,9 @@
 declare(strict_types=1);
 
 use App\Contracts\Services\ProjectSourceRepositoryInterface;
-use App\Contracts\Services\SourceRevisionResolverInterface;
 use App\Contracts\Services\UpdateMigrationServiceInterface;
 use App\Core\Updates\SignedManifestVerifier;
 use App\Core\Updates\UpdateRunStore;
-use App\Services\Projects\ProjectDeploymentAdoptionService;
-use App\Services\Projects\ProjectInitializationService;
 use App\Services\ProjectUpdates\ProjectUpdateService;
 use App\Services\Updates\GithubReleaseGateway;
 use Illuminate\Filesystem\Filesystem;
@@ -62,7 +59,7 @@ beforeEach(function (): void {
     $this->publicKey = openssl_pkey_get_details(openssl_pkey_get_private($privatePem))['key'];
     file_put_contents($this->sandbox.'/test-public.pub', $this->publicKey);
     config(['updates.trusted_keys' => ['test-release' => $this->publicKey], 'updates.storage_path' => $this->sandbox.'/private-state', 'updates.repository' => 'dbravoan/dbcms']);
-    $this->profile = ['schema' => 1, 'name' => 'sample', 'brand' => 'termocms', 'themes' => ['db-minimal'], 'default_theme' => 'db-minimal', 'core' => ['repository' => 'dbravoan/dbcms', 'version' => '1.2.0', 'sha' => str_repeat('a', 40)]];
+    $this->profile = ['schema' => 1, 'name' => 'sample', 'brand' => 'termocms', 'themes' => ['db-minimal'], 'default_theme' => 'db-minimal', 'deployment' => 'github-actions', 'core' => ['repository' => 'dbravoan/dbcms', 'version' => '1.2.0', 'sha' => str_repeat('a', 40)]];
     file_put_contents($this->projectRoot.'/cms-project.json', json_encode($this->profile, JSON_THROW_ON_ERROR));
     $this->baseFiles = ['app/clean.php' => 'old', 'resources/updates/core-version.json' => '{"version":"1.2.0","repository":"dbravoan/dbcms"}', 'themes/db-minimal/theme.json' => '{"id":"db-minimal"}', 'resources/views/themes/admin/termocms/theme.json' => '{"id":"termocms"}'];
     $this->targetFiles = [...$this->baseFiles, 'app/clean.php' => 'new', 'resources/updates/core-version.json' => '{"version":"1.3.0","repository":"dbravoan/dbcms"}'];
@@ -266,48 +263,6 @@ test('reconciliation rejects profile provenance that differs from the signed pre
     expect(file_exists($this->sandbox.'/private-state/identity.json'))->toBeFalse();
 });
 
-test('legacy projects explicitly adopt a deployment only after signed controls are proven intact', function (): void {
-    $this->baseFiles += ['bin/deploy-container.sh' => 'official-docker', '.github/workflows/ci.yml' => 'official-ci', '.github/workflows/deploy.yml' => 'official-deploy'];
-    ($this->refreshFixtures)();
-    file_put_contents($this->projectRoot.'/bin/deploy-own.sh', 'own-control');
-    file_put_contents($this->projectRoot.'/.github/workflows/own.yml', 'own-workflow');
-    $adoption = new ProjectDeploymentAdoptionService(new GithubReleaseGateway, new SignedManifestVerifier, $this->sources);
-    $resolver = Mockery::mock(SourceRevisionResolverInterface::class);
-    $initializer = new ProjectInitializationService(new Filesystem, $resolver, $this->projectRoot, $adoption);
-    $profile = $initializer->initialize('sample', 'termocms', 'db-minimal', 'rsync');
-
-    expect($profile->deployment)->toBe('rsync')
-        ->and(json_decode(file_get_contents($this->projectRoot.'/cms-project.json'), true)['deployment'])->toBe('rsync')
-        ->and(file_exists($this->projectRoot.'/bin/deploy-container.sh'))->toBeFalse()
-        ->and(file_exists($this->projectRoot.'/.github/workflows/ci.yml'))->toBeFalse()
-        ->and(file_get_contents($this->projectRoot.'/bin/deploy-own.sh'))->toBe('own-control')
-        ->and(file_get_contents($this->projectRoot.'/.github/workflows/own.yml'))->toBe('own-workflow');
-    expect($this->sources->fetches)->toBe([['1.2.0', str_repeat('a', 40)]]);
-});
-
-test('legacy deployment adoption rejects customized ambiguous or tampered controls before any deletion', function (string $failure): void {
-    $this->baseFiles += ['bin/deploy-container.sh' => 'official-docker', '.github/workflows/ci.yml' => 'official-ci'];
-    ($this->refreshFixtures)();
-    if ($failure === 'customized') {
-        file_put_contents($this->projectRoot.'/bin/deploy-container.sh', 'project-customization');
-    } elseif ($failure === 'unproven') {
-        file_put_contents($this->projectRoot.'/bin/deploy-ansistrano', 'unproven-control');
-    } elseif ($failure === 'tampered') {
-        $this->sources->files[str_repeat('a', 40)]['bin/deploy-container.sh'] = 'tampered-git';
-    } else {
-        $profile = $this->profile;
-        $profile['core']['sha'] = str_repeat('f', 40);
-        file_put_contents($this->projectRoot.'/cms-project.json', json_encode($profile, JSON_THROW_ON_ERROR));
-    }
-    $before = file_get_contents($this->projectRoot.'/cms-project.json');
-    $adoption = new ProjectDeploymentAdoptionService(new GithubReleaseGateway, new SignedManifestVerifier, $this->sources);
-    $initializer = new ProjectInitializationService(new Filesystem, Mockery::mock(SourceRevisionResolverInterface::class), $this->projectRoot, $adoption);
-    expect(fn () => $initializer->initialize('sample', 'termocms', 'db-minimal', 'rsync'))->toThrow(DomainException::class);
-    expect(file_exists($this->projectRoot.'/bin/deploy-container.sh'))->toBeTrue()
-        ->and(file_exists($this->projectRoot.'/.github/workflows/ci.yml'))->toBeTrue()
-        ->and(file_get_contents($this->projectRoot.'/cms-project.json'))->toBe($before);
-})->with(['customized', 'unproven', 'tampered', 'wrong-baseline']);
-
 test('signed updates preserve deployment selection and do not restore excluded github or deployment controls', function (): void {
     $profile = [...$this->profile, 'deployment' => 'rsync'];
     file_put_contents($this->projectRoot.'/cms-project.json', json_encode($profile, JSON_THROW_ON_ERROR));
@@ -330,4 +285,48 @@ test('unknown deployment metadata is rejected before a core update changes files
     file_put_contents($this->projectRoot.'/cms-project.json', json_encode([...$this->profile, 'deployment' => 'ssh'], JSON_THROW_ON_ERROR));
     expect(fn () => $this->service->prepare($this->projectRoot, '1.3.0'))->toThrow(DomainException::class);
     expect(file_get_contents($this->projectRoot.'/app/clean.php'))->toBe('old');
+});
+
+test('signed updates and reconciliation preserve a curated source projection and project data', function (): void {
+    $selection = ['module_directories' => ['Blog'], 'block_package_directories' => ['Basic'], 'include_showcase' => false];
+    file_put_contents($this->projectRoot.'/cms-project.json', json_encode([...$this->profile, 'source_selection' => $selection], JSON_THROW_ON_ERROR));
+    $this->baseFiles += ['modules/Blog/Post.php' => 'old', 'modules/Shop/Shop.php' => 'omitted', 'block-packages/Basic/Text.php' => 'old', 'database/seeders/PlatformShowcaseSeeder.php' => 'omitted'];
+    $this->targetFiles += ['modules/Blog/Post.php' => 'new', 'modules/Blog/Guide.php' => 'added', 'modules/Shop/Shop.php' => 'changed', 'modules/Future/New.php' => 'new', 'block-packages/Basic/Text.php' => 'new', 'block-packages/Charts/New.php' => 'new', 'database/seeders/PlatformShowcaseSeeder.php' => 'new'];
+    ($this->refreshFixtures)();
+    (new Filesystem)->deleteDirectory($this->projectRoot.'/modules/Shop');
+    unlink($this->projectRoot.'/database/seeders/PlatformShowcaseSeeder.php');
+    (new Filesystem)->ensureDirectoryExists($this->projectRoot.'/modules/Own');
+    file_put_contents($this->projectRoot.'/modules/Own/private.php', 'project-only module');
+    file_put_contents($this->projectRoot.'/.env', 'project environment');
+    (new Filesystem)->ensureDirectoryExists($this->projectRoot.'/storage');
+    file_put_contents($this->projectRoot.'/storage/installed', 'project installation');
+    $plan = $this->service->prepare($this->projectRoot, '1.3.0');
+
+    expect($plan->conflicts)->toBeEmpty()
+        ->and(file_get_contents($this->projectRoot.'/modules/Blog/Post.php'))->toBe('new')
+        ->and(file_get_contents($this->projectRoot.'/modules/Blog/Guide.php'))->toBe('added')
+        ->and(file_get_contents($this->projectRoot.'/block-packages/Basic/Text.php'))->toBe('new')
+        ->and(file_exists($this->projectRoot.'/modules/Shop'))->toBeFalse()
+        ->and(file_exists($this->projectRoot.'/modules/Future'))->toBeFalse()
+        ->and(file_exists($this->projectRoot.'/block-packages/Charts'))->toBeFalse()
+        ->and(file_exists($this->projectRoot.'/database/seeders/PlatformShowcaseSeeder.php'))->toBeFalse()
+        ->and(file_get_contents($this->projectRoot.'/modules/Own/private.php'))->toBe('project-only module')
+        ->and(file_get_contents($this->projectRoot.'/.env'))->toBe('project environment')
+        ->and(file_get_contents($this->projectRoot.'/storage/installed'))->toBe('project installation')
+        ->and(json_decode(file_get_contents($this->projectRoot.'/cms-project.json'), true)['source_selection'])->toBe($selection);
+    $this->service->reconcile($this->projectRoot);
+    $identity = json_decode(file_get_contents($this->sandbox.'/private-state/identity.json'), true);
+    expect($identity['excluded'])->toContain('modules/Shop/Shop.php', 'modules/Future/New.php', 'block-packages/Charts/New.php', 'database/seeders/PlatformShowcaseSeeder.php')
+        ->and($identity['customizations'])->not->toContain('modules/Shop/Shop.php', 'database/seeders/PlatformShowcaseSeeder.php');
+});
+
+test('invalid source selections are rejected before fetching or mutating project source', function (): void {
+    $profileBytes = json_encode([...$this->profile, 'source_selection' => ['module_directories' => ['../Blog'], 'block_package_directories' => ['Basic'], 'include_showcase' => false]], JSON_THROW_ON_ERROR);
+    file_put_contents($this->projectRoot.'/cms-project.json', $profileBytes);
+    expect(fn () => $this->service->prepare($this->projectRoot, '1.3.0'))->toThrow(DomainException::class);
+    Http::assertNothingSent();
+    expect($this->sources->fetches)->toBeEmpty()
+        ->and(file_get_contents($this->projectRoot.'/app/clean.php'))->toBe('old')
+        ->and(file_get_contents($this->projectRoot.'/cms-project.json'))->toBe($profileBytes)
+        ->and(file_exists($this->projectRoot.'/resources/updates/project-update.json'))->toBeFalse();
 });

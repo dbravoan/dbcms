@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Modules\CreativeStudio\Services;
 
-use App\Contracts\Services\MarketingArtifactStoreInterface;
-use App\DTOs\Marketing\ArtifactDescriptor;
 use Illuminate\Validation\ValidationException;
+use Modules\Marketing\Contracts\MarketingArtifactStoreInterface;
+use Modules\Marketing\DTOs\ArtifactDescriptor;
 use RuntimeException;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;

@@ -16,8 +16,7 @@ final class AppVersionCommand extends Command
      */
     protected $signature = 'app:version
                             {--bump= : Increment SemVer level (major, minor, patch)}
-                            {--set= : Set an explicit SemVer version string (e.g. 2.1.0)}
-                            {--tag : Deprecated; create release tags explicitly after committing and validating}';
+                            {--set= : Set an explicit SemVer version string (e.g. 2.1.0)}';
 
     /**
      * The console command description.
@@ -28,12 +27,6 @@ final class AppVersionCommand extends Command
 
     public function handle(): int
     {
-        if ($this->option('tag')) {
-            $this->error('--tag is deprecated. Commit and validate the version change first, then create and push the specific annotated Git tag explicitly.');
-
-            return self::FAILURE;
-        }
-
         $versionFile = base_path('VERSION');
         $currentVersion = $this->getCurrentVersion();
 

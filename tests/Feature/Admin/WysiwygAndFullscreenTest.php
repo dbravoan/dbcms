@@ -3,16 +3,17 @@
 declare(strict_types=1);
 
 use App\Core\Blocks\Contracts\BlockRegistryInterface;
-use App\Core\Blocks\Types\RichTextBlock;
 use App\Models\User;
 use App\Services\Media\MarkdownRendererService;
-use Database\Seeders\PlatformShowcaseSeeder;
+use BlockPackages\Basic\Blocks\RichTextBlock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
     $this->registry = app(BlockRegistryInterface::class);
     $this->markdown = app(MarkdownRendererService::class);
@@ -82,13 +83,13 @@ test('rich text block preserves embedded html tags inside markdown format', func
     expect($html)->toContain('<li>Punto 1</li>');
 });
 
-test('markdown renderer service resolves widget shortcodes inside html', function (): void {
+test('markdown renderer removes unknown widgets while preserving surrounding html', function (): void {
     $htmlWithWidget = '<div class="banner">Información previa [widget:unknown_test_widget] fin</div>';
 
     $output = $this->markdown->renderHtml($htmlWithWidget);
 
     expect($output)->toContain('<div class="banner">');
-    expect($output)->toContain('<!-- widget: unknown_test_widget -->');
+    expect($output)->toContain('Información previa  fin')->not->toContain('unknown_test_widget');
 });
 
 test('admin pages create view renders block manager with fullscreen mode and dual wysiwyg', function (): void {

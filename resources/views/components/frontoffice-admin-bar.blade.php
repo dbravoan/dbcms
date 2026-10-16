@@ -1,132 +1,4 @@
-@php
-    $currentUser = auth('web')->user();
-    $canAccessBackoffice = $currentUser && (
-        $currentUser->isAdmin() ||
-        $currentUser->hasPermission('access:admin') ||
-        $currentUser->roles()->exists()
-    );
-    // The frontoffice bar shows the same brand as the backoffice: it reads the
-    // active theme identity (from theme.json) and an optional `assets/admin-bar.css`
-    // that redefines the bar's design tokens.
-    $brand = $cmsBrand ?? brand();
-    $cmsBrandName = $cmsBrandName ?? ($brand->name ?? (string) config('cms.name', 'CMS'));
-    $adminBarCssUrl = null;
-    if (app()->bound(\App\Contracts\Services\AdminThemeServiceInterface::class) && $brand->theme !== '') {
-        /** @var \App\Contracts\Services\AdminThemeServiceInterface $themeService */
-        $themeService = app(\App\Contracts\Services\AdminThemeServiceInterface::class);
-        $adminBarCssPath = $themeService->getThemePath($brand->theme).'/assets/admin-bar.css';
-        $adminBarCssUrl = is_file($adminBarCssPath) ? theme_asset('admin-bar.css', $brand->theme) : null;
-    }
-    $brandLogo = ! empty($brand->logo) ? theme_asset((string) $brand->logo) : null;
-    $brandIcon = ! empty($brand->icon) ? theme_asset((string) $brand->icon) : null;
-    $brandAlt = $brand->name !== '' ? $brand->name : $cmsBrandName;
-@endphp
-
 @if($canAccessBackoffice)
-@php
-    $currentRoleName = $currentUser->roles->first()?->name ?? ($currentUser->isAdmin() ? 'Administrador' : 'Backoffice');
-
-    // 1. Identify current editable entity & backoffice URL
-    $contentEntity = null;
-    $editUrl = null;
-    $editLabel = null;
-    $entityType = null;
-    $contentTitle = null;
-    $contentMetaDesc = null;
-    $contentBody = '';
-
-    if (isset($page) && is_object($page) && isset($page->id) && Route::has('admin.pages.edit')) {
-        $contentEntity = $page;
-        $entityType = 'page';
-        $editUrl = route('admin.pages.edit', $page->id);
-        $editLabel = 'Editar Página';
-        $contentTitle = $translation->meta_title ?? $translation->title ?? $page->title ?? 'Página';
-        $contentMetaDesc = $translation->meta_description ?? '';
-
-        $chunks = [];
-        if (!empty($renderedSections) && is_array($renderedSections)) {
-            foreach ($renderedSections as $sec) {
-                $chunks[] = is_string($sec) ? strip_tags($sec) : '';
-            }
-        } elseif (!empty($page->sections)) {
-            // Every block counts, including the ones living inside columns: the
-            // payload is resolved through the canonical section contract.
-            foreach ($page->sections as $sec) {
-                $styling = is_array($sec->styling_json ?? null) ? $sec->styling_json : [];
-                $content = is_array($sec->content_json ?? null) ? $sec->content_json : [];
-                $chunks[] = \App\Core\Sections\SectionLayout::plainText(
-                    \App\Core\Sections\SectionLayout::resolve($styling, $content)
-                );
-            }
-        }
-        $contentBody = implode("\n\n", $chunks);
-    } elseif (isset($post) && is_object($post) && isset($post->id) && Route::has('admin.blog.posts.edit')) {
-        $contentEntity = $post;
-        $entityType = 'post';
-        $editUrl = route('admin.blog.posts.edit', $post->id);
-        $editLabel = 'Editar Artículo';
-        $contentTitle = $translation->meta_title ?? $translation->title ?? $post->title ?? 'Artículo';
-        $contentMetaDesc = $translation->meta_description ?? $translation->summary ?? '';
-        $contentBody = ($translation->content ?? '') . "\n\n" . ($translation->summary ?? '');
-    } elseif (isset($product) && is_object($product) && isset($product->id) && Route::has('admin.shop.products.edit')) {
-        $contentEntity = $product;
-        $entityType = 'product';
-        $editUrl = route('admin.shop.products.edit', $product->id);
-        $editLabel = 'Editar Producto';
-        $contentTitle = $translation->name ?? $product->name ?? 'Producto';
-        $contentMetaDesc = $translation->meta_description ?? $translation->description ?? '';
-        $contentBody = ($translation->description ?? '') . "\n\n" . (!empty($product->specs_json) ? json_encode($product->specs_json) : '');
-    } elseif (isset($gallery) && is_object($gallery) && isset($gallery->id) && Route::has('admin.galleries.edit')) {
-        $contentEntity = $gallery;
-        $entityType = 'gallery';
-        $editUrl = route('admin.galleries.edit', $gallery->id);
-        $editLabel = 'Editar Galería';
-        $contentTitle = $translation->title ?? $gallery->title ?? 'Galería';
-        $contentMetaDesc = $translation->description ?? $gallery->description ?? '';
-        $contentBody = ($translation->description ?? '') . "\n\n" . 'Total elementos: ' . ($gallery->items ? $gallery->items->count() : 0);
-    } elseif (isset($category) && is_object($category) && isset($category->id) && Route::has('admin.blog.categories.index')) {
-        $contentEntity = $category;
-        $entityType = 'category';
-        $editUrl = route('admin.blog.categories.index');
-        $editLabel = 'Categorías';
-        $contentTitle = $category->name ?? 'Categoría';
-        $contentMetaDesc = $category->description ?? '';
-    } else {
-        $currentPath = request()->path();
-        if (str_contains($currentPath, 'blog') && Route::has('admin.blog.posts.create')) {
-            $editUrl = route('admin.blog.posts.create');
-            $editLabel = '+ Nuevo Artículo';
-        } elseif ((str_contains($currentPath, 'shop') || str_contains($currentPath, 'tienda')) && Route::has('admin.shop.products.index')) {
-            $editUrl = route('admin.shop.products.index');
-            $editLabel = 'Gestionar Tienda';
-        } elseif (str_contains($currentPath, 'galer') && Route::has('admin.galleries.index')) {
-            $editUrl = route('admin.galleries.index');
-            $editLabel = 'Gestionar Galerías';
-        } elseif (Route::has('admin.pages.create')) {
-            $editUrl = route('admin.pages.create');
-            $editLabel = '+ Nueva Página';
-        } elseif (Route::has('admin.dashboard')) {
-            $editUrl = route('admin.dashboard');
-            $editLabel = 'Panel de Control';
-        }
-        $contentTitle = $cmsBrandName . ' Frontoffice';
-        $contentMetaDesc = 'Plataforma web empresarial modular';
-    }
-
-    // 2. Real-Time SEO & GEO Quality Audit
-    $auditorService = app(\App\Services\Seo\ContentQualityAuditorService::class);
-    $auditResult = $auditorService->audit(
-        (string) $contentTitle,
-        (string) $contentBody,
-        (string) $contentMetaDesc,
-        ''
-    );
-
-    $score = $auditResult['overall_score'];
-    $scoreBadgeColor = $score >= 80 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : ($score >= 60 ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' : 'text-rose-400 bg-rose-500/10 border-rose-500/30');
-    $scoreDotColor = $score >= 80 ? 'bg-emerald-400' : ($score >= 60 ? 'bg-amber-400' : 'bg-rose-400');
-@endphp
-
 <!-- Frontoffice Backoffice Direct Bar -->
 @if(!empty($adminBarCssUrl))
     <link rel="stylesheet" href="{{ $adminBarCssUrl }}">
@@ -230,13 +102,7 @@
                 <span class="sm:hidden font-mono text-[10px]"><i class="fa-solid fa-bolt text-[#00FF99] admin-bar-accent"></i> {{ $score }}%</span>
             </button>
 
-            <!-- Maintenance Mode Indicator -->
-            @if(app(\Modules\Maintenance\Services\MaintenanceService::class)->isActive())
-                <a href="{{ route('admin.modules.settings', ['identifier' => 'maintenance']) }}" class="px-2 sm:px-2.5 py-1 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-500 font-mono text-[10px] font-bold inline-flex items-center gap-1.5 animate-pulse shrink-0 admin-badge-maintenance" title="{{ __('admin.front_bar.tooltip_maintenance') }}">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                    <span class="hidden sm:inline">{{ __('admin.front_bar.maintenance_active') }}</span>
-                </a>
-            @endif
+            @stack('front_admin_status')
 
             <!-- User Info Badge -->
             <div class="hidden xl:flex items-center gap-1.5 text-gray-300 admin-bar-user">
@@ -438,10 +304,7 @@
                             <i class="fa-solid fa-chart-line"></i>
                             <span>Auditoría Global &rarr;</span>
                         </a>
-                        <a href="{{ route('admin.ai.download-prompt') }}" class="text-gray-300 hover:text-[#00FF99] hover:underline admin-text-muted flex items-center gap-1" title="{{ __('admin.front_bar.tooltip_prompt') }}">
-                            <i class="fa-solid fa-robot"></i>
-                            <span>Prompt IA (.md) &darr;</span>
-                        </a>
+                        @stack('front_admin_actions')
                     </div>
                     <button type="button" @click="showSeoDrawer = false" class="text-gray-400 hover:text-white admin-btn-secondary">
                         Cerrar

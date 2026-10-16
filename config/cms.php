@@ -1,19 +1,13 @@
 <?php
 
 declare(strict_types=1);
+use App\Content\Pages\Models\Page;
+use App\Content\Pages\Models\PageSection;
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\Menu;
 use App\Models\MenuItem;
 use App\Models\Setting;
-use Modules\Blog\Models\Category;
-use Modules\Blog\Models\Post;
-use Modules\Gallery\Models\Gallery;
-use Modules\Gallery\Models\GalleryItem;
-use Modules\Pages\Models\Page;
-use Modules\Pages\Models\PageSection;
-use Modules\Shop\Models\Product;
-use Modules\Shop\Models\ProductCategory;
 
 /**
  * CMS runtime configuration (env-driven and brand-agnostic).
@@ -29,8 +23,8 @@ $project = is_file($projectPath) ? json_decode((string) file_get_contents($proje
 
 return [
     'project' => $project,
-    'orchestration' => ['enabled' => env('CMS_ORCHESTRATION_ENABLED', false)],
     'seed_demo' => env('CMS_SEED_DEMO', false),
+    'demo_seeder' => 'Database\\Seeders\\PlatformShowcaseSeeder',
     /*
     |--------------------------------------------------------------------------
     | Theme selection
@@ -52,7 +46,7 @@ return [
     'name' => env('APP_NAME', 'CMS'),
     'tagline' => env('CMS_TAGLINE'),
     'admin_path' => env('ADMIN_PATH', 'admin'),
-    'version' => env('APP_VERSION', '1.3.0'),
+    'version' => env('APP_VERSION', trim((string) file_get_contents(base_path('VERSION')))),
     'installation_id' => env('CMS_INSTALLATION_ID') ?: substr(hash('sha256', (string) env('APP_KEY', '')), 0, 32),
 
     /*
@@ -66,8 +60,7 @@ return [
     'meta_capi_token' => env('META_CAPI_TOKEN', ''),
     'maintenance_mode' => env('CMS_MAINTENANCE_MODE', false),
     'lock_roles_in_production' => env('CMS_LOCK_ROLES_IN_PRODUCTION', true),
-    'testing_enforce_installed_middleware' => env('CMS_TESTING_ENFORCE_INSTALLED', false),
-    'core_modules' => array_values(array_filter(array_map('trim', explode(',', (string) env('CMS_CORE_MODULES', 'pages'))))),
+    'modules' => array_values(array_filter(array_map('trim', explode(',', (string) env('CMS_MODULES', ''))))),
 
     /*
     |--------------------------------------------------------------------------
@@ -116,12 +109,6 @@ return [
         MenuItem::class,
         Page::class,
         PageSection::class,
-        Post::class,
-        Category::class,
-        Product::class,
-        ProductCategory::class,
-        Gallery::class,
-        GalleryItem::class,
     ],
 
     /*

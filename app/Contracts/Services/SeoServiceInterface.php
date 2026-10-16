@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Contracts\Services;
 
-use App\DTOs\Seo\SeoMetadataDTO;
 use App\Models\Market;
 
 interface SeoServiceInterface
@@ -15,12 +14,6 @@ interface SeoServiceInterface
      * @return array<string, mixed>
      */
     public function generateSiteSchema(): array;
-
-    /**
-     * Returns resolved OpenGraph metadata.
-     */
-    /** @return array<string, mixed> */
-    public function resolveMetadata(SeoMetadataDTO $dto): array;
 
     /**
      * Generates a valid XML sitemap string.

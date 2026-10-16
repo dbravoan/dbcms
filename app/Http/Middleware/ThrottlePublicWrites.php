@@ -32,7 +32,6 @@ final class ThrottlePublicWrites
         'oauth',
         'up',
         'mcp',
-        'api/mcp',
         'theme-assets',
     ];
 

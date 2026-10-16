@@ -6,7 +6,6 @@ use App\Console\Commands\InstallCmsCommand;
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\User;
-use App\Services\Install\EnvValueSerializer;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Console\OutputStyle;
 use Illuminate\Support\Facades\Artisan;
@@ -14,23 +13,8 @@ use Illuminate\Support\Facades\File;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 
-beforeEach(function (): void {
-    $this->originalEnvironmentPath = app()->environmentPath();
-    $this->originalStoragePath = app()->storagePath();
-    $this->privateRuntime = sys_get_temp_dir().'/dbcms-installer-test-'.bin2hex(random_bytes(8));
-    File::makeDirectory($this->privateRuntime.'/storage', 0700, true);
-    $applicationKey = (string) (config('app.key') ?: 'base64:'.base64_encode(str_repeat('a', 32)));
-    File::put($this->privateRuntime.'/.env', 'APP_KEY='.EnvValueSerializer::encode($applicationKey)."\n");
-    app()->useEnvironmentPath($this->privateRuntime)->useStoragePath($this->privateRuntime.'/storage');
-});
-
-afterEach(function (): void {
-    app()->useEnvironmentPath($this->originalEnvironmentPath)->useStoragePath($this->originalStoragePath);
-    File::deleteDirectory($this->privateRuntime);
-});
-
 $installationOptions = static fn (): array => [
-    '--db-host' => env('DB_HOST'), '--db-database' => 'testing',
+    '--db-host' => env('DB_HOST'), '--db-database' => env('DB_DATABASE'),
     '--db-username' => env('DB_USERNAME'), '--db-password' => env('DB_PASSWORD'),
     '--without-demo' => true, '--admin-name' => 'RegulaSE Admin',
     '--admin-email' => 'admin@regulase.test', '--admin-password' => 'private-test-password',
@@ -68,8 +52,13 @@ test('CLI persists a valid injected application key without rotation', function 
 test('CLI refuses a key generator that reports success without persisting a valid key', function () use ($environmentInstaller): void {
     config(['app.key' => '']);
     File::put(app()->environmentFilePath(), "APP_KEY=\n");
-    Artisan::shouldReceive('call')->with('key:generate', ['--force' => true], Mockery::any())->once()->andReturn(0);
-    expect(fn () => $environmentInstaller()->prepareEnvironment())->toThrow(RuntimeException::class);
+    $kernel = Artisan::getFacadeRoot();
+    try {
+        Artisan::shouldReceive('call')->with('key:generate', ['--force' => true], Mockery::any())->once()->andReturn(0);
+        expect(fn () => $environmentInstaller()->prepareEnvironment())->toThrow(RuntimeException::class);
+    } finally {
+        Artisan::swap($kernel);
+    }
 });
 
 test('CLI recognizes a quoted persisted application key without regenerating it', function () use ($environmentInstaller): void {

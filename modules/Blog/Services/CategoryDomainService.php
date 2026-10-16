@@ -9,7 +9,8 @@ use App\DTOs\Content\EntityMutationData;
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\User;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityMutationService;
+use App\Services\Capabilities\EntityReadService;
 use App\Services\Content\EditorialDraftService;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -20,12 +21,12 @@ final class CategoryDomainService implements CategoryDomainServiceInterface
 {
     use HandlesDatatableQuery;
 
-    public function __construct(private readonly EntityCrudService $entities, private readonly EditorialDraftService $drafts) {}
+    public function __construct(private readonly EntityMutationService $entities, private readonly EntityReadService $reader, private readonly EditorialDraftService $drafts) {}
 
     public function create(array $input, ?User $actor): Category
     {
-        $payload = $this->entities->create('blog_category', EntityMutationData::fromLegacy($input)->arguments, $actor);
-        $category = $this->entities->resolveEntity('blog_category', $payload['id']);
+        $payload = $this->entities->create('blog_category', EntityMutationData::fromForm($input)->arguments, $actor);
+        $category = $this->reader->resolveEntity('blog_category', $payload['id']);
         assert($category instanceof Category);
 
         return $category;
@@ -33,7 +34,7 @@ final class CategoryDomainService implements CategoryDomainServiceInterface
 
     public function update(Category $category, array $input): array
     {
-        $args = EntityMutationData::fromLegacy($input)->arguments;
+        $args = EntityMutationData::fromForm($input)->arguments;
         if ($category->is_active && ! empty($args['attributes']['is_active'])) {
             unset($args['attributes']['is_active']);
         }

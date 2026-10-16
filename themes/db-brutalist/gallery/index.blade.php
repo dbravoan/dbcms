@@ -1,4 +1,4 @@
-@extends('themes.db-brutalist.layouts.app')
+@extends('themes::db-brutalist.layouts.app')
 
 @section('title', app()->getLocale() === 'es' ? 'Galerías & Exposiciones Gráficas' : (app()->getLocale() === 'ca' ? 'Galeries & Exposicions Gràfiques' : 'Graphic Galleries & Showcase'))
 

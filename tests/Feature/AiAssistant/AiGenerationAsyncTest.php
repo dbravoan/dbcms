@@ -5,25 +5,24 @@ declare(strict_types=1);
 use App\Core\Capabilities\ActorContext;
 use App\Core\Capabilities\CallableCapability;
 use App\Core\Capabilities\CapabilityRegistry;
-use App\Core\Modules\ModuleManager;
 use App\Models\Orchestration\Execution;
 use App\Models\Role;
 use App\Models\SystemNotification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Modules\AiAssistant\Jobs\ProcessAiGeneration;
 use Modules\AiAssistant\Models\AiGenerationTask;
 use Modules\AiAssistant\Services\AiTaskService;
+use Tests\Support\AiCompletionFixture;
+use Tests\Support\AiComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, AiComposition::class);
 
 beforeEach(function (): void {
     config(['services.gemini.key' => 'fake-gemini-key']);
-    Http::preventStrayRequests();
-    app(ModuleManager::class)->discoverModules();
+    AiCompletionFixture::configure();
 
     $role = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Administrator']);
     $this->admin = User::factory()->create();

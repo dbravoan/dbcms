@@ -3,34 +3,22 @@
 declare(strict_types=1);
 
 use App\Contracts\Services\ModuleSettingsServiceInterface;
-use App\Models\CmsModule;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Modules\Blog\Models\Comment;
 use Modules\Blog\Models\Post;
-use Modules\Captcha\CaptchaModuleServiceProvider;
 use Modules\Captcha\Services\CaptchaService;
+use Tests\Support\BlogCaptchaComposition;
+use Tests\Support\BlogFixtures;
+use Tests\Support\CmsFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, BlogCaptchaComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
-
-    // Captcha is opt-in per test scenario: enable the module for these assertions.
-    CmsModule::updateOrCreate(
-        ['identifier' => 'captcha'],
-        [
-            'name' => 'Security & Dynamic Captcha',
-            'version' => '1.0.0',
-            'description' => 'test',
-            'provider' => CaptchaModuleServiceProvider::class,
-            'is_pageable' => false,
-            'is_installed' => true,
-            'is_active' => true,
-            'settings' => null,
-        ],
-    );
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    CmsFixtures::home();
+    BlogFixtures::post();
 
     $settings = app(ModuleSettingsServiceInterface::class);
     $settings->set('blog', 'comments_enabled', true);

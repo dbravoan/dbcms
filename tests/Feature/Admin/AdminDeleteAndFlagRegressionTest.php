@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 use App\Models\Market;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
+use Tests\Support\AdminCatalogComposition;
+use Tests\Support\CmsFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, AdminCatalogComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en'], ['es', 'mx']);
+    CmsFixtures::identities();
+    CmsFixtures::home(['es', 'en'], ['es', 'mx']);
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
 });
 

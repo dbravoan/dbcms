@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
 use App\Core\Content\Contracts\PublicSemanticContributorInterface;
 use App\Core\Content\PublicSemanticRegistry;
-use App\Core\Modules\ModuleManager;
 use App\Models\CmsModule;
 use App\Models\Language;
 use App\Models\Market;
@@ -14,13 +14,13 @@ use App\Services\Seo\PublicContentModifiedService;
 use App\Services\Seo\SitemapDocumentPartitioner;
 use Modules\Blog\Blocks\BlogPostsBlock;
 use Modules\Blog\Models\Post;
-use Modules\Pages\Models\Page;
 use Modules\Shop\Blocks\ShopProductsBlock;
 use Modules\Shop\Models\Product;
+use Tests\Support\PublicContentComposition;
+
+uses(PublicContentComposition::class);
 
 beforeEach(function (): void {
-    app(ModuleManager::class)->discoverModules();
-    CmsModule::query()->update(['is_active' => true]);
     $language = Language::firstOrCreate(['code' => 'es'], ['name' => 'Spanish', 'native_name' => 'Español', 'is_active' => true]);
     $this->market = Market::firstOrCreate(['code' => 'es'], ['name' => 'Spain', 'default_locale' => 'es', 'currency' => 'EUR', 'is_default' => true, 'is_active' => true]);
     $this->market->languages()->sync([$language->getKey()]);

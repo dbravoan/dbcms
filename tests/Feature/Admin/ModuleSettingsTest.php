@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Core\Modules\ModuleManager;
 use App\Models\CmsModule;
 use App\Models\Permission;
@@ -14,9 +15,9 @@ use Modules\Forms\Models\CustomForm;
 use Modules\Forms\Models\CustomFormTranslation;
 use Modules\Forms\Models\FormField;
 use Modules\Forms\Models\FormFieldTranslation;
-use Modules\Shop\Models\ShopSetting;
+use Tests\Support\ModuleSettingsComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, ModuleSettingsComposition::class);
 
 beforeEach(function (): void {
     $this->seed(CmsFoundationSeeder::class);
@@ -135,12 +136,13 @@ test('isConfigured reports correct status based on required fields', function ()
 
     // Initially without settings, required fields (pixel_id, capi_token) are missing
     $metaModule->update(['settings' => []]);
-    expect($metaModule->isConfigured())->toBeFalse();
+    $settings = app(ModuleSettingsServiceInterface::class);
+    expect($settings->isConfigured('meta'))->toBeFalse();
 
     // Once required fields are set
-    $metaModule->setSetting('pixel_id', '12345');
-    $metaModule->setSetting('capi_token', 'token_secret');
-    expect($metaModule->isConfigured())->toBeTrue();
+    $settings->set('meta', 'pixel_id', '12345');
+    $settings->set('meta', 'capi_token', 'token_secret');
+    expect($settings->isConfigured('meta'))->toBeTrue();
 });
 
 test('modules index view displays settings link and configuration badges', function (): void {
@@ -153,7 +155,7 @@ test('modules index view displays settings link and configuration badges', funct
     $response->assertSee(route('admin.modules.settings', ['identifier' => 'meta']));
 });
 
-test('admin can view and update shop module settings with bidirectional ShopSetting sync', function (): void {
+test('admin can view and update the canonical shop module settings', function (): void {
     // 1. GET module settings for shop
     $response = $this->actingAs($this->admin, 'web')
         ->get(route('admin.modules.settings', ['identifier' => 'shop']));
@@ -185,16 +187,6 @@ test('admin can view and update shop module settings with bidirectional ShopSett
     expect((float) module_setting('shop', 'tax_rate'))->toBe(15.5);
     expect(module_setting('shop', 'notification_email'))->toBe('finance@db-cms.io');
 
-    // 4. Verify ShopSetting::get reflects the normalized keys
-    expect(ShopSetting::get('shop.mode'))->toBe('catalog_only');
-    expect(ShopSetting::get('shop.currency'))->toBe('USD');
-    expect((float) ShopSetting::get('shop.tax_rate'))->toBe(15.5);
-    expect(ShopSetting::get('shop.notification_email'))->toBe('finance@db-cms.io');
-
-    // 5. Legacy admin.shop.settings route redirects to module settings
-    $legacyResp = $this->actingAs($this->admin, 'web')
-        ->get(route('admin.shop.settings'));
-    $legacyResp->assertRedirect(route('admin.modules.settings', ['identifier' => 'shop']));
 });
 
 test('forms index renders preview button and interactive modal with form engine', function (): void {
@@ -235,5 +227,5 @@ test('forms index renders preview button and interactive modal with form engine'
     $response->assertSee('Vista Previa: Formulario de Auditoría Técnica');
     $response->assertSee('Nombre de la Empresa');
     $response->assertSee('Solicitar Auditoría');
-    $response->assertSee('&lt;x-cms.form-engine slug="formulario-auditoria-tecnica" /&gt;', false);
+    $response->assertSee('&lt;x-forms::form-engine slug="formulario-auditoria-tecnica" /&gt;', false);
 });

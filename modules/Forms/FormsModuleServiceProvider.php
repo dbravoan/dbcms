@@ -9,7 +9,10 @@ use App\Core\Capabilities\Resources\CapabilityResourceRegistry;
 use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
 use App\Core\Modules\BaseModuleServiceProvider;
 use App\Http\Middleware\ResolveMarketAndLocaleMiddleware;
+use App\Models\User;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\View;
 use Modules\Forms\Blocks\CustomFormBlock;
 use Modules\Forms\Capabilities\FormResources;
 use Modules\Forms\Contracts\FormAdministrationServiceInterface;
@@ -18,6 +21,8 @@ use Modules\Forms\Http\Controllers\FormSubmitController;
 use Modules\Forms\Schema\FormEntitySchemas;
 use Modules\Forms\Services\FormAdministrationService;
 use Modules\Forms\Services\FormEditorService;
+use Modules\Forms\Services\FormPresentationService;
+use Modules\Forms\Services\FormsDashboard;
 use Modules\Forms\Widgets\EmbedFormWidget;
 
 class FormsModuleServiceProvider extends BaseModuleServiceProvider
@@ -32,17 +37,22 @@ class FormsModuleServiceProvider extends BaseModuleServiceProvider
 
     public function register(): void
     {
+        $this->mergeConfigFrom(__DIR__.'/Config/entity_search.php', 'entity_search.sources');
         $this->app->bind(FormAdministrationServiceInterface::class, FormAdministrationService::class);
         $this->app->bind(FormEditorServiceInterface::class, FormEditorService::class);
-        $this->app->bind('widget.forms.embed_form', fn () => EmbedFormWidget::class);
     }
 
     public function boot(): void
     {
+        $this->app->make(BlockRegistryInterface::class)->register($this->app->make(EmbedFormWidget::class));
         $this->app->make(CapabilityResourceRegistry::class)->register(FormResources::descriptor());
         parent::boot();
 
         $this->loadViewsFrom(__DIR__.'/Resources/views', 'forms');
+        Blade::anonymousComponentNamespace('forms::components', 'forms');
+        \Illuminate\Support\Facades\View::composer('forms::components.form-engine', function (View $view): void {
+            $view->with($this->app->make(FormPresentationService::class)->data($view->getData()));
+        });
         $this->loadMigrationsFrom(__DIR__.'/Database/Migrations');
 
         if ($this->app->bound(BlockRegistryInterface::class)) {
@@ -71,16 +81,15 @@ class FormsModuleServiceProvider extends BaseModuleServiceProvider
             ->name('forms.submit');
     }
 
-    public function getWidgets(): array
+    public function getAdminDashboard(User $user): ?array
     {
-        return [
-            EmbedFormWidget::getKey() => EmbedFormWidget::class,
-        ];
+        return $this->app->make(FormsDashboard::class)->data($user);
     }
 
     public function getAdminNavigation(): array
     {
         return [
+            ['title' => __('admin.nav.items.form_submissions'), 'route' => 'admin.forms.submissions', 'icon' => 'inbox', 'permission' => 'manage:forms'],
             [
                 'title' => 'Forms & Leads',
                 'route' => 'admin.forms.index',

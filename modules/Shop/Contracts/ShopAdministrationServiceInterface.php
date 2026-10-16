@@ -6,7 +6,6 @@ namespace Modules\Shop\Contracts;
 
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Modules\Shop\Models\Inquiry;
-use Modules\Shop\Models\Order;
 
 interface ShopAdministrationServiceInterface
 {
@@ -14,7 +13,4 @@ interface ShopAdministrationServiceInterface
     public function inquiries(): LengthAwarePaginator;
 
     public function review(Inquiry $inquiry): void;
-
-    /** @return LengthAwarePaginator<int, Order> */
-    public function legacyPayments(): LengthAwarePaginator;
 }

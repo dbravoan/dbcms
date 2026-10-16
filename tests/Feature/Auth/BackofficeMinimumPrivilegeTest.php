@@ -9,15 +9,23 @@ use App\Models\Market;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
-use App\Services\Capabilities\CmsActionService;
-use Database\Seeders\PlatformShowcaseSeeder;
+use App\Services\Capabilities\AccountActions;
 use Modules\Blog\Models\Post;
 use Modules\ContentAudit\Models\ContentAuditRevision;
-use Modules\Mcp\Services\McpServerService;
+use Modules\Mcp\Services\McpToolDispatcher;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Tests\Support\BackofficePolicyComposition;
+use Tests\Support\CmsFixtures;
+use Tests\Support\McpProtocolClient;
+
+uses(BackofficePolicyComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities(['admin' => [], 'author' => ['access:admin', 'manage:posts', 'manage:media', 'use:ai']]);
+    $published = Post::create(['user_id' => User::where('email', 'admin@db-cms.io')->value('id'), 'is_published' => true]);
+    $published->translations()->create(['locale' => 'es', 'title' => 'Public fixture', 'slug' => 'public-fixture', 'content' => 'Published body']);
+    $published->markets()->attach(Market::where('code', 'es')->value('id'));
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
     $this->author = User::where('email', 'author@db-cms.io')->firstOrFail();
 });
@@ -102,10 +110,8 @@ test('the dashboard hides leads and posts from accounts without their permission
     $user = User::factory()->create();
     $user->roles()->attach($role);
     $response = $this->actingAs($user)->get(route('admin.dashboard'))->assertOk();
-    $response->assertViewHas('hasForms', false)->assertViewHas('hasBlog', false);
-    $response->assertViewHas('recentSubmissions', fn ($rows): bool => $rows->isEmpty());
-    $response->assertViewHas('recentPosts', fn ($rows): bool => $rows->isEmpty());
-    $response->assertViewHas('stats', fn (array $stats): bool => $stats['total_submissions'] === 0 && $stats['total_users'] === 0);
+    $response->assertViewHas('moduleDashboard', []);
+    $response->assertViewHas('stats', fn (array $stats): bool => $stats['total_users'] === 0);
 });
 
 test('authors see only their own private articles in the dashboard', function (): void {
@@ -114,7 +120,7 @@ test('authors see only their own private articles in the dashboard', function ()
     $other = Post::create(['user_id' => $this->admin->id, 'is_published' => false]);
     $other->translations()->create(['locale' => 'es', 'title' => 'Other private draft', 'slug' => 'other-private-draft', 'content' => 'Other body']);
     $this->actingAs($this->author)->get(route('admin.dashboard'))->assertOk()->assertSee('My private draft')->assertDontSee('Other private draft')
-        ->assertViewHas('recentSubmissions', fn ($rows): bool => $rows->isEmpty());
+        ->assertViewHas('moduleDashboard', fn (array $contributions): bool => count($contributions) === 1 && isset($contributions[0]['data']['recentPosts']) && ! isset($contributions[0]['data']['recentSubmissions']));
 });
 
 test('the dashboard respects scheduled publication while retaining the authors own item', function (): void {
@@ -130,13 +136,14 @@ test('the dashboard respects scheduled publication while retaining the authors o
 
 test('global agent audit logs require module administration at the transport and direct service', function (): void {
     mcpTestBindIdentity($this->author);
-    $response = app(McpServerService::class)->handle(['jsonrpc' => '2.0', 'id' => 'private-logs', 'method' => 'tools/call', 'params' => ['name' => 'cms_mcp_audit', 'arguments' => []]]);
-    $payload = json_decode((string) ($response['result']['content'][0]['text'] ?? ''), true);
+    $response = app(McpProtocolClient::class)->handle(['jsonrpc' => '2.0', 'id' => 'private-logs', 'method' => 'tools/call', 'params' => ['name' => 'cms_mcp_audit', 'arguments' => []]]);
+    expect($response)->toHaveKey('error.code', -32602)->not->toHaveKey('result');
+    $payload = app(McpToolDispatcher::class)->dispatch('cms_mcp_audit', []);
     expect($payload['denied'] ?? false)->toBeTrue();
     $this->actingAs($this->author);
     app(ExecutionContext::class)->actor = null;
     try {
-        app(CmsActionService::class)->auditLog([]);
+        app(AccountActions::class)->auditLog([]);
         $this->fail('Direct audit access must require administration.');
     } catch (HttpException $error) {
         expect($error->getStatusCode())->toBe(403);
@@ -145,14 +152,15 @@ test('global agent audit logs require module administration at the transport and
 
 test('administrators with read scopes can access the global agent audit log', function (): void {
     mcpTestBindIdentity($this->admin, ['mcp:access', 'mcp:read']);
-    $response = app(McpServerService::class)->handle(['jsonrpc' => '2.0', 'id' => 'admin-logs', 'method' => 'tools/call', 'params' => ['name' => 'cms_mcp_audit', 'arguments' => []]]);
+    $response = app(McpProtocolClient::class)->handle(['jsonrpc' => '2.0', 'id' => 'admin-logs', 'method' => 'tools/call', 'params' => ['name' => 'cms_mcp_audit', 'arguments' => []]]);
     $payload = json_decode((string) ($response['result']['content'][0]['text'] ?? ''), true);
     expect($payload)->toHaveKeys(['stats', 'entries'])->not->toHaveKey('denied');
 });
 
 test('administrative privileges do not substitute the OAuth read scope for audit access', function (): void {
     mcpTestBindIdentity($this->admin, ['mcp:access']);
-    $response = app(McpServerService::class)->handle(['jsonrpc' => '2.0', 'id' => 'missing-scope', 'method' => 'tools/call', 'params' => ['name' => 'cms_mcp_audit', 'arguments' => []]]);
-    $payload = json_decode((string) ($response['result']['content'][0]['text'] ?? ''), true);
+    $response = app(McpProtocolClient::class)->handle(['jsonrpc' => '2.0', 'id' => 'missing-scope', 'method' => 'tools/call', 'params' => ['name' => 'cms_mcp_audit', 'arguments' => []]]);
+    expect($response)->toHaveKey('error.code', -32602)->not->toHaveKey('result');
+    $payload = app(McpToolDispatcher::class)->dispatch('cms_mcp_audit', []);
     expect($payload['denied'] ?? false)->toBeTrue();
 });

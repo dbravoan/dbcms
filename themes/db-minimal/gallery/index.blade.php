@@ -1,4 +1,4 @@
-@extends('themes.db-minimal.layouts.app')
+@extends('themes::db-minimal.layouts.app')
 
 @section('title', app()->getLocale() === 'es' ? 'Galerías & Espacios' : (app()->getLocale() === 'ca' ? 'Galeries & Espais' : 'Galleries & Spaces'))
 

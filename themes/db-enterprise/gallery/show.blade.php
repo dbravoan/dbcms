@@ -1,7 +1,7 @@
-@extends('themes.db-enterprise.layouts.app')
+@extends('themes::db-enterprise.layouts.app')
 
 @section('title', ($translation->meta_title ?? $translation->title ?? $gallery->title) . ' - dbCMS Enterprise')
-@section('meta_description', $translation->meta_description ?? $translation->description ?? $gallery->description)
+@section('meta_description', $translation->meta_description ?? $translation->description ?? $gallery->description ?? '')
 
 @section('content')
 <div class="max-w-7xl mx-auto space-y-12" x-data="{ lightboxImage: null, lightboxTitle: '' }">

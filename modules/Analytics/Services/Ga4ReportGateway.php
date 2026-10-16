@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\Analytics\Services;
 
-use App\Contracts\Services\CampaignAttributionGatewayInterface;
 use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Core\Modules\ModuleManager;
 use DateTimeImmutable;
@@ -13,6 +12,7 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
 use Modules\Analytics\Contracts\Ga4SettingsNormalizerInterface;
+use Modules\Marketing\Contracts\CampaignAttributionGatewayInterface;
 use RuntimeException;
 
 /** Optional reporting authority. GA4 collection and social counters stay separate. */

@@ -15,13 +15,20 @@
             <directory suffix="Test.php">./tests/Architecture</directory>
         </testsuite>
         <testsuite name="Unit">
+            <directory suffix="Test.php">./tests/Pure</directory>
             <directory suffix="Test.php">./tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Smoke">
+            <directory suffix="Test.php">./tests/Smoke</directory>
         </testsuite>
         <testsuite name="Feature">
             <directory suffix="Test.php">./tests/Feature</directory>
         </testsuite>
         <testsuite name="Regression">
             <directory suffix="Test.php">./tests/Regression</directory>
+        </testsuite>
+        <testsuite name="Release">
+            <directory suffix="Test.php">./tests/Release</directory>
         </testsuite>
         <testsuite name="Concurrency">
             <directory suffix="Test.php">./tests/Concurrency</directory>
@@ -30,18 +37,23 @@
     <source>
         <include>
             <directory suffix=".php">./app</directory>
+            <directory suffix=".php">./modules</directory>
+            <directory suffix=".php">./block-packages</directory>
+            <directory suffix=".php">./bootstrap</directory>
+            <file>./public/update.php</file>
         </include>
+        <exclude><directory>./bootstrap/cache</directory></exclude>
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <env name="CMS_MODULES" value="" force="true"/>
+        <env name="CMS_SEED_DEMO" value="false" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="DB_CONNECTION" value="mysql"/>
         <env name="DB_DATABASE" value="testing"/>
         <env name="DB_HOST" value="mysql"/>
-        <env name="DB_USERNAME" value="sail"/>
-        <env name="DB_PASSWORD" value="secret"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="MARKETING_QUEUE_DRIVER" value="sync"/>

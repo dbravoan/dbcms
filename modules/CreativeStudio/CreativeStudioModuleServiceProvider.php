@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Modules\CreativeStudio;
 
-use App\Contracts\Services\CreativeGenerationGatewayInterface;
-use App\Contracts\Services\CreativePackageProviderInterface;
 use App\Core\Capabilities\CapabilityRegistry;
 use App\Core\Integrations\IntegrationGuideRegistry;
 use App\Core\Modules\BaseModuleServiceProvider;
@@ -19,6 +17,8 @@ use Modules\CreativeStudio\Contracts\Services\CreativeStudioServiceInterface;
 use Modules\CreativeStudio\Services\AiAssistantCreativeGateway;
 use Modules\CreativeStudio\Services\CreativeCapabilityRegistrar;
 use Modules\CreativeStudio\Services\CreativeStudioDomainService;
+use Modules\Marketing\Contracts\CreativeGenerationGatewayInterface;
+use Modules\Marketing\Contracts\CreativePackageProviderInterface;
 
 final class CreativeStudioModuleServiceProvider extends BaseModuleServiceProvider
 {

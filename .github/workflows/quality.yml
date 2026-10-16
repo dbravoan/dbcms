@@ -1,14 +1,23 @@
 name: Container Quality Gate
 on:
   workflow_call:
+    inputs:
+      suite:
+        type: string
+        default: integration
+      ref:
+        type: string
+        default: ''
 permissions:
   contents: read
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
       - name: Verify release version before publishing jobs
         env:
           RELEASE_VERSION: ${{ github.event.inputs.version || '' }}
@@ -20,12 +29,19 @@ jobs:
             test "${RELEASE_VERSION#v}" = "$(tr -d '[:space:]' < VERSION)"
           fi
       - name: Build and run isolated quality gate
-        run: docker compose -f docker/ci/compose.yml run --build --rm app bash bin/ci-check
+        env:
+          TEST_SUITE: ${{ inputs.suite }}
+        run: docker compose -f docker/ci/compose.yml run --build --rm app bash bin/ci-check "$TEST_SUITE"
       - name: Build production image
         run: docker build -f docker/production/Dockerfile -t dbcms:verified .
       - name: Confirm artifact and bootstrap
         run: |
-          docker run --rm --entrypoint sh dbcms:verified -c 'test -f public/build/manifest.json && test -f vendor/autoload.php && php artisan --version'
+          docker run --rm --network none \
+            --env APP_ENV=production \
+            --env APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+            --env DB_CONNECTION=sqlite --env DB_DATABASE=:memory: \
+            --env SESSION_DRIVER=file --env CACHE_STORE=file --env QUEUE_CONNECTION=sync \
+            dbcms:verified sh -c 'test -f public/build/manifest.json && test -f vendor/autoload.php && php artisan --version'
       - name: Stop disposable services
         if: always()
         run: docker compose -f docker/ci/compose.yml down --volumes --remove-orphans

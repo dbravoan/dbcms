@@ -28,7 +28,7 @@ final class CaptchaFieldType implements FieldType
 
     public function available(): bool
     {
-        return captcha_available();
+        return app(CaptchaService::class)->isEnabled();
     }
 
     public function stores(): bool

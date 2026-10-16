@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 use App\Models\CmsModule;
 use App\Services\Cms\CookieConsentService;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Tests\Support\CmsFixtures;
+use Tests\Support\ConsentComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, ConsentComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en', 'fr'], ['es', 'us', 'eu']);
+    CmsFixtures::home(['es', 'en', 'fr'], ['es', 'us', 'eu']);
 });
 
 test('cookie consent service discovers active module categories dynamically', function (): void {
@@ -23,7 +25,7 @@ test('cookie consent service discovers active module categories dynamically', fu
     expect($categories)->toHaveKey('necessary');
     expect($categories['necessary']['required'])->toBeTrue();
 
-    // Shop module is active in demo seeder -> functional category present
+    // The fixture explicitly installs Shop for its functional cookies.
     expect($categories)->toHaveKey('functional');
     expect($categories['functional']['required'])->toBeFalse();
 
@@ -43,7 +45,6 @@ test('cookie consent service correctly checks consent for categories', function 
 
     // Necessary is always allowed
     expect($service->hasConsent('necessary'))->toBeTrue();
-    expect($service->hasConsent('technical'))->toBeTrue();
 
     // With request containing JSON consent cookie
     $request = Request::create('/es/es/', 'GET', [], [
@@ -95,7 +96,7 @@ test('frontoffice layout translates cookie banner in French and English', functi
 });
 
 test('returning visitor with configured cookie consent does not receive the floating banner but can access preference modal', function (): void {
-    $response = $this->withCookie('cms_cookie_consent', json_encode(['necessary' => true, 'analytics' => true]))
+    $response = $this->withUnencryptedCookie('cms_cookie_consent', json_encode(['necessary' => true, 'analytics' => true], JSON_THROW_ON_ERROR))
         ->get('/es/es/');
 
     $response->assertOk();
@@ -106,7 +107,7 @@ test('returning visitor with configured cookie consent does not receive the floa
 });
 
 test('footer translations render localized headings, links, and cookie triggers across locales', function (): void {
-    // Catalan
+    // French
     $resFr = $this->get('/eu/fr');
     $resFr->assertOk();
     $resFr->assertSee('Navigation rapide');

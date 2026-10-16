@@ -25,11 +25,10 @@ This scaffolds:
 - `modules/Events/Models/Events.php` & `EventsTranslation.php`
 - `modules/Events/Contracts/Services/EventsServiceInterface.php`
 - `modules/Events/Services/EventsDomainService.php`
-- `modules/Events/Http/Controllers/Admin/EventsAdminController.php`
+- Invokable controllers in `modules/Events/Http/Controllers/Admin/`
 - `modules/Events/Http/Controllers/EventsFrontController.php`
 - `modules/Events/Database/Migrations/*_create_events_tables.php`
 - `modules/Events/Resources/views/` (front and backoffice)
-- `modules/Events/Widgets/LatestEventsWidget.php`
 
 ---
 
@@ -46,9 +45,9 @@ Modules with localized content MUST NOT duplicate records across markets. Instea
 
 ### 2.2. Thin Controllers & Fat Domain Services
 - **Controllers**: Maximum 10 lines per `__invoke()`. Never run raw queries or direct `Model::create()` in controllers.
-- **Domain Services**: Implement `Modules\{Module}\Contracts\Services\{Module}ServiceInterface`.
+- **Domain Services**: Use interfaces at actual substitution or package boundaries. Do not add forwarding interfaces or services without a consumer.
   - Wrap all mutation methods in `DB::transaction()`.
-  - Dispatch domain events (`App\Events\...`).
+  - Dispatch only events with consumers; keep module events in their owner.
 
 ### 2.3. Theme Cascade Resolution
 Modules must support theme customizations. Frontoffice controllers resolve the
@@ -56,8 +55,8 @@ view name against the active theme and fall back to the module view:
 
 ```php
 $activeTheme = (string) config('cms.theme', 'db-cyber');
-$viewName = view()->exists("themes.{$activeTheme}.{$module}.show")
-    ? "themes.{$activeTheme}.{$module}.show"
+$viewName = view()->exists("themes::{$activeTheme}.{$module}.show")
+    ? "themes::{$activeTheme}.{$module}.show"
     : '{$module}::show';
 
 return view($viewName, compact('event'));
@@ -68,7 +67,7 @@ Resolution order:
 2. Module default view: `{module}::{viewName}`
 3. Clean theme fallback: `themes/default-clean/{module}/{viewName}.blade.php`
 
-See [`docs/17_FRONTOFFICE_THEME_GUIDE.md`](../../../docs/17_FRONTOFFICE_THEME_GUIDE.md).
+See [`docs/17_FRONTOFFICE_THEME_GUIDE.md`](../../../../docs/17_FRONTOFFICE_THEME_GUIDE.md).
 
 ### 2.5. Single-Level Descriptive Invokable Controllers
 Backoffice controllers must be invokable classes located in a single flat directory `Http/Controllers/Admin/`:
@@ -103,25 +102,20 @@ Every module's admin views MUST strictly consume the canonical Blade UI kit to g
 - **Sidebar Navigation Integration**:
   - Implement `getAdminNavigation(): array` in `{ModuleName}ServiceProvider`. Active modules automatically appear under *Extensiones y Módulos* in the backoffice sidebar.
 - **Canonical Architecture Reference**:
-  - Detailed patterns, external database connections (static & dynamic in runtime), and multi-entity CRUD blueprints are documented in [`docs/11_CREATING_ADVANCED_CMS_MODULES_GUIDE.md`](file:///home/david/Proyectos/webs/cms-agentic-blog/docs/11_CREATING_ADVANCED_CMS_MODULES_GUIDE.md).
+  - Detailed patterns, external database connections (static & dynamic in runtime), and multi-entity CRUD blueprints are documented in [`docs/11_CREATING_ADVANCED_CMS_MODULES_GUIDE.md`](../../../../docs/11_CREATING_ADVANCED_CMS_MODULES_GUIDE.md).
 
 ---
 
-## 3. Verification Protocol (Zero-Regression Gating)
-After creating or modifying a module:
-1. Run migrations in Sail:
-   ```bash
-   ./vendor/bin/sail artisan migrate
-   ```
-2. Verify module discovery in ModuleManager:
-   ```bash
-   ./vendor/bin/sail artisan test --filter=ModuleManagerTest
-   ```
-3. Run strict static analysis:
-   ```bash
-   ./vendor/bin/sail bin phpstan analyse
-   ```
-4. Run Pint code formatting:
-   ```bash
-   ./vendor/bin/sail pint
-   ```
+## 3. Lifecycle and verification
+
+Read `specs/CORE_AND_EXTENSIONS.md`. Declare `requires` in `module.json`;
+registration/discovery reads metadata without installing or activating packages.
+Explicit installation reconciles the selected graph and runs its migrations.
+An optional module must be physically removable without breaking the core.
+Pages is core; reusable charts and comparison blocks are visual packages.
+
+Use an explicit `TEST_MODULES` composition and minimal domain fixtures. Test the
+real installation lifecycle separately from feature fixtures. Run `make test`,
+the affected domain cases in the disposable QA runtime, and `make test-integration`.
+Package, installer, updater or concurrency changes also require `make test-release`.
+Keep PHPStan level 8 and Pint as separate gates; see `docs/TESTING.md`.

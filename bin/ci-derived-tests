@@ -4,6 +4,65 @@ if [ ! -f /.dockerenv ]; then
     echo 'Run bin/ci-derived-tests inside the Docker CI container.' >&2
     exit 1
 fi
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+shopt -s nullglob
+module_directories=(modules/*/)
+package_directories=(block-packages/*/)
+theme_directories=(themes/*/)
+brand_directories=(resources/views/themes/admin/*/)
+profile=full-catalogue
+if [ "${module_directories[*]}" = modules/Blog/ ] \
+    && [ "${package_directories[*]}" = block-packages/Basic/ ] \
+    && [ "${theme_directories[*]}" = themes/ia-practica/ ] \
+    && [ "${brand_directories[*]}" = resources/views/themes/admin/dbcms/ ] \
+    && [ -f modules/Blog/module.json ] && [ -f block-packages/Basic/block-package.json ] \
+    && [ -f themes/ia-practica/theme.json ] && [ -f resources/views/themes/admin/dbcms/theme.json ]; then
+    profile=ai-learning
+else
+    for module in Ads AiAssistant Analytics Blog Captcha ContentAudit CreativeStudio Forms Gallery Maintenance Marketing Mcp Meta Orchestration Search Shop SocialPublishing; do
+        if [ ! -f "modules/$module/module.json" ]; then
+            echo 'Unsupported derived quality profile: expected the full module catalogue or exactly Blog + Basic + ia-practica + dbcms.' >&2
+            exit 2
+        fi
+    done
+fi
+if [ "${1:-}" = --profile ]; then
+    printf '%s\n' "$profile"
+    exit
+fi
+if [ "$#" -ne 0 ]; then
+    echo 'Usage: bin/ci-derived-tests [--profile]' >&2
+    exit 2
+fi
+if [ "${DBCMS_TEST_ISOLATED:-}" != 1 ]; then
+    echo 'Derived quality tests require an isolated Docker filesystem and database (DBCMS_TEST_ISOLATED=1).' >&2
+    exit 1
+fi
+if [ "$profile" = ai-learning ]; then
+    echo 'Derived quality profile: Blog + Basic + ia-practica + dbcms.'
+    php -d memory_limit=2G vendor/bin/pest --configuration=phpunit.fast.xml --colors=always
+    php -d memory_limit=2G vendor/bin/pest --colors=always \
+        tests/Projects/DerivedQualitySelectionTest.php \
+        tests/Projects/RuntimeEnvironmentBootstrapTest.php \
+        tests/Feature/Auth/AdminWebAuthTest.php \
+        tests/Feature/Auth/PassportOAuth2Test.php \
+        tests/Feature/Auth/M2mCliProvisioningTest.php \
+        tests/Feature/Security \
+        tests/Feature/Install/EnsureCmsIsInstalledTest.php \
+        tests/Feature/Install/FinalInstallationSafetyTest.php \
+        tests/Feature/Install/WebInstallerSafetyTest.php \
+        tests/Feature/Cms/CorePagesTest.php \
+        tests/Feature/Cms/ZeroModulesCleanInstallTest.php \
+        tests/Feature/Cms/InstalledProjectProfileTest.php \
+        tests/Feature/Seo/CoreSeoContractTest.php \
+        tests/Feature/Geo/LlmsTxtEndpointTest.php \
+        tests/Feature/Blog/PublicContentReadContractTest.php \
+        tests/Feature/Blog/BlogCommentsToggleAndSubmissionTest.php \
+        tests/Feature/Blog/BlogFriendlyFiltersTest.php \
+        tests/Feature/Projects/AiLearningStarterTest.php \
+        tests/Feature/Updates/ProjectDeploymentMigrationsTest.php
+    exit
+fi
 # Executed from the project root in the Docker CI runtime. Keep this list explicit:
 # it validates the selected deployment, domain behavior and installed themes without
 # requiring Git, GitHub workflows or the original theme/deployment catalogue.

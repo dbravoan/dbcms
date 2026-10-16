@@ -10,13 +10,13 @@ use Illuminate\Support\Collection;
 
 final readonly class SeoAuditReportDTO extends BaseDTO
 {
-    /** @param list<array<string, mixed>> $auditedPosts
+    /** @param list<array<string, mixed>> $auditedEntities
+     * @param  array<string, array{label: string, count: int}>  $counts
      * @param  Collection<int, Market>  $markets
      */
     public function __construct(
-        public array $auditedPosts,
-        public int $pagesCount,
-        public int $postsCount,
+        public array $auditedEntities,
+        public array $counts,
         public Collection $markets,
         public string $siteSchema,
         public bool $geoRoutesAvailable,

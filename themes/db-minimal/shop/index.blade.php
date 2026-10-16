@@ -1,4 +1,4 @@
-@extends('themes.db-minimal.layouts.app')
+@extends('themes::db-minimal.layouts.app')
 
 @section('title', ($isShop ? __('Tienda Minimal') : __('Catálogo')) . ' - dbCMS')
 @section('meta_description', __('Objetos, herramientas y arquitectura digital con diseño minimalista.'))

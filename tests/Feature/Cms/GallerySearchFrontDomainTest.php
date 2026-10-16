@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 use App\DTOs\Front\FrontPageData;
 use App\Models\Market;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Modules\Gallery\Contracts\GalleryFrontPageServiceInterface;
 use Modules\Gallery\DTOs\GalleryFrontInput;
 use Modules\Search\Contracts\SearchFrontPageServiceInterface;
 use Modules\Search\DTOs\SearchFrontInput;
+use Tests\Support\CmsFixtures;
+use Tests\Support\GalleryFixtures;
+use Tests\Support\GallerySearchFrontComposition;
+
+uses(GallerySearchFrontComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en', 'fr'], ['eu', 'us']);
+    GalleryFixtures::album();
     $this->market = Market::where('code', 'eu')->firstOrFail();
 });
 

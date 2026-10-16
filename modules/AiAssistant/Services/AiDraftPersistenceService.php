@@ -8,7 +8,8 @@ use App\Core\Content\EntitySchema;
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\User;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityMutationService;
+use App\Services\Capabilities\EntityReadService;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
@@ -17,7 +18,7 @@ use Modules\AiAssistant\DTOs\MultimodalOrchestrationRequest;
 
 final class AiDraftPersistenceService
 {
-    public function __construct(private readonly EntityCrudService $entities) {}
+    public function __construct(private readonly EntityMutationService $entities, private readonly EntityReadService $reader) {}
 
     /**
      * @param  array<string, mixed>  $args
@@ -34,7 +35,7 @@ final class AiDraftPersistenceService
         /** @var list<array<string, mixed>> $blocks */
         $blocks = array_values(array_filter((array) ($args['sections'] ?? []), 'is_array'));
         $id = $this->create($type, $request, $fields, $blocks);
-        $schema = $this->entities->schemaFor($type);
+        $schema = $this->reader->schemaFor($type);
 
         return ['type' => $type, 'id' => $id, 'edit_url' => $schema->editView !== null && Route::has($schema->editView) ? route($schema->editView, $id) : null, 'sections' => count((array) ($args['sections'] ?? [])), 'message' => 'Borrador creado. Revísalo antes de publicar.'];
     }
@@ -46,7 +47,7 @@ final class AiDraftPersistenceService
     public function create(string $type, MultimodalOrchestrationRequest $request, array $values, array $blocks): int
     {
         $actor = User::query()->find($request->options['actor_id'] ?? null);
-        $schema = $this->entities->schemaFor($type);
+        $schema = $this->reader->schemaFor($type);
         if (! $actor instanceof User || ! $actor->hasPermission('use:ai') || ! $actor->hasPermission($schema->permission ?? 'access:admin')) {
             throw new AuthorizationException('Draft creation requires an authorized CMS user.');
         }
@@ -54,7 +55,7 @@ final class AiDraftPersistenceService
         if ($market === null || ! Language::query()->where('code', $request->locale)->where('is_active', true)->exists()) {
             throw ValidationException::withMessages(['market' => 'Select an existing market and active language.']);
         }
-        $description = $this->entities->describe($schema);
+        $description = $this->reader->describe($schema);
         if (! in_array('is_published', $description['attributes'], true) && ! in_array('is_active', $description['attributes'], true)) {
             throw ValidationException::withMessages(['entity_type' => 'This entity does not support publication drafts.']);
         }
@@ -92,11 +93,11 @@ final class AiDraftPersistenceService
     public function attachFeaturedImage(string $type, int $id, string $url, ?int $actorId): void
     {
         $actor = User::query()->find($actorId);
-        $schema = $this->entities->schemaFor($type);
+        $schema = $this->reader->schemaFor($type);
         if (! $actor instanceof User || ! $actor->hasPermission('use:ai') || ! $actor->hasPermission('manage:media') || ! $actor->hasPermission($schema->permission ?? 'access:admin')) {
             throw new AuthorizationException('Media attachment requires an authorized CMS user.');
         }
-        $entity = $this->entities->resolveEntity($type, $id);
+        $entity = $this->reader->resolveEntity($type, $id);
         $publicationField = in_array('is_published', $entity->getFillable(), true) ? 'is_published' : 'is_active';
         if ((bool) $entity->getAttribute($publicationField)) {
             throw new AuthorizationException('Attach media to a draft; changing published content requires confirmation.');

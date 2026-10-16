@@ -20,7 +20,6 @@ enum OAuthScope: string
 
     // MCP and Machine-to-Machine scopes
     case MCP_ACCESS = 'mcp:access';
-    case MCP_PUBLISH = 'mcp:publish';
     case MCP_READ = 'mcp:read';
     case MCP_WRITE = 'mcp:write';
     case MCP_DESTRUCTIVE = 'mcp:destructive';
@@ -50,7 +49,6 @@ enum OAuthScope: string
             self::SOCIAL_WRITE->value => 'Prepare and schedule human-approved social material',
             self::SOCIAL_ACCOUNTS->value => 'Manage authorized social connections',
             self::MCP_ACCESS->value => 'Inspect system topology, read entities, search content and run anti-AI audits',
-            self::MCP_PUBLISH->value => 'Publish and mutate posts, pages, and products via MCP (legacy alias of mcp:write)',
             self::MCP_READ->value => 'MCP: read any backoffice resource (listings, entities, settings, audit trail)',
             self::MCP_WRITE->value => 'MCP: create and update content and platform resources through the backoffice surface',
             self::MCP_DESTRUCTIVE->value => 'MCP: delete, roll back, uninstall, clear caches or toggle maintenance mode',

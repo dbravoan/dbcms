@@ -1,4 +1,4 @@
-@extends('themes.db-minimal.layouts.app')
+@extends('themes::db-minimal.layouts.app')
 
 @section('title', __('Diario & Publicaciones - dbCMS'))
 @section('meta_description', __('Ensayos y notas sobre diseño, arquitectura de software y minimalismo digital.'))

@@ -6,11 +6,15 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Gallery\Blocks\GalleryAlbumBlock;
 use Modules\Gallery\GalleryModuleServiceProvider;
 use Modules\Gallery\Models\Gallery;
+use Tests\Support\CmsFixtures;
+use Tests\Support\GalleryFixtures;
+use Tests\Support\GalleryRoutingComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, GalleryRoutingComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en', 'fr'], ['eu', 'us']);
+    GalleryFixtures::album();
 });
 
 test('gallery module is pageable and exposes standalone localized routes', function (): void {

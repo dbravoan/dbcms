@@ -134,25 +134,6 @@ class JsonLdSchemaService
     }
 
     /**
-     * Sitelinks searchbox action for the site graph (emitted once, on the home).
-     *
-     * @return array<string, mixed>
-     */
-    public function generateSearchAction(string $marketCode, string $locale): array
-    {
-        $siteUrl = rtrim((string) Config::get('app.url', 'http://localhost'), '/');
-
-        return [
-            '@type' => 'SearchAction',
-            'target' => [
-                '@type' => 'EntryPoint',
-                'urlTemplate' => $siteUrl."/{$marketCode}/{$locale}/blog?q={search_term_string}",
-            ],
-            'query-input' => 'required name=search_term_string',
-        ];
-    }
-
-    /**
      * Builds an entity node (Article, Product, ImageGallery, FAQPage...) merged
      * with the WebPage graph so a single JSON-LD block carries everything.
      *

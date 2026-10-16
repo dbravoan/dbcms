@@ -1,4 +1,5 @@
-<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+@php($gridClass = match ((string) ($parameters['grid_columns'] ?? '3')) { '2' => 'md:grid-cols-2', '4' => 'md:grid-cols-4', default => 'md:grid-cols-3' })
+<div class="grid grid-cols-1 {{ $gridClass }} gap-8">
     @foreach($posts as $post)
         @php $t = $post->translations->where('locale', app()->getLocale())->first() ?? $post->translations->first(); @endphp
         <div class="bg-white dark:bg-[#181818] rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800 overflow-hidden hover:shadow-md dark:hover:border-[#00FF99]/60 transition-all hover:-translate-y-0.5 group flex flex-col justify-between">

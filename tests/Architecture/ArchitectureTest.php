@@ -10,6 +10,7 @@ test('controllers depend only on declared application and framework layers', fun
     expect('App\Http\Controllers')
         ->toOnlyUse([
             'App\Contracts\Services',
+            'App\Content',
             'App\DTOs',
             'App\Services',
             'App\Core',
@@ -20,7 +21,6 @@ test('controllers depend only on declared application and framework layers', fun
             'App\Http\Adapters',
             'App\Models',
 
-            'Modules',
             'Database\Seeders',
             'Illuminate',
             'Laravel',

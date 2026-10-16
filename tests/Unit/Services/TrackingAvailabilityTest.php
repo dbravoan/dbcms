@@ -11,6 +11,7 @@ use Illuminate\Config\Repository;
 use Illuminate\Container\Container;
 use Illuminate\Foundation\Application;
 use Modules\Analytics\AnalyticsModuleServiceProvider;
+use Modules\Analytics\Services\AnalyticsCookieDisclosure;
 use Modules\Analytics\Services\AnalyticsManagerService;
 use Modules\Analytics\Services\Ga4CspContributor;
 use PHPUnit\Framework\TestCase;
@@ -21,13 +22,14 @@ final class TrackingAvailabilityTest extends TestCase
     {
         $modules = $this->createMock(ModuleManager::class);
         $modules->method('isModuleEnabled')->willReturnMap([['shop', false], ['analytics', false], ['ads', false]]);
-        $service = new CookieConsentService($modules);
-        self::assertFalse($service->isModuleActive('analytics'));
+        $disclosure = new AnalyticsCookieDisclosure($modules);
+        $service = new CookieConsentService([$disclosure]);
         self::assertSame(['necessary'], array_keys($service->getDisclosedCategories('es')));
 
         $enabled = $this->createMock(ModuleManager::class);
         $enabled->method('isModuleEnabled')->willReturn(true);
-        self::assertTrue((new CookieConsentService($enabled))->isModuleActive('analytics'));
+        $service = new CookieConsentService([new AnalyticsCookieDisclosure($enabled)]);
+        self::assertArrayHasKey('analytics', $service->getDisclosedCategories('es'));
     }
 
     public function test_tracking_csp_is_empty_when_owner_disabled_or_unconfigured(): void

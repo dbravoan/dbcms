@@ -7,6 +7,8 @@ namespace Modules\Forms\Blocks;
 use App\Core\Blocks\AbstractBlockType;
 use App\Core\Blocks\Contracts\TranslatableBlockInterface;
 use App\Models\Market;
+use Modules\Forms\Models\CustomForm;
+use Modules\Forms\Models\FormField;
 
 class CustomFormBlock extends AbstractBlockType implements TranslatableBlockInterface
 {
@@ -46,6 +48,19 @@ class CustomFormBlock extends AbstractBlockType implements TranslatableBlockInte
         return ['title', 'button_text'];
     }
 
+    public function getEditorData(): array
+    {
+        return ['forms' => CustomForm::where('is_active', true)->with(['translations', 'fields.translations'])->get()->map(fn (CustomForm $form): array => ['id' => $form->id, 'name' => $form->name, 'slug' => $form->slug, 'fields' => $form->fields->map(fn (FormField $field): array => ['key' => $field->field_key, 'label' => $field->label, 'type' => $field->type, 'required' => (bool) $field->is_required])->all()])->all()];
+    }
+
+    public function getEditorSchema(): array
+    {
+        $fields = parent::getEditorSchema();
+        $fields['form_slug'] = ['type' => 'select', 'label' => 'Formulario', 'options' => array_column($this->getEditorData()['forms'], 'name', 'slug')];
+
+        return $fields;
+    }
+
     public function getDefaultPayload(): array
     {
         return [
@@ -61,8 +76,10 @@ class CustomFormBlock extends AbstractBlockType implements TranslatableBlockInte
         $title = ! empty($payload['title']) ? (string) $payload['title'] : null;
         $btnText = ! empty($payload['button_text']) ? (string) $payload['button_text'] : null;
 
-        return view('components.cms.form-engine', [
+        return view('forms::components.form-engine', [
             'slug' => $slug,
+            'market' => $market,
+            'locale' => $locale,
             'title' => $title,
             'buttonText' => $btnText,
             'showCard' => true,

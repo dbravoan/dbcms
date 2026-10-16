@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Contracts\Services\LocalizationServiceInterface;
 use App\Core\Filters\FilterSet;
+use App\Core\Sections\SectionRendererService;
 use App\Http\Adapters\FrontPageResponseMapper;
 use App\Http\Adapters\PublicContentContextFactory;
 use App\Models\Market;
@@ -14,7 +15,6 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Modules\Pages\Services\SectionRendererService;
 use Modules\Shop\Filters\ShopFilters;
 use Modules\Shop\Http\Controllers\ShopFrontController;
 use Modules\Shop\Models\ProductCategory;
@@ -86,5 +86,5 @@ it('rejects an explicit foreign category passed to the storefront controller', f
     $catalogue = new ShopCatalogueService($shop, $views, $localization, app(SectionRendererService::class));
     $controller = new ShopFrontController($catalogue, app(PublicContentContextFactory::class), app(FrontPageResponseMapper::class));
 
-    expect(fn () => $controller->category(Request::create('/uk/en/shop/es-only-qa'), $localization, ProductCategory::findOrFail(1)))->toThrow(HttpException::class);
+    expect(fn () => $controller->category(Request::create('/uk/en/shop/es-only-qa'), ProductCategory::findOrFail(1)))->toThrow(HttpException::class);
 });

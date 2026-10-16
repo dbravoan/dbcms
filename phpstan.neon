@@ -2,9 +2,15 @@ includes:
     - vendor/larastan/larastan/extension.neon
 
 parameters:
+    configDirectories:
+        - config/
+        - modules/*/Config/
+    bootstrapFiles:
+        - bootstrap/phpstan.php
     paths:
         - app/
         - modules/
+        - block-packages/
         - config/
         - database/
         - routes/

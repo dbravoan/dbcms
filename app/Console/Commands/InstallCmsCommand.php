@@ -146,7 +146,7 @@ class InstallCmsCommand extends Command
                 ['URL de Acceso', url("/{$adminPath}/login")],
                 ['Correo Administrador', $adminData['email']],
                 ['Datos Demo Sembrados', $seedDemo ? 'Sí (Completo)' : 'No (Limpio)'],
-                ['Endpoint MCP para Agentes', url('/api/mcp')],
+                ['Endpoint MCP para Agentes', url('/mcp/cms')],
             ]
         );
 

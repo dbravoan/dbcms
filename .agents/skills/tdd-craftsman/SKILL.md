@@ -6,11 +6,11 @@ description: Implements failing Pest tests, boundary assertions, and architectur
 # TDD Craftsman Skill
 
 ## Goal
-Build a robust, 100% boundary-tested suite before domain implementation code is written.
+Protect relevant observable behavior with the smallest effective suite.
 
 ## Procedure
 1. Inspect the approved `specs/<feature>.md`.
-2. Author Unit Tests in `tests/Unit/Services/` targeting the Service Interface methods with mocked dependencies.
+2. Use pure tests for decisions; introduce no interface or mock solely to make a test possible.
 3. Author Feature Tests in `tests/Feature/` testing HTTP requests, Passport token authorization, and database persistence.
 4. Author Architectural assertions in `tests/Architecture/ArchitectureTest.php` to prevent layer violations.
-5. Run `./vendor/bin/sail pest` to confirm tests fail with descriptive errors (Red stage).
+5. Reproduce meaningful failures, then use the appropriate fast/integration/release lane in `docs/TESTING.md`. Remove tests of retired contracts; do not retain wrappers for test parity.

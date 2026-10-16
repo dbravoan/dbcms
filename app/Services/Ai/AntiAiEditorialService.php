@@ -124,18 +124,6 @@ class AntiAiEditorialService
     ];
 
     /**
-     * Backward-compatible reference for Spanish cliches.
-     *
-     * @var array<int, string>
-     */
-    protected array $aiCliches = [];
-
-    public function __construct()
-    {
-        $this->aiCliches = $this->localizedAiCliches['es'];
-    }
-
-    /**
      * Get cliches list for a given locale.
      *
      * @return array<int, string>

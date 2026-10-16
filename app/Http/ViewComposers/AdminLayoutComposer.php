@@ -44,7 +44,6 @@ class AdminLayoutComposer
             'navSections' => $this->navigationService->getNavigationSections($user),
             'activeModules' => $this->navigationService->getActiveModuleIdentifiers(),
             'isMaintenanceActive' => $this->navigationService->isMaintenanceActive(),
-            'shopMode' => $this->navigationService->getShopMode(),
             'pendingAuditCount' => $this->navigationService->getPendingAuditCount(),
             'activeLanguages' => $this->localization->activeLanguages(),
             'activeMarkets' => $this->localization->activeMarkets(),

@@ -3,20 +3,24 @@
 declare(strict_types=1);
 
 use App\Models\Market;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Support\Facades\DB;
 use Modules\Shop\Models\Product;
-use Modules\Shop\Models\ShopSetting;
 use Modules\Shop\Services\CartService;
+use Tests\Support\CmsFixtures;
+use Tests\Support\ShopComposition;
+use Tests\Support\ShopFixtures;
+
+uses(ShopComposition::class);
 
 test('cart totals use one product snapshot rather than rereading the catalogue for each total', function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    ShopFixtures::product();
     $market = Market::where('code', 'es')->firstOrFail();
     $product = Product::where('sku', 'PRD-EDGE-1000')->firstOrFail();
     $cart = app(CartService::class);
     $cart->clear();
     $cart->add($product->id, 2);
-    $taxRate = (float) ShopSetting::get('shop.tax_rate', 21.0);
+    $taxRate = (float) module_setting('shop', 'tax_rate', 21.0);
     DB::enableQueryLog();
     try {
         $summary = $cart->getSummary($market, 3.5);

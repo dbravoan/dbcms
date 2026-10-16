@@ -12,9 +12,13 @@ use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Modules\Blog\Models\Category;
 use Modules\Blog\Models\Post;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
 use Modules\ContentAudit\Enums\AuditStatus;
 use Modules\ContentAudit\Models\ContentAudit;
+use Modules\ContentAudit\Services\AuditRevisionService;
+use Modules\ContentAudit\Services\EditorialWorkflow;
+use Tests\Support\BlogAuditComposition;
+
+uses(BlogAuditComposition::class);
 
 beforeEach(function (): void {
     $spanish = Language::firstOrCreate(
@@ -68,8 +72,8 @@ test('restricted author saving a draft does not submit content for review', func
     expect($post)->not->toBeNull()
         ->and((bool) $post->is_published)->toBeFalse();
 
-    /** @var ContentAuditServiceInterface $auditService */
-    $auditService = app(ContentAuditServiceInterface::class);
+    /** @var EditorialWorkflow $auditService */
+    $auditService = app(EditorialWorkflow::class);
     $audit = ContentAudit::where('auditable_type', $post->getMorphClass())
         ->where('auditable_id', $post->id)
         ->first();
@@ -122,9 +126,9 @@ test('saving as draft takes pending content out of the review queue', function (
 
     $post = Post::latest('id')->first();
 
-    /** @var ContentAuditServiceInterface $auditService */
-    $auditService = app(ContentAuditServiceInterface::class);
-    expect($auditService->getAudit($post)?->status)->toBe(AuditStatus::PENDING_REVIEW->value);
+    /** @var EditorialWorkflow $auditService */
+    $auditService = app(EditorialWorkflow::class);
+    expect(app(AuditRevisionService::class)->auditFor($post)?->status)->toBe(AuditStatus::PENDING_REVIEW->value);
 
     $this->actingAs($author)
         ->withoutMiddleware(ValidateCsrfToken::class)
@@ -135,5 +139,5 @@ test('saving as draft takes pending content out of the review queue', function (
             'audit_action' => 'draft',
         ]);
 
-    expect($auditService->getAudit($post)?->status)->toBe(AuditStatus::DRAFT->value);
+    expect(app(AuditRevisionService::class)->auditFor($post)?->status)->toBe(AuditStatus::DRAFT->value);
 });

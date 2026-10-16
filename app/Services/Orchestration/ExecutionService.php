@@ -35,7 +35,7 @@ final class ExecutionService implements ExecutionServiceInterface
      */
     public function start(string $instruction, ActorContext $actor, string $key, array $context = []): Execution
     {
-        if (! config('cms.orchestration.enabled', false)) {
+        if (! app()->bound(PlannerInterface::class)) {
             throw new HttpException(503, 'La orquestación está desactivada.');
         }
         if (! app(CapabilityAuthorizer::class)->allowed($actor, 'write', 'use:ai')) {

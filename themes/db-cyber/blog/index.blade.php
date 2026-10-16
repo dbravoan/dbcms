@@ -1,4 +1,4 @@
-@extends('themes.db-cyber.layouts.app')
+@extends('themes::db-cyber.layouts.app')
 
 @section('title', __('Blog & Artículos Técnicos'))
 @section('meta_description', __('Artículos sobre arquitectura de software, inteligencia artificial, optimización GEO y desarrollo de alto rendimiento.'))

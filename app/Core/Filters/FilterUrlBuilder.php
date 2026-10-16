@@ -121,7 +121,7 @@ final class FilterUrlBuilder
                 continue;
             }
 
-            $value = $this->stringValue($dimension, $set->get($dimension->key), $locale, $translateFrom);
+            $value = $this->stringValue($dimension, $set->get($dimension->key), $locale, $translateFrom, $market !== null ? (string) $market->code : $set->market);
 
             if ($value === null) {
                 return null;
@@ -157,6 +157,7 @@ final class FilterUrlBuilder
         mixed $raw,
         string $locale,
         ?string $translateFrom,
+        string $marketCode,
     ): ?string {
         if ($dimension->type === 'terms') {
             $slugs = array_values(array_map('strval', (array) $raw));
@@ -165,13 +166,13 @@ final class FilterUrlBuilder
                 $translated = [];
 
                 foreach ($slugs as $slug) {
-                    $key = $dimension->keyForSlug($slug, $translateFrom);
+                    $key = $dimension->keyForSlug($slug, $translateFrom, $marketCode);
 
                     if ($key === null) {
                         return null;
                     }
 
-                    $target = $dimension->slugForKey($key, $locale);
+                    $target = $dimension->slugForKey($key, $locale, $marketCode);
 
                     if ($target === null) {
                         return null;
@@ -185,7 +186,7 @@ final class FilterUrlBuilder
 
             sort($slugs);
 
-            return implode((string) config('front_filters.multi_value_separator', '+'), $slugs);
+            return implode('+', $slugs);
         }
 
         if ($raw === null || is_array($raw) || is_bool($raw)) {

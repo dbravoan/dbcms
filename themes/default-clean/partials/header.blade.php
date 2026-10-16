@@ -4,12 +4,7 @@
     $navDesktopClass = ($nav['layout'] ?? 'inline') === 'stacked'
         ? 'hidden md:flex flex-col items-start gap-3'
         : 'hidden md:flex items-center gap-6';
-    $navFallback = [
-        ['title' => __('Home'), 'url' => $localization->url('/', $currentMarket)],
-        ['title' => __('Blog'), 'url' => $localization->url('/blog', $currentMarket)],
-        ['title' => __('Gallery'), 'url' => $localization->url('/'.$galPrefix, $currentMarket)],
-        ['title' => __('Contact'), 'url' => $localization->url('/contacto', $currentMarket)],
-    ];
+    $navFallback = [['title' => __('Inicio'), 'url' => $localization->url('/', $currentMarket)]];
 @endphp
 <header class="border-b border-slate-200 bg-white/90 backdrop-blur-md sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4 sm:gap-6">
@@ -18,7 +13,7 @@
         </a>
 
         @if($desktopNavVisible)
-            @include('themes.components.nav-items', [
+            @include('themes::components.nav-items', [
                 'items' => $headerMenu,
                 'fallback' => $navFallback,
                 'class' => $navDesktopClass.' text-sm font-semibold',
@@ -27,7 +22,7 @@
         @endif
 
         <!-- General search (module Search) -->
-        @include('themes.components.search-box', ['variant' => 'light'])
+        @include('themes::components.search-box', ['variant' => 'light'])
 
         <div class="flex items-center gap-3 text-sm">
             @if($hasMarkets || $hasLangs)
@@ -46,20 +41,20 @@
                 </div>
             @endif
 
-            @include('themes.components.nav-admin', [
+            @include('themes::components.nav-admin', [
                 'frontNav' => $nav,
                 'class' => 'hidden sm:inline-flex px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-colors',
                 'label' => 'Admin',
             ])
 
-            @include('themes.components.nav-toggle', [
+            @include('themes::components.nav-toggle', [
                 'frontNav' => $nav,
                 'class' => 'p-2 rounded-lg text-slate-600 hover:text-slate-900 transition-colors',
             ])
         </div>
     </div>
 
-    @include('themes.components.nav-panel', [
+    @include('themes::components.nav-panel', [
         'frontNav' => $nav,
         'items' => $headerMenu,
         'fallback' => $navFallback,

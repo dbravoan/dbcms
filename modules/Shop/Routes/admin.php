@@ -6,7 +6,6 @@ use App\Http\Middleware\CheckPermission;
 use Illuminate\Support\Facades\Route;
 use Modules\Shop\Http\Controllers\Admin\InquiriesGetController;
 use Modules\Shop\Http\Controllers\Admin\InquiryReviewPutController;
-use Modules\Shop\Http\Controllers\Admin\LegacyPaymentReportGetController;
 use Modules\Shop\Http\Controllers\Admin\OrderDeleteController;
 use Modules\Shop\Http\Controllers\Admin\OrderGetController;
 use Modules\Shop\Http\Controllers\Admin\OrdersGetController;
@@ -21,7 +20,6 @@ use Modules\Shop\Http\Controllers\Admin\ShopCategoriesGetController;
 use Modules\Shop\Http\Controllers\Admin\ShopCategoryDeleteController;
 use Modules\Shop\Http\Controllers\Admin\ShopCategoryPostController;
 use Modules\Shop\Http\Controllers\Admin\ShopCategoryPutController;
-use Modules\Shop\Http\Controllers\Admin\ShopSettingsGetController;
 
 Route::middleware([CheckPermission::class.':manage:shop'])->prefix('shop')->name('shop.')->group(function (): void {
     // Products CRUD
@@ -39,7 +37,6 @@ Route::middleware([CheckPermission::class.':manage:shop'])->prefix('shop')->name
     Route::delete('/categories/{category}', ShopCategoryDeleteController::class)->name('categories.destroy');
 
     // Orders
-    Route::get('/orders/legacy-payments', LegacyPaymentReportGetController::class)->name('orders.legacy-payments');
     Route::get('/orders', OrdersGetController::class)->name('orders.index');
     Route::get('/orders/{order}', OrderGetController::class)->name('orders.show');
     Route::put('/orders/{order}/status', OrderStatusPutController::class)->name('orders.update-status');
@@ -47,7 +44,4 @@ Route::middleware([CheckPermission::class.':manage:shop'])->prefix('shop')->name
     Route::get('/inquiries', InquiriesGetController::class)->name('inquiries.index');
     Route::put('/inquiries/{inquiry}/review', InquiryReviewPutController::class)->name('inquiries.review');
 
-    // Settings (GET redirects to the generic module settings page; the PUT is
-    // handled by App\Http\Controllers\Admin\ModuleSettings\ModuleSettingsPutController)
-    Route::get('/settings', ShopSettingsGetController::class)->name('settings');
 });

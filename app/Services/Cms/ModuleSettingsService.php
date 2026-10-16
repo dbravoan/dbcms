@@ -10,6 +10,7 @@ use App\Core\Modules\ModuleManager;
 use App\Core\Modules\ModuleSettingsExtensionRegistry;
 use App\Models\CmsModule;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -80,7 +81,8 @@ class ModuleSettingsService implements ModuleSettingsServiceInterface
      */
     public function getAll(string $moduleIdentifier): array
     {
-        if (isset($this->cache[$moduleIdentifier])) {
+        $cacheable = DB::transactionLevel() === 0;
+        if ($cacheable && isset($this->cache[$moduleIdentifier])) {
             return $this->cache[$moduleIdentifier];
         }
 
@@ -111,7 +113,8 @@ class ModuleSettingsService implements ModuleSettingsServiceInterface
                     try {
                         $val = Crypt::decryptString($val);
                     } catch (\Throwable) {
-                        // Might be legacy unencrypted string or invalid key
+                        // Invalid ciphertext is never accepted as a usable secret.
+                        $val = null;
                     }
                 }
 
@@ -134,7 +137,9 @@ class ModuleSettingsService implements ModuleSettingsServiceInterface
             }
         }
 
-        $this->cache[$moduleIdentifier] = $resolved;
+        if ($cacheable) {
+            $this->cache[$moduleIdentifier] = $resolved;
+        }
 
         return $resolved;
     }
@@ -157,6 +162,8 @@ class ModuleSettingsService implements ModuleSettingsServiceInterface
     public function setMany(string $moduleIdentifier, array $settings): void
     {
         DB::transaction(function () use ($moduleIdentifier, $settings): void {
+            $this->moduleManager->assertAvailabilitySettings($moduleIdentifier, $settings);
+            $previouslyAvailable = $this->moduleManager->isModuleEnabled($moduleIdentifier);
             /** @var CmsModule $module */
             $module = CmsModule::where('identifier', $moduleIdentifier)->lockForUpdate()->firstOrFail();
             unset($this->cache[$moduleIdentifier]);
@@ -203,15 +210,12 @@ class ModuleSettingsService implements ModuleSettingsServiceInterface
             }
 
             $module->update(['settings' => $toPersist]);
+            $availabilityChanged = $this->moduleManager->synchronizeAvailabilitySettings($moduleIdentifier, $previouslyAvailable);
 
-            DB::afterCommit(function () use ($moduleIdentifier): void {
+            DB::afterCommit(function () use ($moduleIdentifier, $availabilityChanged): void {
                 // Settings shape public output (sitemaps, llms.txt, module toggles…), so
                 // the cached pages must be rebuilt with the new values.
-                try {
-                    $this->app->make(PageCacheService::class)->invalidate();
-                } catch (\Throwable) {
-                    // Cache store unavailable: nothing to invalidate.
-                }
+                $this->app->make(PageCacheService::class)->invalidate();
 
                 // Invalidate memory cache and update runtime config
                 unset($this->cache[$moduleIdentifier]);
@@ -219,6 +223,9 @@ class ModuleSettingsService implements ModuleSettingsServiceInterface
 
                 foreach ($all as $k => $v) {
                     Config::set("modules.{$moduleIdentifier}.{$k}", $v);
+                }
+                if (! $availabilityChanged) {
+                    Artisan::call('queue:restart');
                 }
             });
         });

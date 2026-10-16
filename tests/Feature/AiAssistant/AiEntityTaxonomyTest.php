@@ -2,23 +2,31 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
 use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\Http;
 use Modules\AiAssistant\Contracts\AiAssistantDomainServiceInterface;
 use Modules\AiAssistant\Services\AiTaxonomyService;
 use Modules\AiAssistant\Services\BlockIntelligenceService;
 use Modules\Blog\Models\Post;
-use Modules\Pages\Models\Page;
+use Tests\Support\AiCompletionFixture;
+use Tests\Support\AiVisualModulesComposition;
+use Tests\Support\CmsFixtures;
+use Tests\Support\VisualContentFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, AiVisualModulesComposition::class);
 
 beforeEach(function (): void {
-    Http::preventStrayRequests();
-    $this->seed(PlatformShowcaseSeeder::class);
+    AiCompletionFixture::configure();
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    VisualContentFixtures::home();
+    VisualContentFixtures::form();
+    VisualContentFixtures::post();
+    VisualContentFixtures::product();
+    VisualContentFixtures::gallery();
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
 });
 
@@ -118,9 +126,6 @@ test('the block manager delegates AI actions through a generic extension point',
     // The manager itself stays fully AI-agnostic.
     expect($source)->not->toContain('ai_assistant')
         ->and($source)->not->toContain('cms-open-ai-blocks')
-        // Generic capabilities it does own.
-        ->and($source)->toContain('cms-replace-blocks')
-        ->and($source)->toContain('setBlocks(')
         // Generic extension point in both toolbars (normal + fullscreen).
         ->and(substr_count($source, 'block_manager_actions'))->toBe(2);
 
@@ -170,13 +175,6 @@ test('recommendSequence only emits registered block types', function (): void {
     }
 });
 
-test('the block manager does not hardcode its available block types', function (): void {
-    $source = (string) file_get_contents(resource_path('views/components/admin/block-manager.blade.php'));
-
-    expect($source)->toContain('availableTypes: initialAvailableTypes')
-        ->and($source)->not->toContain("type: 'hero', category: 'content'");
-});
-
 test('the fixed admin option enums live in config, not hardcoded in views', function (): void {
     expect(config('cms.options.columns'))->not->toBeEmpty()
         ->and(config('cms.options.code_languages'))->not->toBeEmpty()
@@ -187,7 +185,7 @@ test('the fixed admin option enums live in config, not hardcoded in views', func
     $blockForm = (string) file_get_contents(resource_path('views/components/admin/blocks/_block_form_body.blade.php'));
 
     expect($blockForm)->not->toContain('admin.block_form.col_1')
-        ->and($blockForm)->toContain('cms.options.columns');
+        ->and($blockForm)->toContain('schemaFields(');
 });
 
 test('the workbench exposes an entity-specific brief placeholder', function (): void {

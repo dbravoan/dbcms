@@ -4,21 +4,23 @@ declare(strict_types=1);
 
 use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\DemoComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, DemoComposition::class);
 
 beforeEach(function (): void {
+    config(['cms.name' => 'dbCMS', 'cms.theme' => 'db-cyber']);
     $this->seed(PlatformShowcaseSeeder::class);
 });
 
 test('frontoffice root redirects to default market and locale', function (): void {
     $response = $this->get('/');
 
-    $response->assertRedirect('/es/es/');
+    $response->assertRedirect('/eu/es/');
 });
 
 test('frontoffice home page renders with dbCMS branding and cyber aesthetic', function (): void {
-    $response = $this->get('/es/es/');
+    $response = $this->get('/eu/es/');
 
     $response->assertStatus(200);
     $response->assertSee('dbCMS');
@@ -26,7 +28,7 @@ test('frontoffice home page renders with dbCMS branding and cyber aesthetic', fu
 });
 
 test('frontoffice blog hub renders technical articles', function (): void {
-    $response = $this->get('/es/es/blog');
+    $response = $this->get('/eu/es/blog');
 
     $response->assertStatus(200);
     $response->assertSee('Artículos', false);

@@ -8,11 +8,11 @@ use App\Contracts\Services\PublicContentDiscoveryInterface;
 use App\Core\Capabilities\ActorContext;
 use App\Core\Capabilities\CapabilityAuthorizer;
 use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
-use App\DTOs\Marketing\CreativePackage;
 use App\Models\Market;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
+use Modules\Marketing\DTOs\CreativePackage;
 use Modules\SocialPublishing\Contracts\DestinationValidatorInterface;
 
 final class DestinationValidator implements DestinationValidatorInterface

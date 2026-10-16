@@ -5,23 +5,29 @@ declare(strict_types=1);
 namespace Tests\Feature\Admin;
 
 use App\Contracts\Services\ModuleNotificationServiceInterface;
+use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Models\MediaFile;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Gallery\Blocks\GalleryAlbumBlock;
 use Modules\Gallery\GalleryModuleServiceProvider;
 use Modules\Gallery\Models\Gallery;
 use Modules\Shop\Models\Product;
-use Modules\Shop\Models\ShopSetting;
 use Modules\Shop\Services\ShopDomainService;
+use Tests\Support\AdminCatalogComposition;
+use Tests\Support\CmsFixtures;
+use Tests\Support\GalleryFixtures;
+use Tests\Support\ShopFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, AdminCatalogComposition::class);
 
 beforeEach(function (): void {
     // Content is mutated and asserted immediately in these tests.
     config(['cms.page_cache.enabled' => false]);
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en'], ['es', 'mx']);
+    CmsFixtures::identities();
+    ShopFixtures::product();
+    GalleryFixtures::album();
 });
 
 test('1. universal slug fallback auto-formats title to lowercase without accents and with hyphens', function (): void {
@@ -95,7 +101,7 @@ test('3. galleries are pageable localized collections and also embeddable via bl
 
     $block = new GalleryAlbumBlock;
     $html = $block->render([
-        'album_id' => $gallery->id,
+        'album_slug' => $gallery->translations()->where('locale', 'es')->sole()->slug,
         'title' => 'Galería de Ejemplo',
     ]);
 
@@ -108,8 +114,8 @@ test('4. shop in catalog mode allows toggling prices and displays budget inquiry
     expect($product)->not->toBeNull();
 
     // 4.1 Set mode to catalog_only with prices enabled
-    ShopSetting::set('shop.mode', 'catalog_only');
-    ShopSetting::set('shop.catalog_show_prices', true);
+    app(ModuleSettingsServiceInterface::class)->set('shop', 'shop_mode', 'catalog_only');
+    app(ModuleSettingsServiceInterface::class)->set('shop', 'catalog_show_prices', true);
 
     $shopService = app(ShopDomainService::class);
     expect($shopService->isCatalogOnly())->toBeTrue()
@@ -120,7 +126,7 @@ test('4. shop in catalog mode allows toggling prices and displays budget inquiry
     $respWithPrices->assertSee($product->getFormattedPrice());
 
     // 4.2 Set mode to catalog_only with prices DISABLED
-    ShopSetting::set('shop.catalog_show_prices', false);
+    app(ModuleSettingsServiceInterface::class)->set('shop', 'catalog_show_prices', false);
     expect($shopService->shouldShowPrices())->toBeFalse();
 
     $respNoPrices = $this->get('/es/es/tienda');
@@ -133,13 +139,13 @@ test('5. shop in catalog mode hides orders and sales link from admin navigation'
     $admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
 
     // Full shop mode: orders link visible
-    ShopSetting::set('shop.mode', 'full_shop');
+    app(ModuleSettingsServiceInterface::class)->set('shop', 'shop_mode', 'full_shop');
     $respFull = $this->actingAs($admin, 'web')->get(route('admin.dashboard'));
     $respFull->assertOk();
     $respFull->assertSee('Pedidos y ventas');
 
     // Catalog only mode: orders link hidden
-    ShopSetting::set('shop.mode', 'catalog_only');
+    app(ModuleSettingsServiceInterface::class)->set('shop', 'shop_mode', 'catalog_only');
     $respCatalog = $this->actingAs($admin, 'web')->get(route('admin.dashboard'));
     $respCatalog->assertOk();
     $respCatalog->assertDontSee('Pedidos y ventas');

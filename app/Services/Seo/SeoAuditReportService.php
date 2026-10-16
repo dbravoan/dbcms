@@ -5,58 +5,66 @@ declare(strict_types=1);
 namespace App\Services\Seo;
 
 use App\Contracts\Services\PublicContentDiscoveryInterface;
+use App\Contracts\Services\PublishedSectionTextInterface;
 use App\Contracts\Services\SeoAuditReportServiceInterface;
-use App\Core\Sections\SectionLayout;
+use App\Core\Content\EntitySchema;
 use App\DTOs\Seo\SeoAuditReportDTO;
-use App\Models\Market;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Schema;
-use Modules\Blog\Models\Post;
 
-/** Local editorial checks and discovery counts; no external ranking is inferred. */
+/** Local editorial checks against publicly visible entities and published sections. */
 final class SeoAuditReportService implements SeoAuditReportServiceInterface
 {
-    public function __construct(private readonly PublicContentDiscoveryInterface $discovery, private readonly ContentQualityAuditorService $auditor, private readonly JsonLdSchemaService $schema) {}
+    public function __construct(
+        private readonly PublicContentDiscoveryInterface $discovery,
+        private readonly ContentQualityAuditorService $auditor,
+        private readonly JsonLdSchemaService $schema,
+        private readonly PublishedSectionTextInterface $sections,
+    ) {}
 
     public function report(): SeoAuditReportDTO
     {
         $markets = $this->discovery->markets();
-        $postIds = Schema::hasTable('posts') ? $this->publicIds('post', $markets) : [];
-        $pageIds = Schema::hasTable('pages') ? $this->publicIds('page', $markets) : [];
-        $posts = $postIds !== [] ? Post::with(['translations', 'publishedSections.translations'])->whereKey($postIds)->latest()->take(10)->get() : collect();
-        $audited = $posts->map(function (Post $post): array {
-            $translation = $post->translations->firstWhere('locale', app()->getLocale()) ?? $post->translations->first();
-            $content = (string) ($translation->content ?? '');
-            foreach ($post->publishedSections as $section) {
-                $sectionTranslation = $section->translations->firstWhere('locale', $translation?->locale);
-                $payload = SectionLayout::resolve((array) ($section->styling_json ?? []), (array) ($sectionTranslation->content_json ?? []));
-                $content .= "\n".SectionLayout::plainText($payload, ['title', 'content', 'body', 'question', 'answer', 'description']);
-            }
-            $title = (string) ($translation->title ?? '');
-            $audit = $this->auditor->audit($title, $content, (string) ($translation->meta_description ?? ''));
-
-            return ['id' => $post->getKey(), 'title' => $title, 'slug' => (string) ($translation->slug ?? ''), 'locale' => (string) ($translation->locale ?? ''), 'score' => $audit['overall_score'], 'recommendations' => $audit['recommendations'], 'word_count' => $audit['metrics']['word_count'] ?? 0, 'type' => 'Blog Post'];
-        })->values()->all();
-
-        return new SeoAuditReportDTO(array_values($audited), count($pageIds), count($postIds), $markets, (string) json_encode($this->schema->generateSiteGraph(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), Route::has('geo.llms') && Route::has('geo.llms-full'));
-    }
-
-    /** @param Collection<int, Market> $markets
-     * @return list<int>
-     */
-    private function publicIds(string $type, Collection $markets): array
-    {
-        $ids = [];
-        foreach ($markets as $market) {
-            foreach ($market->languages as $language) {
-                foreach ($this->discovery->query($type, $market, $language->code)->get() as $entity) {
-                    $id = (int) $entity->getKey();
-                    $ids[$id] = $id;
+        $audited = [];
+        $counts = [];
+        foreach ($this->discovery->schemas() as $schema) {
+            $ids = [];
+            $auditedIds = [];
+            foreach ($markets as $market) {
+                foreach ($market->languages as $language) {
+                    foreach ($this->discovery->query($schema->type, $market, $language->code)->latest()->get() as $entity) {
+                        $ids[$entity->getKey()] = true;
+                        if (count($auditedIds) >= 10 || isset($auditedIds[$entity->getKey()])) {
+                            continue;
+                        }
+                        $translation = $entity->getRelation('translations')->firstWhere('locale', $language->code);
+                        if (! $translation instanceof Model) {
+                            continue;
+                        }
+                        $title = $this->field($schema, $translation, EntitySchema::ROLE_TITLE);
+                        $content = $this->field($schema, $translation, EntitySchema::ROLE_BODY);
+                        if ($schema->sectionable) {
+                            $content .= "\n".$this->sections->text($entity, $market, $language->code);
+                        }
+                        $audit = $this->auditor->audit($title, $content, $this->field($schema, $translation, EntitySchema::ROLE_META_DESCRIPTION));
+                        $audited[] = ['id' => $entity->getKey(), 'title' => $title, 'slug' => (string) $translation->getAttribute('slug'), 'locale' => $language->code, 'score' => $audit['overall_score'], 'recommendations' => $audit['recommendations'], 'word_count' => $audit['metrics']['word_count'] ?? 0, 'type' => $schema->label];
+                        $auditedIds[$entity->getKey()] = true;
+                    }
                 }
             }
+            $counts[$schema->type] = ['label' => $schema->label, 'count' => count($ids)];
         }
 
-        return array_values($ids);
+        return new SeoAuditReportDTO($audited, $counts, $markets, (string) json_encode($this->schema->generateSiteGraph(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), Route::has('geo.llms') && Route::has('geo.llms-full'));
+    }
+
+    private function field(EntitySchema $schema, Model $translation, string $role): string
+    {
+        $input = $schema->fields[$role]['input'] ?? '';
+        if (preg_match('/\[([^\[\]]+)\]$/', $input, $match) !== 1) {
+            return '';
+        }
+
+        return (string) ($translation->getAttribute($match[1]) ?? '');
     }
 }

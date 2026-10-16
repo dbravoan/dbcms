@@ -29,8 +29,8 @@ final class FormEntitySchemas
             model: CustomForm::class,
             description: 'Formulario localizado. attributes.fields acepta una lista de field_key, type, is_required, validation_rules y translations[locale] con label, placeholder y options. La lectura expone relations.fields. Omitir fields conserva la estructura; [] la vacía.',
             permission: 'manage:forms',
-            createView: 'admin.forms.create',
-            editView: 'admin.forms.edit',
+            createView: 'forms::admin.create',
+            editView: 'forms::admin.edit',
             mutationHandler: FormMutationHandler::class,
             fields: [
                 EntitySchema::ROLE_TITLE => ['input' => 'translations[{locale}][name]', 'label' => 'Nombre', 'required' => true],

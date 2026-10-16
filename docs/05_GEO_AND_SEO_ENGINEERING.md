@@ -74,12 +74,12 @@ the `hreflang` cluster is built per market+locale pair
 
 ```php
 // One save persists the SEO of every language (the form posts them together).
-$translationsInput[$code]['meta_title'] ?? $request->input("meta_title_{$code}");
+$translationsInput[$code]['meta_title'] ?? null;
 ```
 
 No per-market meta overrides. Editorial web forms submit nested
-`translations[locale][field]` values. The legacy normalization adapter can
-accept flat keys for existing consumers; that does not bypass HTTP validation.
+`translations[locale][field]` values. Flat historical field aliases are not part
+of the contract for new installations.
 
 Also geo-reactive: `/llms.txt` and the sitemap read the active markets and
 locales from the database, so a market or language created in the backoffice

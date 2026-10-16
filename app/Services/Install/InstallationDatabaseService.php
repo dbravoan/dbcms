@@ -56,10 +56,8 @@ final class InstallationDatabaseService implements InstallationDatabaseServiceIn
             'DB_CONNECTION' => 'mysql', 'DB_HOST' => $database->host, 'DB_PORT' => $database->port,
             'DB_DATABASE' => $database->database, 'DB_USERNAME' => $database->username, 'DB_PASSWORD' => $database->password,
         ]);
-        if (! app()->environment('testing')) {
-            config(['database.connections.mysql.host' => $database->host, 'database.connections.mysql.port' => $database->port, 'database.connections.mysql.database' => $database->database, 'database.connections.mysql.username' => $database->username, 'database.connections.mysql.password' => $database->password]);
-            DB::purge('mysql');
-        }
+        config(['database.connections.mysql.host' => $database->host, 'database.connections.mysql.port' => $database->port, 'database.connections.mysql.database' => $database->database, 'database.connections.mysql.username' => $database->username, 'database.connections.mysql.password' => $database->password]);
+        DB::purge('mysql');
     }
 
     private function connect(DatabaseSetupDTO $database, bool $selectDatabase): PDO

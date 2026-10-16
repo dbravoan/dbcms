@@ -66,7 +66,11 @@ printf '%s\n' "$CMS_IMAGE" > "$lock/owner"
 lock_owned=true
 previous_id="$("${compose[@]}" ps -q app)"
 if [ -n "$previous_id" ]; then previous_image="$(docker inspect --format '{{.Config.Image}}' "$previous_id")"; fi
-"${compose[@]}" up -d --wait mysql redis
+infrastructure=(mysql)
+if "${compose[@]}" config --services | grep -qx redis; then
+    infrastructure+=(redis)
+fi
+"${compose[@]}" up -d --wait "${infrastructure[@]}"
 # A fresh volume stays uninstalled: the HTTPS web installer owns provisioning.
 installed=false
 if "${compose[@]}" run --rm --no-deps --entrypoint sh app -c 'test -f storage/installed'; then

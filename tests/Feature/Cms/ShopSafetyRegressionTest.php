@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Models\Market;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
@@ -12,9 +11,15 @@ use Modules\Shop\Models\Order;
 use Modules\Shop\Models\Product;
 use Modules\Shop\Services\CartService;
 use Modules\Shop\Services\ShopDomainService;
+use Tests\Support\CmsFixtures;
+use Tests\Support\ShopComposition;
+use Tests\Support\ShopFixtures;
+
+uses(ShopComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en'], ['es', 'us']);
+    ShopFixtures::product();
     config(['cms.page_cache.enabled' => true]);
     Cache::flush();
 });

@@ -109,29 +109,9 @@ class ContentQualityAuditorService
                 'h2_subheadings' => $h2Count,
                 'h3_subheadings' => $h3Count,
                 'avg_words_per_sentence' => $avgWordsPerSentence,
-                'llm_citability_index' => "{$geoScore}%", // Legacy field retained for clients.
-                'llm_citability_index_label' => 'Legacy editorial heuristic; not observed citations',
                 'citations_measured' => false,
             ],
             'recommendations' => $recommendations,
         ];
-    }
-
-    /**
-     * Alias for post quality auditing.
-     *
-     * @return array{
-     *     score_kind: string,
-     *     score_label: string,
-     *     overall_score: int,
-     *     seo_score: int,
-     *     geo_score: int,
-     *     metrics: array<string, mixed>,
-     *     recommendations: array<int, string>
-     * }
-     */
-    public function auditPost(string $title, string $content, string $metaDescription = '', string $primaryKeyword = ''): array
-    {
-        return $this->audit($title, $content, $metaDescription, $primaryKeyword);
     }
 }

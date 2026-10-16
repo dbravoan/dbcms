@@ -80,7 +80,7 @@ final class FilterSeoResolver
                 continue;
             }
 
-            $value = $this->phraseFor($dimension, $set->get($dimension->key), $locale);
+            $value = $this->phraseFor($dimension, $set->get($dimension->key), $locale, $set->market);
 
             if ($value !== '') {
                 $phrases[] = $this->phraseLabel($dimension->key, $locale).' '.$value;
@@ -114,10 +114,10 @@ final class FilterSeoResolver
         };
     }
 
-    private function phraseFor(FilterDimension $dimension, mixed $value, string $locale): string
+    private function phraseFor(FilterDimension $dimension, mixed $value, string $locale, string $marketCode): string
     {
         if ($dimension->type === 'terms') {
-            $labels = $dimension->labels($locale);
+            $labels = $dimension->labels($locale, $marketCode);
             $values = array_map(static fn ($slug): string => $labels[(string) $slug] ?? (string) $slug, (array) $value);
 
             return implode(', ', array_filter($values));

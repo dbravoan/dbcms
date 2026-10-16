@@ -29,7 +29,7 @@ class MaintenanceService implements MaintenanceModeInterface
 
     public function isAvailable(): bool
     {
-        return $this->app->make(ModuleManager::class)->isActive('maintenance');
+        return $this->app->make(ModuleManager::class)->isModuleEnabled('maintenance');
     }
 
     /**

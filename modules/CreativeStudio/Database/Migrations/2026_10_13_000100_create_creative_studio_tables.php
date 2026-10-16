@@ -21,6 +21,8 @@ return new class extends Migration
             $t->unsignedBigInteger('source_id')->nullable();
             $t->unsignedBigInteger('budget_limit')->default(0);
             $t->string('currency', 3)->default('USD');
+            $t->dateTime('starts_at')->nullable();
+            $t->dateTime('ends_at')->nullable();
             $t->timestamps();
         });
         Schema::create('creative_campaign_translations', function (Blueprint $t): void {

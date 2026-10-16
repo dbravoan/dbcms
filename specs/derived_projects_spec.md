@@ -6,11 +6,21 @@
 Create independent GitHub Template or Composer applications with one administrative brand, a fixed selection of public themes, signed upstream provenance, reviewed updates from Git source and an explicit choice of GitHub Actions or local rsync/Ansistrano/Docker deployment, without distributable installation archives.
 
 ## DTO and manifest contract
-`readonly App\DTOs\ProjectProfile` carries name, brand, themes (list of IDs), defaultTheme, coreVersion, coreSha and deployment (github-actions|ansistrano|rsync|docker|none). `cms-project.json` is versioned, contains no secrets, and has exactly this shape:
+`readonly App\DTOs\ProjectProfile` carries name, brand, themes (list of IDs), defaultTheme, coreVersion, coreSha and deployment (github-actions|ansistrano|rsync|docker|none). `cms-project.json` is versioned, contains no secrets, and has this required shape:
 ```json
 {"schema":1,"name":"mi-web","brand":"dbcms","deployment":"github-actions","themes":["db-minimal"],"default_theme":"db-minimal","core":{"repository":"dbravoan/dbcms","version":"1.2.0","sha":"0000000000000000000000000000000000000000"}}
 ```
 The example hash is illustrative only. Production initialization resolves the official release tag through GitHub Git, never a template-generated commit. Required brands: dbcms|termocms. Required themes: a valid CSV or all. Required `--deploy`: github-actions|ansistrano|rsync|docker|none, stored as scalar `deployment` in schema 1; legacy profiles without this field are preserved without inferring a choice. CSV is deduplicated preserving order; all resolves the installed catalogue and defaults to db-cyber.
+
+An opt-in curated export can add `source_selection` with exactly three keys:
+`module_directories` and `block_package_directories` are duplicate-free lists of
+safe directory names (`[A-Za-z][A-Za-z0-9_-]*`); `include_showcase` is boolean.
+Empty lists are valid. Updates and reconciliation preserve this declaration,
+exclude unselected directories under `modules/` and `block-packages/`, and omit
+`database/seeders/PlatformShowcaseSeeder.php` when requested. An absent declaration
+keeps the full source catalogue; malformed declarations fail before mutation.
+This projection describes distributed files, independently of installed/active
+module and package state. It is never inferred from missing directories.
 
 ## Preconditions, mutations and postconditions
 P: Validate project slug, complete selection and official stable release provenance before deletion. Reject symlinked catalogue entries. Existing matching profile is idempotent; changed profile is rejected.

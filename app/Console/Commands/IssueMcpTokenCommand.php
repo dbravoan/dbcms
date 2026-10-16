@@ -59,7 +59,7 @@ class IssueMcpTokenCommand extends Command
         $this->line($tokenResult->accessToken);
         $this->newLine();
         $this->info('Ejemplo de uso en curl:');
-        $this->line('curl -X POST http://localhost:8080/api/mcp \\');
+        $this->line('curl -X POST http://localhost:8080/mcp/cms \\');
         $this->line("  -H 'Authorization: Bearer {$tokenResult->accessToken}' \\");
         $this->line("  -H 'Content-Type: application/json' \\");
         $this->line("  -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}'");

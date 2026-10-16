@@ -54,7 +54,7 @@
             <p class="text-gray-400 text-xs mt-1">
                 {!! __('admin.mcp.agents_desc') !!}
             </p>
-            <p class="text-gray-400 text-[11px]">{!! __('admin.mcp.transport_hint', ['endpoint' => url('/mcp/cms'), 'legacy' => url('/api/mcp'), 'sse' => url('/api/mcp/sse')]) !!}</p>
+            <p class="text-gray-400 text-[11px]">{!! __('admin.mcp.transport_hint', ['endpoint' => url('/mcp/cms')]) !!}</p>
         </div>
 
         {{-- Tabs de Clientes --}}

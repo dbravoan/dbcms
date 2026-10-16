@@ -5,14 +5,14 @@ el repositorio. El [ADR de fronteras verificables](ADR_EXTRACTED_APPLICATION_BOU
 el guard AST, sus límites y el tratamiento de adaptadores HTTP. Leer primero esta
 guía, la especificación del cambio y los contratos
 de su área; no cargar todas las guías o reescribir subsistemas por una preferencia
-estilística. Los resultados de esta ronda se registran en el [informe de cierre](PENDING_CLOSURE_AND_QUALITY_VALIDATION_2026-10-12.md).
+estilística. Los resultados de esta ronda se registran en el [informe de cierre](archive/PENDING_CLOSURE_AND_QUALITY_VALIDATION_2026-10-12.md).
 
 ## Mapa de responsabilidades
 
 | Área | Propietario y punto de entrada | Responsabilidad |
 | --- | --- | --- |
 | Catálogo y ejecución | `app/Core/Capabilities` | Actor, permisos/scopes, argumentos, disponibilidad y efectos; MCP es un transporte |
-| Contenido común | `EntitySchemaRegistry`, `EntityCrudService`, handlers del módulo | Persistir entidad, traducciones, mercados y bloques con las mismas reglas |
+| Contenido común | `EntitySchemaRegistry`, `EntityReadService`, `EntityMutationService`, handlers del módulo | Persistir entidad, traducciones, mercados y bloques con las mismas reglas |
 | Editorial | `EditorialWorkflowInterface`, adaptador de ContentAudit | Revisiones, borradores privados, calidad y decisiones; el núcleo no importa el modelo de auditoría |
 | Lecturas públicas | Lectores de Pages/Blog/Shop/Gallery/Search | Selección publicada en contexto explícito; metadata y salida de aplicación |
 | Respuesta pública | `PublicContentContextFactory`, `FrontPageResponseMapper` | Convertir HTTP en contexto y resultados en respuestas |
@@ -164,9 +164,7 @@ Guías específicas: [editorial](CONTENT_AUDIT_WORKFLOW.md),
 
 Las restricciones AST se aplican a fronteras identificadas; el test genérico de
 capas es más amplio y no demuestra por sí solo que todos los controladores sean
-delgados. Persisten adaptadores de compatibilidad, especialmente `LegacyCmsService`,
-y conocimiento de entidades incorporadas en puntos de composición/representación.
-No usar esto como permiso para añadir nuevas reglas allí: extender desde el propietario.
+delgados. Los transportes consumen los registros core directamente; no se mantienen aliases MCP ni LegacyCmsService. Los contratos antiguos se retiran junto con sus pruebas específicas, conservando autorización y aislamiento en las entradas canónicas.
 
 Antes de extraer otra frontera, escribir el caso que necesita la separación y la
 prueba que conserva su contrato. Separar procesos o bases requiere una necesidad
@@ -176,3 +174,17 @@ contratos y pruebas propios; no basta con anunciar que el CMS conecta «con cual
 La calidad se mantiene por invariantes comprobadas y revisiones de cambios. Ninguna
 suite finita acredita perfección para todos los volúmenes, actores, módulos o fallos
 externos. El informe indica lo probado y las condiciones externas que faltan.
+
+## Composición actual
+
+Pages vive en `App\Content\Pages`; el renderizador compartido pertenece a
+`App\Core\Sections`. Los adaptadores MCP viven en `Modules\Mcp` y delegan
+en el ejecutor de capacidades del núcleo sin aliases históricos. Las guías
+editoriales son recursos de `Modules\AiAssistant`. El intérprete de planes y
+su transporte pertenecen a `Modules\Orchestration`, que requiere AiAssistant.
+La infraestructura de archivos y contratos de marketing reside en
+`Modules\Marketing`; CreativeStudio, SocialPublishing y Analytics la requieren.
+
+Las migraciones definen directamente el esquema de instalaciones nuevas. No
+reintroducir backfills, columnas duplicadas ni conversores de formatos retirados
+para sostener pruebas de una instalación anterior que no se distribuye.

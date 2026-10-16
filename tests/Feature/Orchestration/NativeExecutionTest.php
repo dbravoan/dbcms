@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
+use App\Content\Pages\Models\PageTranslation;
 use App\Core\Capabilities\ActorContext;
 use App\Core\Capabilities\AvailableCapabilities;
 use App\Core\Capabilities\CallableCapability;
@@ -27,13 +29,13 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Passport\Passport;
 use Modules\AiAssistant\Contracts\AiConfigBridgeInterface;
-use Modules\AiAssistant\Services\CmsNativePlanner;
-use Modules\Pages\Models\Page;
-use Modules\Pages\Models\PageTranslation;
+use Modules\Orchestration\Services\CmsNativePlanner;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Tests\Support\OrchestrationComposition;
+
+uses(OrchestrationComposition::class);
 
 beforeEach(function (): void {
-    config(['cms.orchestration.enabled' => true]);
     Queue::fake();
     $role = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Administrator']);
     $this->user = User::factory()->create();
@@ -227,7 +229,7 @@ test('revoking the operation permission also revokes access to its private resul
 });
 
 test('a direct MCP approval can be reviewed when natural language orchestration is disabled', function (): void {
-    config(['cms.orchestration.enabled' => false]);
+    app(ModuleManager::class)->deactivate('orchestration');
     $execution = $this->service->startCapability('test_publish', ['type' => 'page', 'id' => 0], $this->actor);
     $this->actingAs($this->user)->get('/admin/executions/'.$execution->id)->assertSuccessful()->assertSee('Revisa la acción solicitada');
     $this->actingAs($this->user)->getJson('/admin/executions/'.$execution->id.'/status')->assertSuccessful()->assertJsonPath('status', 'approval_required');

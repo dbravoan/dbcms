@@ -20,14 +20,20 @@ class DiffEngineService implements DiffEngineServiceInterface
         $hasChanges = false;
 
         // 1. Compare top-level attributes
-        $keys = array_unique(array_merge(array_keys($oldSnapshot), array_keys($newSnapshot)));
+        $oldValues = (array) ($oldSnapshot['attributes'] ?? []);
+        $newValues = (array) ($newSnapshot['attributes'] ?? []);
+        foreach (['section_records', 'market_pivots', 'module_relations'] as $collection) {
+            $oldValues[$collection] = $oldSnapshot[$collection] ?? [];
+            $newValues[$collection] = $newSnapshot[$collection] ?? [];
+        }
+        $keys = array_unique(array_merge(array_keys($oldValues), array_keys($newValues)));
         foreach ($keys as $key) {
-            if ($key === 'translations' || $key === 'id') {
+            if (in_array($key, ['id', 'created_at', 'updated_at'], true)) {
                 continue;
             }
 
-            $oldVal = $oldSnapshot[$key] ?? null;
-            $newVal = $newSnapshot[$key] ?? null;
+            $oldVal = $oldValues[$key] ?? null;
+            $newVal = $newValues[$key] ?? null;
 
             if ($oldVal !== $newVal) {
                 $fieldDiffs[$key] = [
@@ -39,8 +45,8 @@ class DiffEngineService implements DiffEngineServiceInterface
         }
 
         // 2. Compare translations
-        $oldTrans = (array) ($oldSnapshot['translations'] ?? []);
-        $newTrans = (array) ($newSnapshot['translations'] ?? []);
+        $oldTrans = $this->translations((array) ($oldSnapshot['translation_records'] ?? []));
+        $newTrans = $this->translations((array) ($newSnapshot['translation_records'] ?? []));
         $locales = array_unique(array_merge(array_keys($oldTrans), array_keys($newTrans)));
 
         foreach ($locales as $loc) {
@@ -49,6 +55,9 @@ class DiffEngineService implements DiffEngineServiceInterface
             $fields = array_unique(array_merge(array_keys($oldFields), array_keys($newFields)));
 
             foreach ($fields as $f) {
+                if (in_array($f, ['id', 'locale', 'created_at', 'updated_at'], true) || str_ends_with($f, '_id')) {
+                    continue;
+                }
                 $o = (string) ($oldFields[$f] ?? '');
                 $n = (string) ($newFields[$f] ?? '');
 
@@ -69,6 +78,22 @@ class DiffEngineService implements DiffEngineServiceInterface
         }
 
         return new DiffResultDTO($fieldDiffs, $textDiffs, $hasChanges);
+    }
+
+    /**
+     * @param  array<array-key,mixed>  $records
+     * @return array<string,array<string,mixed>>
+     */
+    private function translations(array $records): array
+    {
+        $translations = [];
+        foreach ($records as $record) {
+            if (is_array($record) && is_string($record['locale'] ?? null)) {
+                $translations[$record['locale']] = $record;
+            }
+        }
+
+        return $translations;
     }
 
     /**

@@ -2,16 +2,34 @@
 
 declare(strict_types=1);
 
+use App\Models\Menu;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Passport\ClientRepository;
 use Modules\Shop\Models\Order;
+use Modules\Shop\Models\ProductCategory;
+use Tests\Support\AdminCatalogComposition;
+use Tests\Support\BlogFixtures;
+use Tests\Support\CmsFixtures;
+use Tests\Support\FormFixtures;
+use Tests\Support\GalleryFixtures;
+use Tests\Support\PassportTestKeys;
+use Tests\Support\ShopFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, AdminCatalogComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en'], ['es', 'mx']);
+    CmsFixtures::identities();
+    CmsFixtures::home();
+    BlogFixtures::post();
+    ShopFixtures::product();
+    GalleryFixtures::album();
+    FormFixtures::contact();
+    PassportTestKeys::configure();
+    Menu::create(['name' => 'Main', 'slug' => 'main', 'location' => 'header', 'is_active' => true]);
+    $category = ProductCategory::create(['is_active' => true]);
+    $category->translations()->create(['locale' => 'es', 'name' => 'Catálogo', 'slug' => 'catalogo']);
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
 
     // Ensure at least 1 order exists for shop orders datatable

@@ -3,16 +3,44 @@
 declare(strict_types=1);
 
 use App\Contracts\Services\ModuleSettingsServiceInterface;
+use App\Core\Capabilities\Contracts\ContentRevisionInspectorInterface;
 use App\Core\Modules\ModuleManager;
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Capabilities\EntityMutationService;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Modules\Blog\Models\Category;
 use Modules\Blog\Models\Post;
+use Modules\Blog\Services\PostDomainService;
 use Modules\ContentAudit\Models\ContentAudit;
+use Tests\Support\BlogAuditComposition;
+
+uses(BlogAuditComposition::class);
+
+test('disabling review stops old pending snapshots from replacing subsequent live edits', function (string $switch): void {
+    $admin = User::factory()->create();
+    $admin->roles()->attach(Role::where('slug', 'admin')->firstOrFail());
+    $this->actingAs($admin);
+    $entities = app(EntityMutationService::class);
+    $created = $entities->create('post', ['publish' => true, 'translations' => ['es' => ['title' => 'Original live copy']]], $admin);
+    $post = Post::findOrFail($created['id']);
+    $pending = $entities->update('post', $post->id, ['translations' => ['es' => ['title' => 'Old pending copy']]], $admin);
+    expect($pending['live_preserved'])->toBeTrue();
+    if ($switch === 'module') {
+        app(ModuleManager::class)->deactivate('content_audit');
+    } else {
+        app(ModuleSettingsServiceInterface::class)->set('content_audit', 'is_enabled', false);
+    }
+    $entities->update('post', $post->id, ['translations' => ['es' => ['title' => 'Current live edit']]], $admin);
+    $editor = app(PostDomainService::class)->editData($post->fresh())['post'];
+
+    expect($editor->translations->firstWhere('locale', 'es')->title)->toBe('Current live edit');
+    expect(app(ContentRevisionInspectorInterface::class)->fingerprint($post))->toBeNull();
+    expect(ContentAudit::where('auditable_type', $post->getMorphClass())->where('auditable_id', $post->id)->value('pending_revision_id'))->toBe($pending['pending_revision_id']);
+})->with(['module', 'flow']);
 
 beforeEach(function (): void {
     $spanish = Language::firstOrCreate(

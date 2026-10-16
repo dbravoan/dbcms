@@ -23,6 +23,7 @@ class CaptchaModuleServiceProvider extends BaseModuleServiceProvider
     public function register(): void
     {
         $this->app->singleton(CaptchaService::class);
+        $this->app->tag(CaptchaService::class, 'cms.csp.connect');
     }
 
     public function boot(): void

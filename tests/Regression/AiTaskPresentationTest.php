@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Tests\Regression;
+
 use Modules\AiAssistant\Models\AiGenerationTask;
 use Modules\AiAssistant\Services\AiTaskPresentation;
 use PHPUnit\Framework\TestCase;

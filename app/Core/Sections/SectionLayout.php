@@ -120,20 +120,6 @@ final class SectionLayout
     }
 
     /**
-     * A payload for the given locale, resolved from an already loaded section.
-     *
-     * @param  array<string, mixed>  $master
-     * @param  array<string, array<string, mixed>>  $contentByLocale
-     * @return array<string, mixed>
-     */
-    public static function forLocale(array $master, array $contentByLocale, string $locale): array
-    {
-        $content = $contentByLocale[$locale] ?? [];
-
-        return self::resolve($master, is_array($content) ? $content : []);
-    }
-
-    /**
      * The columns of a payload, normalized and guaranteed to be a list.
      *
      * @param  array<string, mixed>  $payload
@@ -153,7 +139,7 @@ final class SectionLayout
     /**
      * Every block of the section, flattened in visual order (columns left to
      * right, blocks top to bottom). When the section has no columns, the section
-     * itself is its own single block, which keeps legacy content renderable.
+     * itself is its own single block.
      *
      * @param  array<string, mixed>  $payload
      * @return list<array<string, mixed>>
@@ -377,7 +363,7 @@ final class SectionLayout
         }
 
         // No columns declared: the section's own content IS the first column,
-        // which is what makes legacy payloads render through a single path.
+        // allowing standalone and column layouts to share the renderer.
         if ($normalized === [] && $includeSelf && self::hasContent($payload)) {
             $normalized[] = [
                 'id' => self::columnId(0),
@@ -421,7 +407,7 @@ final class SectionLayout
      */
     private static function hasContent(array $payload): bool
     {
-        foreach (['title', 'headline', 'content', 'body', 'summary', 'subtitle', 'widget_key', 'items'] as $key) {
+        foreach (['title', 'headline', 'content', 'body', 'summary', 'subtitle', 'items'] as $key) {
             $value = $payload[$key] ?? null;
 
             if (is_string($value) && trim($value) !== '') {

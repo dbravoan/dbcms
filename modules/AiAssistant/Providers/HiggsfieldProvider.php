@@ -6,6 +6,7 @@ namespace Modules\AiAssistant\Providers;
 
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Support\Sleep;
 use Modules\AiAssistant\Contracts\AiProviderInterface;
 use Modules\AiAssistant\Contracts\AiVideoProviderInterface;
 use Modules\AiAssistant\DTOs\ChatRequest;
@@ -99,9 +100,7 @@ final class HiggsfieldProvider implements AiProviderInterface, AiVideoProviderIn
 
                 return new VideoGenerationResult(url: $url, provider: 'higgsfield', model: $model, durationSeconds: $request->durationSeconds, metadata: ['request_id' => $requestId]);
             }
-            if (! app()->environment('testing')) {
-                usleep(2000000);
-            }
+            Sleep::for(2)->seconds();
         }
         throw new AiProviderPendingException('higgsfield', $requestId);
     }

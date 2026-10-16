@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\AiAssistant;
 
-use App\Core\Modules\ModuleManager;
-use App\Models\CmsModule;
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\Role;
@@ -14,6 +12,7 @@ use App\Services\Media\MediaManagerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Modules\AiAssistant\Contracts\AiConfigBridgeInterface;
 use Modules\AiAssistant\Contracts\AiMultimodalOrchestratorInterface;
 use Modules\AiAssistant\DTOs\MultimodalOrchestrationRequest;
@@ -23,10 +22,13 @@ use Modules\AiAssistant\Services\AiActionRunner;
 use Modules\AiAssistant\Services\AiResearchService;
 use Modules\AiAssistant\Services\BlockIntelligenceService;
 use Modules\Blog\Models\Post;
+use Tests\Support\AiBlogComposition;
+use Tests\Support\AiCompletionFixture;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, AiBlogComposition::class);
 
 beforeEach(function (): void {
+    Sleep::fake();
     Http::preventStrayRequests();
     $role = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Administrator']);
     $user = User::factory()->create(['email' => 'admin@db-cms.io']);
@@ -39,11 +41,9 @@ beforeEach(function (): void {
 
     config([
         'services.magnific.key' => 'test-magnific-key',
-        'services.higgsfield.key' => 'test-higgsfield-key',
     ]);
 
-    app(ModuleManager::class)->discoverModules();
-    CmsModule::updateOrCreate(['identifier' => 'ai_assistant'], ['is_active' => true, 'is_installed' => true]);
+    app(AiConfigBridgeInterface::class)->saveProviderConfig('higgsfield', ['api_key_id' => 'fixture-id', 'api_key_secret' => 'fixture-secret']);
 
     Cache::forget('ai_assistant:models:vllm');
     Cache::forget('ai_assistant:models:magnific');
@@ -146,6 +146,7 @@ test('multimodal orchestrator generates video and saves it to media manager', fu
 });
 
 test('multimodal orchestrator orchestrates full post with research and blocks', function (): void {
+    AiCompletionFixture::configure();
     Http::fake([
         'html.duckduckgo.com/*' => Http::response(
             '<html><body><a class="result__snippet" href="https://example.com">Laravel es el framework PHP más popular.</a></body></html>',
@@ -191,6 +192,7 @@ test('multimodal orchestrator orchestrates full post with research and blocks', 
 });
 
 test('multimodal orchestrator orchestrates modular page with interactive blocks', function (): void {
+    AiCompletionFixture::configure();
     Http::fake([
         'api.magnific.com/v1/ai/mystic' => Http::response(['data' => ['task_id' => 'visual-task']]),
         'api.magnific.com/v1/ai/mystic/visual-task' => Http::response(['data' => ['status' => 'COMPLETED', 'generated' => ['https://cdn.magnific.ai/generated/landing_hero.png']]], 200),
@@ -231,6 +233,7 @@ test('multimodal orchestrator orchestrates modular page with interactive blocks'
 });
 
 test('ai action runner dispatches multimodal actions seamlessly', function (): void {
+    AiCompletionFixture::configure();
     Http::fake([
         'html.duckduckgo.com/*' => Http::response(
             '<html><body><a class="result__snippet" href="https://example.com">Información verificada de IA.</a></body></html>',

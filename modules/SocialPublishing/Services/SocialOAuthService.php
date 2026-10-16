@@ -180,13 +180,11 @@ final readonly class SocialOAuthService
         if ($account->status !== 'connected' || $account->access_token === null || array_diff($this->scopes($account->provider), $account->grants) !== []) {
             throw ValidationException::withMessages(['connection' => 'La cuenta necesita autorización y permisos efectivos.']);
         }
-        // Test fixtures and legacy migrated account receipts may not have a configured OAuth client; no fabricated verification is performed.
-        if (isset($account->metadata['client_fingerprint'])) {
-            $client = $this->client($account->provider);
-            if (! hash_equals((string) $account->metadata['client_fingerprint'], hash('sha256', json_encode($client, JSON_THROW_ON_ERROR)))) {
-                $this->invalidate($account);
-                throw ValidationException::withMessages(['connection' => 'El cliente OAuth cambió. Autoriza la cuenta de nuevo.']);
-            }
+        $fingerprint = $account->metadata['client_fingerprint'] ?? null;
+        $client = $this->client($account->provider);
+        if (! is_string($fingerprint) || ! hash_equals($fingerprint, hash('sha256', json_encode($client, JSON_THROW_ON_ERROR)))) {
+            $this->invalidate($account);
+            throw ValidationException::withMessages(['connection' => 'El cliente OAuth cambió. Autoriza la cuenta de nuevo.']);
         }
         if ($account->expires_at?->lte(now()->addMinute())) {
             $this->refresh($account);

@@ -9,7 +9,7 @@ use App\DTOs\BaseDTO;
 /**
  * Complete SEO/GEO metadata for a single page.
  *
- * Every front-office theme renders this through the shared `themes.components.seo-head`
+ * Every front-office theme renders this through the shared `themes::components.seo-head`
  * partial, so canonical URLs, OpenGraph, Twitter cards, hreflang, robots and the
  * Schema.org JSON-LD graph are always emitted consistently.
  */

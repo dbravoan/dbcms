@@ -1,4 +1,5 @@
-<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+@php($gridClass = match ((string) ($parameters['grid_columns'] ?? '3')) { '2' => 'md:grid-cols-2', '4' => 'md:grid-cols-4', default => 'md:grid-cols-3' })
+<div class="grid grid-cols-1 sm:grid-cols-2 {{ $gridClass }} gap-6">
     @if($gallery && $gallery->items->isNotEmpty())
         @foreach($gallery->items as $item)
             <div class="group relative overflow-hidden rounded-2xl bg-slate-100 shadow-sm aspect-w-4 aspect-h-3">

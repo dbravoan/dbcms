@@ -1,4 +1,4 @@
-@extends('themes.db-brutalist.layouts.app')
+@extends('themes::db-brutalist.layouts.app')
 
 @php
     $trans = $post->translations->where('locale', app()->getLocale())->first()

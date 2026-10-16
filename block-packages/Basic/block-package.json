@@ -1,0 +1,20 @@
+{
+  "identifier": "basic",
+  "name": "Bloques básicos",
+  "version": "1.0.0",
+  "blocks": [
+    "BlockPackages\\Basic\\Blocks\\CarouselBlock",
+    "BlockPackages\\Basic\\Blocks\\CodeEmbedBlock",
+    "BlockPackages\\Basic\\Blocks\\CtaBlock",
+    "BlockPackages\\Basic\\Blocks\\FaqBlock",
+    "BlockPackages\\Basic\\Blocks\\FeaturesBlock",
+    "BlockPackages\\Basic\\Blocks\\HeroBlock",
+    "BlockPackages\\Basic\\Blocks\\PricingBlock",
+    "BlockPackages\\Basic\\Blocks\\RichTextBlock",
+    "BlockPackages\\Basic\\Blocks\\TestimonialsBlock",
+    "BlockPackages\\Basic\\Blocks\\VideoBlock"
+  ],
+  "requires": {
+    "core": ">=1.0.0"
+  }
+}

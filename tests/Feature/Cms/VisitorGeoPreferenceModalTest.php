@@ -3,14 +3,15 @@
 declare(strict_types=1);
 
 use App\Services\Cms\VisitorGeoDetectionService;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en'], ['es', 'us']);
+    CmsFixtures::home(['es', 'en'], ['es', 'us']);
 });
 
 test('visitor geo detection service correctly resolves country and browser language', function (): void {

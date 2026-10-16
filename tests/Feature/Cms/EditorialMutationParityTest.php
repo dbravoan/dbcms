@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Contracts\PageDomainServiceInterface;
+use App\Content\Pages\Models\Page;
+use App\Content\Pages\Schema\PageEntitySchemas;
 use App\Core\Capabilities\ExecutionContext;
 use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
 use App\Core\Sections\SectionEditorService;
@@ -10,15 +13,15 @@ use App\Models\Language;
 use App\Models\Market;
 use App\Models\Role;
 use App\Models\User;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityMutationService;
 use Modules\Blog\Contracts\PostDomainServiceInterface;
 use Modules\Blog\Models\Post;
 use Modules\Blog\Schema\BlogEntitySchemas;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
-use Modules\Pages\Contracts\PageDomainServiceInterface;
-use Modules\Pages\Models\Page;
-use Modules\Pages\Schema\PageEntitySchemas;
+use Modules\ContentAudit\Services\EditorialWorkflow;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Tests\Support\BlogAuditComposition;
+
+uses(BlogAuditComposition::class);
 
 beforeEach(function (): void {
     foreach (array_merge(BlogEntitySchemas::all(), PageEntitySchemas::all()) as $schema) {
@@ -36,7 +39,7 @@ beforeEach(function (): void {
 test('post domain and shared CRUD apply the same derived content defaults and author', function (): void {
     $data = ['user_id' => 999, 'market_ids' => [$this->market->getKey()], 'translations' => ['es' => ['title' => 'Same editorial input', 'content' => str_repeat('word ', 410)]]];
     $domain = app(PostDomainServiceInterface::class)->createPost($data);
-    $shared = app(EntityCrudService::class)->create('post', EntityMutationData::fromLegacy($data)->arguments, $this->actor);
+    $shared = app(EntityMutationService::class)->create('post', EntityMutationData::fromForm($data)->arguments, $this->actor);
     $core = Post::findOrFail($shared['id']);
     foreach (['is_published', 'allow_comments', 'is_featured', 'reading_time_minutes', 'user_id'] as $field) {
         expect($domain->getAttribute($field))->toBe($core->getAttribute($field));
@@ -70,18 +73,18 @@ test('published post saves from backoffice preserve live content and edit the pe
     expect($live->markets->modelKeys())->toBe([$this->market->getKey()]);
     $this->get(route('admin.blog.posts.edit', $post))->assertOk()->assertViewHas('post', fn (Post $draft): bool => $draft->translations->first()->content === 'Pending body' && $draft->markets->modelKeys() === [$this->otherMarket->getKey()]);
     expect($post->fresh()->translations->first()->content)->toBe('Live body');
-    app(ContentAuditServiceInterface::class)->approve($live, $this->actor);
+    app(EditorialWorkflow::class)->approve($live, $this->actor);
     expect($post->fresh()->translations->first()->content)->toBe('Pending body');
     expect($post->fresh()->markets->modelKeys())->toBe([$this->otherMarket->getKey()]);
 });
 
-test('legacy page section input and shared CRUD preserve the same layout and widget content', function (): void {
-    $data = ['translations' => ['es' => ['title' => 'Widget page']], 'sections' => [
-        ['type' => 'widget', 'order' => 2, 'widget_key' => 'blog.featured_posts', 'styling_json' => ['grid_columns' => 2], 'translations' => ['es' => ['limit' => 3]]],
-        ['type' => 'hero', 'order' => 1, 'styling_json' => [], 'translations' => ['es' => ['title' => 'First hero']]],
-    ]];
+test('page and shared mutation preserve the same canonical layout and widget content', function (): void {
+    $data = ['translations' => ['es' => ['title' => 'Widget page']], 'sections_json' => json_encode(['es' => [
+        ['type' => 'hero', 'title' => 'First hero'],
+        ['type' => 'blog.featured_posts', 'grid_columns' => 2, 'limit' => 3],
+    ]], JSON_THROW_ON_ERROR)];
     $page = app(PageDomainServiceInterface::class)->createPage($data);
-    $core = app(EntityCrudService::class)->create('page', EntityMutationData::fromLegacy($data)->arguments, $this->actor);
+    $core = app(EntityMutationService::class)->create('page', EntityMutationData::fromForm($data)->arguments, $this->actor);
     $payload = app(SectionEditorService::class)->payload($page);
     $shared = app(SectionEditorService::class)->payload(Page::findOrFail($core['id']));
     expect($page->is_published)->toBeFalse();
@@ -105,7 +108,7 @@ test('published page backoffice saves keep live sections and render pending sect
     expect(json_encode(app(SectionEditorService::class)->payload($page->fresh())))->toContain('Live block')->not->toContain('Pending block');
     $this->get(route('admin.pages.edit', $page))->assertOk()->assertViewHas('page', fn (Page $draft): bool => $draft->layout === 'pending-layout' && str_contains(json_encode(app(SectionEditorService::class)->payload($draft)), 'Pending block'));
     expect(json_encode(app(SectionEditorService::class)->payload($page->fresh())))->toContain('Live block');
-    app(ContentAuditServiceInterface::class)->approve($page->fresh(), $this->actor);
+    app(EditorialWorkflow::class)->approve($page->fresh(), $this->actor);
     expect($page->fresh()->layout)->toBe('pending-layout');
     expect(json_encode(app(SectionEditorService::class)->payload($page->fresh())))->toContain('Pending block');
 });

@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 use App\Models\Language;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en', 'it']);
+    CmsFixtures::identities();
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
 });
 

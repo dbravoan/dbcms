@@ -224,15 +224,7 @@
                         <input type="hidden" :name="'translations[' + code + '][schema_type]'" :value="(translations[code] || {}).schema_type || 'WebPage'">
                     </div>
                 </template>
-            @else
-                <input type="hidden" name="meta_title_{{ $localeCode }}" :value="activeMetaTitle || ''">
-                <input type="hidden" name="meta_description_{{ $localeCode }}" :value="activeMetaDesc || ''">
-                <input type="hidden" name="schema_type_{{ $localeCode }}" :value="activeSchemaType || 'WebPage'">
             @endif
-
-            <input type="hidden" name="meta_title" :value="(translations[fallbackLocale] || {}).meta_title || ''">
-            <input type="hidden" name="meta_description" :value="(translations[fallbackLocale] || {}).meta_description || ''">
-            <input type="hidden" name="schema_type" :value="(translations[fallbackLocale] || {}).schema_type || 'WebPage'">
         </div>
     </div>
 

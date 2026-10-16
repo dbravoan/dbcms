@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Modules\Captcha\Services;
 
+use App\Core\Security\Contracts\ContentSecurityPolicyContributorInterface;
 use App\Models\CmsModule;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Http;
 
-class CaptchaService
+class CaptchaService implements ContentSecurityPolicyContributorInterface
 {
     public const DRIVER_INTERNAL = 'internal';
 
@@ -155,14 +156,6 @@ class CaptchaService
         }
 
         return $driver;
-    }
-
-    /**
-     * Backwards-compatible accessor for the effective driver.
-     */
-    public function getDriver(): string
-    {
-        return $this->driver();
     }
 
     /**
@@ -336,14 +329,6 @@ class CaptchaService
         return (string) module_setting('captcha', 'site_key', '');
     }
 
-    /**
-     * Backwards-compatible accessor for the site key.
-     */
-    public function getSiteKey(): string
-    {
-        return $this->siteKey();
-    }
-
     private function secretKey(): string
     {
         return (string) module_setting('captcha', 'secret_key', '');
@@ -357,5 +342,15 @@ class CaptchaService
     private function hasTurnstileKeys(): bool
     {
         return $this->hasExternalKeys();
+    }
+
+    public function connectOrigins(): array
+    {
+        return $this->isEnabled() ? array_values($this->cspOrigins()['connect']) : [];
+    }
+
+    public function frameOrigins(): array
+    {
+        return $this->isEnabled() ? array_values($this->cspOrigins()['frame']) : [];
     }
 }

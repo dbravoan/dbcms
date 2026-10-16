@@ -34,11 +34,8 @@ final class ProjectDeploymentPolicy
         'bin/vps-bootstrap.sh' => ['github-actions', 'rsync', 'ansistrano', 'docker'],
     ];
 
-    public function includes(string $path, ?string $deployment): bool
+    public function includes(string $path, string $deployment): bool
     {
-        if ($deployment === null) {
-            return ! in_array($path, ['.github/workflows/release.yml', '.github/workflows/prepare-project.yml'], true);
-        }
         if (! in_array($deployment, self::DRIVERS, true)) {
             throw new InvalidArgumentException('Select --deploy=github-actions, ansistrano, rsync, docker or none.');
         }

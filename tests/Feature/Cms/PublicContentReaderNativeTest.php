@@ -2,19 +2,20 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Contracts\PagePublicReaderInterface;
+use App\Content\Pages\Models\Page;
 use App\Contracts\Services\LocalizationServiceInterface;
-use App\Core\Modules\ModuleManager;
 use App\DTOs\Front\PublicContentContext;
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\User;
 use Modules\Blog\Contracts\BlogPublicReaderInterface;
 use Modules\Blog\Models\Post;
-use Modules\Pages\Contracts\PagePublicReaderInterface;
-use Modules\Pages\Models\Page;
+use Tests\Support\BlogComposition;
+
+uses(BlogComposition::class);
 
 beforeEach(function (): void {
-    app(ModuleManager::class)->discoverModules();
     $es = Language::firstOrCreate(['code' => 'es'], ['name' => 'Spanish', 'native_name' => 'Español', 'is_active' => true, 'is_default' => true]);
     $en = Language::firstOrCreate(['code' => 'en'], ['name' => 'English', 'native_name' => 'English', 'is_active' => true]);
     $this->market = Market::firstOrCreate(['code' => 'es'], ['name' => 'Spain', 'default_locale' => 'es', 'is_active' => true, 'is_default' => true]);

@@ -1,4 +1,4 @@
-@extends('themes.db-editorial.layouts.app')
+@extends('themes::db-editorial.layouts.app')
 
 @section('title', ($isShop ? 'Tienda & Publicaciones' : 'Catálogo de Ediciones') . ' - Editorial dbCMS')
 @section('meta_description', __('Colección de productos editoriales, ediciones especiales y obras curadas.'))

@@ -1,4 +1,4 @@
-@extends('themes.db-brutalist.layouts.app')
+@extends('themes::db-brutalist.layouts.app')
 
 @section('title', __('Artículos & Publicaciones - dbCMS Brutalist'))
 @section('meta_description', __('Artículos técnicos, diseño sin censura, arquitectura de software y manifiestos digitales.'))

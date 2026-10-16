@@ -1,4 +1,4 @@
-@extends('themes.db-editorial.layouts.app')
+@extends('themes::db-editorial.layouts.app')
 
 @section('title', ($translation->meta_title ?? $translation->name) . ' - Editorial dbCMS')
 @section('meta_description', $translation->meta_description ?? $translation->summary ?? '')

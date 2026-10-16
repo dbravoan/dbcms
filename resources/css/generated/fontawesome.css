@@ -183,8 +183,6 @@
 .fa-solid.fa-chevron-down { --fa: "\f078"; }
 .fa-solid.fa-circle::before { content: "\f111"; }
 .fa-solid.fa-circle { --fa: "\f111"; }
-.fa-solid.fa-circle-dot::before { content: "\f192"; }
-.fa-solid.fa-circle-dot { --fa: "\f192"; }
 .fa-solid.fa-circle-exclamation::before { content: "\f06a"; }
 .fa-solid.fa-circle-exclamation { --fa: "\f06a"; }
 .fa-solid.fa-circle-info::before { content: "\f05a"; }

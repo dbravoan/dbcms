@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Core\Blocks\Events\BlockPackageAvailabilityChanged;
 use App\Core\Search\Contracts\SearchSourceInterface;
 use App\Core\Search\Contracts\SearchSourceRegistryInterface;
 use App\Core\Search\SearchEngine;
 use App\Core\Search\SearchIndexer;
 use App\Core\Search\SearchSourceRegistry;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -21,6 +23,13 @@ use Illuminate\Support\ServiceProvider;
  */
 final class SearchServiceProvider extends ServiceProvider
 {
+    public function boot(): void
+    {
+        Event::listen(BlockPackageAvailabilityChanged::class, function (): void {
+            $this->app->make(SearchIndexer::class)->indexAll();
+        });
+    }
+
     public function register(): void
     {
         $this->app->singleton(SearchSourceRegistryInterface::class, SearchSourceRegistry::class);

@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Modules\SocialPublishing\Services;
 
-use App\Contracts\Services\MarketingArtifactStoreInterface;
 use App\Core\Capabilities\ActorContext;
-use App\DTOs\Marketing\CreativePackage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Modules\Marketing\Contracts\MarketingArtifactStoreInterface;
+use Modules\Marketing\DTOs\CreativePackage;
 use Modules\SocialPublishing\Contracts\PublicationServiceInterface;
 use Modules\SocialPublishing\DTOs\PublicationSnapshot;
 use Modules\SocialPublishing\Models\SocialAccount;

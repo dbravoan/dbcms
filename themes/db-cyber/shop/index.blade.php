@@ -1,4 +1,4 @@
-@extends('themes.db-cyber.layouts.app')
+@extends('themes::db-cyber.layouts.app')
 
 @section('title', ($isShop ? __('Tienda Online') : __('Catálogo de Productos')) . ' - dbCMS')
 @section('meta_description', __('Explora nuestro catálogo de productos técnicos con arquitectura modular y optimización multi-mercado.'))

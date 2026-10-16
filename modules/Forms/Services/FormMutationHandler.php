@@ -89,6 +89,23 @@ final class FormMutationHandler implements EntityMutationHandlerInterface, Entit
         return ['fields' => $entity->fields()->with('translations')->get()->map(static fn (FormField $field): array => ['attributes' => $field->getAttributes(), 'translations' => $field->translations->map(static fn (FormFieldTranslation $translation): array => $translation->getAttributes())->all()])->all()];
     }
 
+    public function validateRevision(array $revision): void
+    {
+        if (! isset($revision['fields']) || ! is_array($revision['fields']) || ! array_is_list($revision['fields'])) {
+            throw new \DomainException('Form revisions require canonical field records.');
+        }
+        foreach ($revision['fields'] as $record) {
+            if (! is_array($record) || ! isset($record['attributes'], $record['translations']) || ! is_array($record['attributes']) || $record['attributes'] === [] || ! is_array($record['translations']) || ! array_is_list($record['translations'])) {
+                throw new \DomainException('Form revisions require field attributes and translations.');
+            }
+            foreach ($record['translations'] as $translation) {
+                if (! is_array($translation) || $translation === [] || array_is_list($translation)) {
+                    throw new \DomainException('Form revisions require canonical field translations.');
+                }
+            }
+        }
+    }
+
     public function hydrateRevision(Model $entity, array $revision): void
     {
         $fields = [];

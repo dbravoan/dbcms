@@ -2,16 +2,18 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Http\Controllers\FrontPageController;
 use App\Contracts\Services\LocalizationServiceInterface;
-use App\Core\Modules\ModuleManager;
 use App\Core\Routing\FrontRoutePatterns;
-use App\Http\Controllers\Admin\Ai\AiPromptDownloadGetController;
-use App\Http\Controllers\Admin\Ai\AiPromptRawGetController;
 use App\Http\Controllers\Admin\Api\EntitySearchGetController;
 use App\Http\Controllers\Admin\Auth\LoginGetController;
 use App\Http\Controllers\Admin\Auth\LoginPostController;
 use App\Http\Controllers\Admin\Auth\LogoutPostController;
 use App\Http\Controllers\Admin\Auth\QuickLoginGetController;
+use App\Http\Controllers\Admin\BlockPackages\BlockPackageDeleteController;
+use App\Http\Controllers\Admin\BlockPackages\BlockPackagesGetController;
+use App\Http\Controllers\Admin\BlockPackages\BlockPackageTogglePostController;
+use App\Http\Controllers\Admin\BlockPackages\BlockPackageUploadPostController;
 use App\Http\Controllers\Admin\Connections\ConnectionsGetController;
 use App\Http\Controllers\Admin\Connections\ConnectionsMigratePostController;
 use App\Http\Controllers\Admin\Connections\ConnectionsMigrationStatusGetController;
@@ -91,7 +93,6 @@ use App\Http\Controllers\Install\MigrationGetController;
 use App\Http\Controllers\Install\MigrationsPostController;
 use App\Http\Controllers\Install\RequirementsGetController;
 use App\Http\Controllers\Media\UploadsServeController;
-use App\Http\Controllers\Seo\RssController;
 use App\Http\Controllers\Seo\SitemapController;
 use App\Http\Middleware\CachePublicPage;
 use App\Http\Middleware\CheckPermission;
@@ -103,8 +104,6 @@ use App\Http\Middleware\SetBackofficeLocale;
 use App\Models\Market;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Modules\AiAssistant\Http\Middleware\EnsureAiAuthorized;
-use Modules\Pages\Http\Controllers\FrontPageController;
 
 // ==========================================
 // Web Installer Wizard (/install)
@@ -135,7 +134,6 @@ Route::get('/sitemaps.xml', [SitemapController::class, 'index'])->name('seo.site
 Route::get('/sitemaps/{segment}.xml', [SitemapController::class, 'segment'])->name('seo.sitemap.segment');
 Route::get('/sitemap-part-{part}.xml', [GeoSeoController::class, 'sitemapPart'])->where('part', '[1-9][0-9]*');
 Route::get('/robots.txt', [SitemapController::class, 'robots'])->name('seo.robots');
-Route::get('/feed.xml', RssController::class)->name('seo.feed');
 
 // Uploads fallback: static files are served directly by the web server, so this
 // only runs for files missing locally and resolves them from external storage.
@@ -157,24 +155,6 @@ Route::middleware(['web', ResolveMarketAndLocaleMiddleware::class, EnsureSeoMeta
             Route::get('/sitemaps.xml', [GeoSeoController::class, 'sitemapXml'])->name('seo.market.sitemaps');
             Route::get('/sitemap-part-{part}.xml', [GeoSeoController::class, 'sitemapPart'])->where('part', '[1-9][0-9]*');
 
-            Route::get('/', function (ModuleManager $moduleManager) {
-                if (! $moduleManager->isModuleEnabled('pages')) {
-                    return view('welcome-cms', [
-                        'activeMarkets' => Market::where('is_active', true)->get(),
-                        'installedModules' => $moduleManager->getActiveModules(),
-                    ]);
-                }
-                abort(404);
-            });
-            Route::get('', function (ModuleManager $moduleManager) {
-                if (! $moduleManager->isModuleEnabled('pages')) {
-                    return view('welcome-cms', [
-                        'activeMarkets' => Market::where('is_active', true)->get(),
-                        'installedModules' => $moduleManager->getActiveModules(),
-                    ]);
-                }
-                abort(404);
-            });
         });
 
     Route::prefix('{locale}')
@@ -186,24 +166,6 @@ Route::middleware(['web', ResolveMarketAndLocaleMiddleware::class, EnsureSeoMeta
             Route::get('/sitemaps.xml', [GeoSeoController::class, 'sitemapXml']);
             Route::get('/sitemap-part-{part}.xml', [GeoSeoController::class, 'sitemapPart'])->where('part', '[1-9][0-9]*');
 
-            Route::get('/', function (ModuleManager $moduleManager) {
-                if (! $moduleManager->isModuleEnabled('pages')) {
-                    return view('welcome-cms', [
-                        'activeMarkets' => Market::where('is_active', true)->get(),
-                        'installedModules' => $moduleManager->getActiveModules(),
-                    ]);
-                }
-                abort(404);
-            });
-            Route::get('', function (ModuleManager $moduleManager) {
-                if (! $moduleManager->isModuleEnabled('pages')) {
-                    return view('welcome-cms', [
-                        'activeMarkets' => Market::where('is_active', true)->get(),
-                        'installedModules' => $moduleManager->getActiveModules(),
-                    ]);
-                }
-                abort(404);
-            });
         });
 });
 
@@ -261,10 +223,6 @@ Route::prefix($adminPath)->name('admin.')->middleware([SetBackofficeLocale::clas
             Route::put('/seo/filters/{filterPage}', FilterPutController::class)->name('seo.filters.update');
             Route::delete('/seo/filters/{filterPage}', FilterDeleteController::class)->name('seo.filters.destroy');
         });
-
-        // AI Editorial Prompt & Style Guide
-        Route::get('/ai/download-prompt', AiPromptDownloadGetController::class)->name('ai.download-prompt');
-        Route::get('/ai/raw-prompt', AiPromptRawGetController::class)->name('ai.raw-prompt');
 
         // Module Management
         Route::middleware([CheckPermission::class.':manage:modules'])->group(function (): void {
@@ -329,6 +287,13 @@ Route::prefix($adminPath)->name('admin.')->middleware([SetBackofficeLocale::clas
         });
 
         // Themes & Layout Switcher
+        Route::middleware([CheckPermission::class.':manage:blocks'])->prefix('block-packages')->name('block-packages.')->group(function (): void {
+            Route::get('/', BlockPackagesGetController::class)->name('index');
+            Route::post('/upload', BlockPackageUploadPostController::class)->name('upload');
+            Route::post('/{identifier}/toggle', BlockPackageTogglePostController::class)->name('toggle');
+            Route::delete('/{identifier}', BlockPackageDeleteController::class)->name('destroy');
+        });
+
         Route::middleware([CheckPermission::class.':manage:themes'])->group(function (): void {
             Route::get('/themes', ThemesGetController::class)->name('themes.index');
             Route::post('/themes/{theme}/activate', ThemeActivatePostController::class)->name('themes.activate');
@@ -353,38 +318,28 @@ Route::prefix($adminPath)->name('admin.')->middleware([SetBackofficeLocale::clas
 // ==========================================
 // Root Domain Dynamic Routing
 // ==========================================
-Route::get('/', function (Request $request, LocalizationServiceInterface $localization, ModuleManager $moduleManager) {
-    if ($moduleManager->isModuleEnabled('pages') && class_exists(FrontPageController::class)) {
-        $hasMarkets = $localization->hasMultipleMarkets();
-        $hasLangs = $localization->hasMultipleLanguages();
+Route::get('/', function (Request $request, LocalizationServiceInterface $localization) {
+    $hasMarkets = $localization->hasMultipleMarkets();
+    $hasLangs = $localization->hasMultipleLanguages();
 
-        $defaultMarket = Market::where('is_default', true)->where('is_active', true)->first()
-            ?? Market::where('is_active', true)->first();
-        $marketCode = $defaultMarket ? $defaultMarket->code : 'es';
-        $locale = $defaultMarket ? $defaultMarket->default_locale : 'es';
+    $defaultMarket = Market::where('is_default', true)->where('is_active', true)->first()
+        ?? Market::where('is_active', true)->first();
+    $marketCode = $defaultMarket ? $defaultMarket->code : 'es';
+    $locale = $defaultMarket ? $defaultMarket->default_locale : 'es';
 
-        // If single market
-        if (! $hasMarkets) {
-            if (! $hasLangs) {
-                return app(FrontPageController::class)->show($request);
-            }
-
-            return redirect("/{$locale}");
+    // If single market
+    if (! $hasMarkets) {
+        if (! $hasLangs) {
+            return app(FrontPageController::class)->show($request);
         }
 
-        // If multi-market: redirect to /{market}/{locale}
-        return redirect("/{$marketCode}/{$locale}");
+        return redirect("/{$locale}");
     }
 
-    return view('welcome-cms', [
-        'activeMarkets' => Market::where('is_active', true)->get(),
-        'installedModules' => $moduleManager->getActiveModules(),
-    ]);
+    // If multi-market: redirect to /{market}/{locale}
+    return redirect("/{$marketCode}/{$locale}");
+
 })->middleware(['web', ResolveMarketAndLocaleMiddleware::class]);
-
-Route::prefix($adminPath.'/orchestration')->name('admin.orchestration.')->middleware(['web', 'auth', EnsureAdminAuthenticated::class, SetBackofficeLocale::class, EnsureAiAuthorized::class.':use:ai'])->group(__DIR__.'/orchestration.php');
-
-Route::post($adminPath.'/orchestration/{execution}/approve', ApprovePostController::class)->name('admin.orchestration.approve')->middleware(['web', 'auth', EnsureAdminAuthenticated::class, SetBackofficeLocale::class, EnsureAiAuthorized::class.':use:ai']);
 
 Route::prefix($adminPath.'/executions')->name('admin.executions.')->middleware(['web', 'auth', EnsureAdminAuthenticated::class, SetBackofficeLocale::class])->group(function (): void {
     Route::get('/{execution}', ReviewGetController::class)->name('review');

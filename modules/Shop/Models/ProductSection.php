@@ -16,7 +16,6 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $product_id
  * @property string $type
- * @property string|null $widget_key
  * @property int $order
  * @property array<string, mixed>|null $styling_json
  * @property bool $is_active
@@ -33,7 +32,6 @@ class ProductSection extends Model
     protected $fillable = [
         'product_id',
         'type',
-        'widget_key',
         'order',
         'styling_json',
         'is_active',

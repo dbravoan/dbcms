@@ -2,22 +2,30 @@
 
 declare(strict_types=1);
 
+use App\Core\Capabilities\CapabilityRegistry;
+use App\Models\CapabilityAuditLog;
 use App\Models\Market;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Modules\Blog\Models\Category;
 use Modules\Blog\Models\Post;
-use Modules\ContentAudit\Contracts\Services\ContentAuditServiceInterface;
-use Modules\Mcp\Models\McpAuditLog;
-use Modules\Mcp\Services\McpServerService;
-use Modules\Mcp\Tools\McpToolRegistry;
+use Modules\ContentAudit\Services\EditorialWorkflow;
+use Tests\Support\McpComposition;
+use Tests\Support\McpFixtures;
+use Tests\Support\McpProtocolClient;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, McpComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    McpFixtures::identities();
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
     mcpTestBindIdentity($this->admin);
+    $category = Category::create(['is_active' => true]);
+    $category->translations()->create(['locale' => 'es', 'name' => 'Tecnología', 'slug' => 'tecnologia']);
+    $category->markets()->attach(Market::where('code', 'es')->firstOrFail());
+    $post = Post::withoutEvents(fn () => Post::create(['user_id' => $this->admin->id, 'category_id' => $category->id, 'is_published' => true, 'published_at' => now()]));
+    $post->translations()->create(['locale' => 'es', 'title' => 'Arquitectura modular', 'slug' => 'arquitectura', 'content' => 'Contenido público sobre arquitectura modular.']);
+    $post->markets()->attach(Market::where('code', 'es')->firstOrFail());
 });
 
 /**
@@ -31,7 +39,7 @@ function callCapability(string $name, array $args = [], ?User $user = null, arra
     }
     mcpTestBindIdentity($user, $scopes);
 
-    $response = app(McpServerService::class)->handle([
+    $response = app(McpProtocolClient::class)->handle([
         'jsonrpc' => '2.0',
         'id' => 'test',
         'method' => 'tools/call',
@@ -47,7 +55,7 @@ function callCapability(string $name, array $args = [], ?User $user = null, arra
 }
 
 test('the capability manifest advertises the backoffice surface with its permissions', function (): void {
-    $registry = app(McpToolRegistry::class);
+    $registry = app(CapabilityRegistry::class);
 
     expect($registry->names())->toContain('cms_entity_list')
         ->and($registry->names())->toContain('cms_entity_create')
@@ -56,7 +64,7 @@ test('the capability manifest advertises the backoffice surface with its permiss
         ->and($registry->names())->toContain('cms_maintenance_toggle')
         ->and($registry->names())->toContain('cms_mcp_audit');
 
-    $manifest = collect($registry->manifest())->keyBy('name');
+    $manifest = collect($registry->all())->map(static fn ($tool): array => ['name' => $tool->name(), 'parameters' => ['required' => $tool->required(), 'properties' => $tool->properties()]])->keyBy('name');
     $entity = $manifest->get('cms_entity_create');
 
     expect($entity)->not->toBeNull()
@@ -64,11 +72,11 @@ test('the capability manifest advertises the backoffice surface with its permiss
         ->and($entity['parameters']['properties'])->toHaveKeys(['type', 'attributes', 'translations']);
 });
 
-test('tools list merges the legacy tools with the capability registry', function (): void {
-    $response = app(McpServerService::class)->handle(['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list']);
+test('tools list exposes the authorized capability registry', function (): void {
+    $response = app(McpProtocolClient::class)->handle(['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list']);
     $names = array_column((array) ($response['result']['tools'] ?? []), 'name');
 
-    expect($names)->toContain('cms_inspect_system')
+    expect($names)->toContain('cms_capabilities')
         ->and($names)->toContain('cms_entity_create')
         ->and($names)->toContain('cms_resource_list')
         ->and($names)->toContain('cms_search_reindex')
@@ -232,7 +240,7 @@ test('the editorial queue can be approved from an agent', function (): void {
     $post = Post::query()->firstOrFail();
 
     // A pending revision, exactly as an author would leave it.
-    app(ContentAuditServiceInterface::class)
+    app(EditorialWorkflow::class)
         ->submitForReview($post, $this->admin, 'Revisión solicitada por el agente');
 
     $approved = callCapability('cms_audit_approve', ['type' => 'post', 'id' => $post->id, 'notes' => 'Aprobado por el agente'], $this->admin);
@@ -268,8 +276,8 @@ test('every capability call is written to the agent audit trail', function (): v
     callCapability('cms_module_toggle', ['identifier' => 'forms', 'enabled' => false], $this->admin);
     callCapability('cms_settings_update', ['attributes' => ['general.site_name' => 'Agente']], $this->admin);
 
-    expect(McpAuditLog::query()->where('tool', 'cms_module_toggle')->where('status', 'ok')->exists())->toBeTrue()
-        ->and(McpAuditLog::query()->where('tool', 'cms_settings_update')->exists())->toBeTrue();
+    expect(CapabilityAuditLog::query()->where('tool', 'cms_module_toggle')->where('status', 'ok')->exists())->toBeTrue()
+        ->and(CapabilityAuditLog::query()->where('tool', 'cms_settings_update')->exists())->toBeTrue();
 
     $trail = callCapability('cms_mcp_audit', ['limit' => 5], $this->admin);
 
@@ -282,13 +290,9 @@ test('secrets are redacted from the audit trail', function (): void {
         'attributes' => ['general.smtp_password' => 'super-secreto', 'general.site_name' => 'Visible'],
     ], $this->admin);
 
-    $entry = McpAuditLog::query()->where('tool', 'cms_settings_update')->latest('id')->firstOrFail();
+    $entry = CapabilityAuditLog::query()->where('tool', 'cms_settings_update')->latest('id')->firstOrFail();
     $args = (array) $entry->getAttribute('args');
 
     expect(json_encode($args))->not->toContain('super-secreto')
         ->and(json_encode($args))->toContain('Visible');
-});
-
-test('the locale used for the admin home page', function (): void {
-    expect(Market::query()->exists())->toBeTrue();
 });

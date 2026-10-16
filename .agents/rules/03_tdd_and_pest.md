@@ -1,9 +1,10 @@
-# Rule 03 · TDD & Pest
+# Rule 03 · Useful tests
 
-**Canonical source:** `AGENTS.md` (Step 3) and [`docs/DEVELOPER_CONVENTIONS_AND_STANDARDS.md`](../../docs/DEVELOPER_CONVENTIONS_AND_STANDARDS.md).
+Follow [AGENTS.md](../../AGENTS.md) and [Testing](../../docs/TESTING.md).
 
-Apply, do not restate:
-
-- Red → Green → Refactor: write the failing Pest test first.
-- Unit tests in `tests/Unit/Services/`, feature tests in `tests/Feature/`, boundaries in `tests/Architecture/`.
-- Run everything inside Sail (serial): `./vendor/bin/sail artisan test`.
+- Protect an observable current behavior, not implementation shape or case counts.
+- Reproduce meaningful failures; use minimal fixtures and explicit dependencies.
+- Default: `make test`. Integration: `make test-integration`. Release and changed
+  installation/update/concurrency boundaries: `make test-release`.
+- PHP runs only through official Sail or directly inside disposable CI containers.
+- Retire tests of removed compatibility contracts; preserve security and isolation.

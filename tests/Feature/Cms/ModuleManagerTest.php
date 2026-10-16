@@ -11,8 +11,10 @@ use App\Models\User;
 use Database\Seeders\CmsFoundationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Models\Post;
+use Tests\Support\CmsFixtures;
+use Tests\Support\PublicContentComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, PublicContentComposition::class);
 
 beforeEach(function (): void {
     $this->seed(CmsFoundationSeeder::class);
@@ -28,7 +30,7 @@ test('it discovers all modules present in modules folder', function (): void {
     expect($discovered)->toHaveKey('blog')
         ->and($discovered)->toHaveKey('gallery')
         ->and($discovered)->toHaveKey('forms')
-        ->and($discovered)->toHaveKey('pages');
+        ->and($discovered)->not->toHaveKey('pages');
 
     expect(CmsModule::where('identifier', 'blog')->exists())->toBeTrue();
 });
@@ -71,7 +73,7 @@ test('uninstallation preserves domain data and cannot be reversed by activation'
     $this->manager->discoverModules();
     $post = Post::create(['user_id' => $this->user->id, 'is_published' => false]);
     $this->manager->uninstall('blog');
-    expect($this->manager->isActive('blog'))->toBeFalse()
+    expect($this->manager->isModuleEnabled('blog'))->toBeFalse()
         ->and($this->manager->activate('blog'))->toBeFalse()
         ->and($post->fresh())->not->toBeNull();
     $this->get('/es/es/blog')->assertNotFound();
@@ -86,7 +88,23 @@ test('disabled providers remain unavailable to filter and search consumers', fun
     expect($filters->get('shop'))->toBeNull()->and($sources->has('product'))->toBeFalse();
 });
 
-test('rediscovery refreshes shipped module metadata without changing installation choices', function (bool $installed, bool $active): void {
+test('deactivation impact finds module blocks inside localized columns once per page', function (): void {
+    $page = CmsFixtures::home();
+    $section = $page->sections()->create(['type' => 'text', 'order' => 1, 'is_active' => true, 'status' => 'published', 'styling_json' => ['type' => 'text']]);
+    foreach (['es', 'en'] as $locale) {
+        $section->translations()->create(['locale' => $locale, 'content_json' => ['columns' => [[
+            'id' => 'primary', 'blocks' => [['type' => 'blog.latest_posts_grid']],
+        ]]]]);
+    }
+
+    $impact = $this->manager->getDeactivationImpact('blog');
+
+    expect($impact['affected_pages'])->toHaveCount(1)
+        ->and($impact['affected_pages'][0]['id'])->toBe($page->getKey())
+        ->and($impact['has_impact'])->toBeTrue();
+});
+
+test('explicit reconciliation refreshes shipped module metadata without changing installation choices', function (bool $installed, bool $active): void {
     $this->manager->discoverModules();
     $manifest = $this->manager->getModuleManifest('blog');
     $module = CmsModule::where('identifier', 'blog')->firstOrFail();
@@ -97,7 +115,7 @@ test('rediscovery refreshes shipped module metadata without changing installatio
         'is_active' => $active, 'settings' => $settings,
     ]);
 
-    $this->manager->discoverModules();
+    $this->manager->reconcileModules(['blog']);
 
     expect($module->fresh())->name->toBe($manifest['name'])
         ->version->toBe($manifest['version'])

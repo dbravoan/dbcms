@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Core\Content;
 
+use Illuminate\Database\Eloquent\Model;
+
 /**
  * Declarative description of a content entity owned by a module.
  *
@@ -53,6 +55,8 @@ final readonly class EntitySchema
         public ?string $ownerModule = null,
         public ?string $mutationHandler = null,
         public bool $uniqueSlugs = true,
+        public ?PublicContentDefinition $publicContent = null,
+        public ?string $adminFormView = null,
     ) {}
 
     /**
@@ -66,5 +70,52 @@ final readonly class EntitySchema
     public function hasField(string $role): bool
     {
         return isset($this->fields[$role]);
+    }
+
+    public function newModel(): Model
+    {
+        /** @var class-string<Model> $class */
+        $class = $this->model;
+
+        return new $class;
+    }
+
+    /**
+     * \Illuminate\Database\Eloquent\Model attributes an agent may write (the model's own fillable list).
+     *
+     * @return list<string>
+     */
+    public function fillableAttributes(): array
+    {
+        return array_values(array_filter(
+            $this->newModel()->getFillable(),
+            static fn (mixed $attribute): bool => is_string($attribute)
+                && $attribute !== 'id',
+        ));
+    }
+
+    /**
+     * Semantic role → translation column, read from the declared form inputs
+     * (`translations[{locale}][title]` → `title`).
+     *
+     * @return array<string, string>
+     */
+    public function translationAttributes(): array
+    {
+        $attributes = [];
+
+        foreach ($this->fields as $role => $field) {
+            $input = (string) ($field['input'] ?? '');
+
+            if (preg_match('/translations\[\{locale\}\]\[([a-z0-9_]+)\]/i', $input, $matches) === 1) {
+                $attributes[$role] = $matches[1];
+            }
+        }
+
+        if ($this->hasField(EntitySchema::ROLE_SLUG) && ! in_array('slug', $attributes, true)) {
+            $attributes[EntitySchema::ROLE_SLUG] = 'slug';
+        }
+
+        return $attributes;
     }
 }

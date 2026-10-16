@@ -7,6 +7,7 @@ use App\Core\Search\SearchEngine;
 use App\Core\Search\SearchIndexer;
 use App\Models\SearchDocumentIndex;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\BlogShopComposition;
 
 uses(RefreshDatabase::class);
 
@@ -20,6 +21,8 @@ uses(RefreshDatabase::class);
 | The full-text SQL itself is exercised against committed data (dev smoke run
 | and the search page in the front office).
 */
+
+uses(BlogShopComposition::class);
 
 beforeEach(function (): void {
     app(SearchIndexer::class)->flush();

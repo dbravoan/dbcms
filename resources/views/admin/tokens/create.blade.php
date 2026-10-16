@@ -136,7 +136,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-[#181818] p-4 rounded-xl border border-gray-800 max-h-64 overflow-y-auto">
                     @foreach($availableScopes as $scopeKey => $scopeDesc)
                         <label class="flex items-start gap-2.5 p-2 rounded hover:bg-gray-800/40 cursor-pointer">
-                            <input type="checkbox" name="scopes[]" value="{{ $scopeKey }}" class="mt-0.5 rounded bg-gray-900 border-gray-700 text-purple-500 focus:ring-purple-500" {{ in_array($scopeKey, ['mcp:access', 'mcp:read', 'mcp:write', 'mcp:destructive', 'mcp:publish', 'm2m:service']) ? 'checked' : '' }} />
+                            <input type="checkbox" name="scopes[]" value="{{ $scopeKey }}" class="mt-0.5 rounded bg-gray-900 border-gray-700 text-purple-500 focus:ring-purple-500" {{ in_array($scopeKey, ['mcp:access', 'mcp:read', 'mcp:write', 'mcp:destructive', 'mcp:write', 'm2m:service']) ? 'checked' : '' }} />
                             <div>
                                 <span class="text-purple-400 font-bold block">{{ $scopeKey }}</span>
                                 <span class="text-gray-400 text-[10px]">{{ $scopeDesc }}</span>
@@ -152,7 +152,7 @@
                 <div class="text-[11px] text-gray-400">
                     {!! __('admin.tokens.m2m_flow_desc') !!}
                 </div>
-                <pre class="bg-black/60 p-2.5 rounded text-purple-300 text-[10px] overflow-x-auto">grant_type=client_credentials&client_id={ID}&client_secret={SECRET}&scope=mcp:access mcp:publish</pre>
+                <pre class="bg-black/60 p-2.5 rounded text-purple-300 text-[10px] overflow-x-auto">grant_type=client_credentials&client_id={ID}&client_secret={SECRET}&scope=mcp:access mcp:write</pre>
             </div>
 
             <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-800">

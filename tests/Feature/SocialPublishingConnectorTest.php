@@ -2,17 +2,16 @@
 
 declare(strict_types=1);
 
-use App\Contracts\Services\CampaignAttributionGatewayInterface;
-use App\Contracts\Services\MarketingArtifactStoreInterface;
 use App\Core\Capabilities\ActorContext;
-use App\DTOs\Marketing\ArtifactDescriptor;
-use App\DTOs\Marketing\CreativePackage;
-use App\Models\CmsModule;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
+use Modules\Marketing\Contracts\CampaignAttributionGatewayInterface;
+use Modules\Marketing\Contracts\MarketingArtifactStoreInterface;
+use Modules\Marketing\DTOs\ArtifactDescriptor;
+use Modules\Marketing\DTOs\CreativePackage;
 use Modules\SocialPublishing\Connectors\FacebookConnector;
 use Modules\SocialPublishing\Connectors\InstagramConnector;
 use Modules\SocialPublishing\Connectors\LinkedInConnector;
@@ -21,7 +20,10 @@ use Modules\SocialPublishing\Models\SocialAccount;
 use Modules\SocialPublishing\Models\SocialMetric;
 use Modules\SocialPublishing\Services\DeliveryWorker;
 use Modules\SocialPublishing\Services\PublicationService;
-use Modules\SocialPublishing\SocialPublishingModuleServiceProvider;
+use Tests\Support\SocialAccountFixture;
+use Tests\Support\SocialComposition;
+
+uses(SocialComposition::class);
 
 function socialConnectorFiles(): MarketingArtifactStoreInterface
 {
@@ -121,10 +123,9 @@ it('reconciles a worker LinkedIn upload timeout from its durable asset receipt w
     $user = User::factory()->create();
     $user->roles()->attach(Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Admin'])->id);
     Auth::guard('web')->login($user);
-    CmsModule::updateOrCreate(['identifier' => 'social-publishing'], ['name' => 'SocialPublishing', 'provider' => SocialPublishingModuleServiceProvider::class, 'version' => '1.0.0', 'is_active' => true, 'is_installed' => true, 'settings' => ['is_enabled' => true]]);
     app()->instance(MarketingArtifactStoreInterface::class, socialConnectorFiles());
     $actor = new ActorContext($user->id);
-    $account = SocialAccount::create(['provider' => 'linkedin', 'remote_id' => 'urn:li:organization:123', 'identity' => 'linkedin:urn:li:organization:123', 'label' => 'Organización', 'status' => 'connected', 'access_token' => 'fixture', 'expires_at' => now()->addDay(), 'grants' => ['w_organization_social', 'r_organization_social', 'rw_organization_admin'], 'metadata' => []]);
+    $account = SocialAccount::create(['provider' => 'linkedin', 'remote_id' => 'urn:li:organization:123', 'identity' => 'linkedin:urn:li:organization:123', 'label' => 'Organización', 'status' => 'connected', 'access_token' => 'fixture', 'expires_at' => now()->addDay(), 'grants' => ['w_organization_social', 'r_organization_social', 'rw_organization_admin'], 'metadata' => SocialAccountFixture::metadata('linkedin')]);
     $service = app(PublicationService::class);
     $p = $service->create(socialConnectorPackage(), $account->id, [], $actor);
     $service->approve($p->id, $p->payload_hash, $actor);
@@ -182,9 +183,8 @@ it('collects GA4 attribution asynchronously from the frozen UTM and retains stal
     $user = User::factory()->create();
     $user->roles()->attach(Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Admin'])->id);
     Auth::guard('web')->login($user);
-    CmsModule::updateOrCreate(['identifier' => 'social-publishing'], ['name' => 'SocialPublishing', 'provider' => SocialPublishingModuleServiceProvider::class, 'version' => '1.0.0', 'is_active' => true, 'is_installed' => true, 'settings' => ['is_enabled' => true]]);
     $actor = new ActorContext($user->id);
-    $account = SocialAccount::create(['provider' => 'facebook', 'remote_id' => '123', 'identity' => 'facebook:123', 'label' => 'Página', 'status' => 'connected', 'access_token' => 'fixture', 'expires_at' => now()->addDay(), 'grants' => ['pages_show_list', 'pages_manage_posts', 'pages_read_engagement'], 'metadata' => []]);
+    $account = SocialAccount::create(['provider' => 'facebook', 'remote_id' => '123', 'identity' => 'facebook:123', 'label' => 'Página', 'status' => 'connected', 'access_token' => 'fixture', 'expires_at' => now()->addDay(), 'grants' => ['pages_show_list', 'pages_manage_posts', 'pages_read_engagement'], 'metadata' => SocialAccountFixture::metadata('facebook')]);
     $package = new CreativePackage('p', 'r', 'campaign-one', 'es', 'es', 'Texto', config('app.url').'/es/es/page?utm_campaign=frozen-campaign&utm_content=frozen-content', []);
     $service = app(PublicationService::class);
     $p = $service->create($package, $account->id, [], $actor);

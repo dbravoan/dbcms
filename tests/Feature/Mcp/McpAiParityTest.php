@@ -2,21 +2,24 @@
 
 declare(strict_types=1);
 
-use App\Core\Modules\ModuleManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\AiAssistant\Services\AiActionRunner;
-use Modules\Mcp\Services\McpServerService;
+use Modules\AiAssistant\Services\AiProviderSettings;
+use Tests\Support\AiCompletionFixture;
+use Tests\Support\AiComposition;
 use Tests\Support\AiMcpFixture;
+use Tests\Support\McpProtocolClient;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, AiComposition::class);
 
 beforeEach(function (): void {
     AiMcpFixture::configure();
-    app(ModuleManager::class)->discoverModules();
+
 });
 
 test('every assistant AI action is exposed as an MCP tool', function (): void {
-    $server = app(McpServerService::class);
+    app(AiProviderSettings::class)->save('higgsfield', ['api_key_id' => 'fixture-id', 'api_key_secret' => 'fixture-secret']);
+    $server = app(McpProtocolClient::class);
 
     $manifest = $server->handle([
         'jsonrpc' => '2.0',
@@ -31,12 +34,12 @@ test('every assistant AI action is exposed as an MCP tool', function (): void {
 
     foreach (array_keys(AiActionRunner::MCP_TOOL_ACTIONS) as $tool) {
         expect($names)->toContain($tool);
-        expect($server->supportsTool($tool))->toBeTrue();
     }
 });
 
 test('mcp ai tools dispatch through the shared action runner', function (): void {
-    $server = app(McpServerService::class);
+    AiCompletionFixture::configure();
+    $server = app(McpProtocolClient::class);
 
     $calls = [
         'cms_ai_generate_block' => ['block_type' => 'hero', 'prompt' => 'Landing', 'locale' => 'es'],

@@ -2,17 +2,21 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
-use Modules\Pages\Models\Page;
+use Tests\Support\AiComposition;
+use Tests\Support\CmsFixtures;
+use Tests\Support\VisualContentFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, AiComposition::class);
 
 beforeEach(function (): void {
     Http::preventStrayRequests();
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    VisualContentFixtures::home();
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
 });
 

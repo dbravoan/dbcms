@@ -33,7 +33,7 @@ test('derived theme discovery and fallbacks stay inside the installed selection'
     config(['cms.project' => ['themes' => ['db-minimal'], 'default_theme' => 'db-minimal'], 'cms.theme' => 'missing-theme']);
 
     expect(array_keys(app(ThemeManagerService::class)->getAvailableThemes()))->toBe(['db-minimal']);
-    expect(app(FrontViewResolver::class)->layout())->toBe('themes.db-minimal.layouts.app');
+    expect(app(FrontViewResolver::class)->layout())->toBe('themes::db-minimal.layouts.app');
 });
 
 test('activating a selected theme persists across cached configuration reloads and invalidates public html', function (): void {
@@ -90,8 +90,8 @@ test('theme cache invalidation respects the configured compiled view directory',
 
 test('derived widgets use their module fallback without borrowing another frontend', function (): void {
     config(['cms.project' => ['themes' => ['db-minimal'], 'default_theme' => 'db-minimal'], 'cms.theme' => 'db-minimal']);
-    View::shouldReceive('exists')->with('themes.db-minimal.shop.widgets.example')->andReturnFalse();
-    View::shouldReceive('exists')->with('themes.db-minimal.widgets.shop.example')->andReturnFalse();
+    View::shouldReceive('exists')->with('themes::db-minimal.shop.widgets.example')->andReturnFalse();
+    View::shouldReceive('exists')->with('themes::db-minimal.widgets.shop.example')->andReturnFalse();
     View::shouldReceive('exists')->with('shop::widgets.example')->andReturnTrue();
 
     expect(app(FrontViewResolver::class)->widget('shop', 'example', 'shop::widgets.example'))->toBe('shop::widgets.example');
@@ -104,8 +104,8 @@ test('public cache fragments accept installed custom themes and reject uninstall
     $personalization = new PublicPagePersonalization($manager);
     $render = static fn (string $view): string => '<header>'.$view.'</header>';
 
-    expect($personalization->hydrate('<!--cms-fragment:themes.client-site.partials.header-->', 'csrf', $render))
-        ->toBe('<header>themes.client-site.partials.header</header>');
-    expect(fn () => $personalization->hydrate('<!--cms-fragment:themes.db-cyber.partials.header-->', 'csrf', $render))
+    expect($personalization->hydrate('<!--cms-fragment:themes::client-site.partials.header-->', 'csrf', $render))
+        ->toBe('<header>themes::client-site.partials.header</header>');
+    expect(fn () => $personalization->hydrate('<!--cms-fragment:themes::db-cyber.partials.header-->', 'csrf', $render))
         ->toThrow(UnexpectedValueException::class);
 });

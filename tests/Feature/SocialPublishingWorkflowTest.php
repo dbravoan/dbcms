@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Core\Capabilities\ActorContext;
-use App\DTOs\Marketing\CreativePackage;
 use App\Models\CmsModule;
 use App\Models\Role;
 use App\Models\User;
@@ -11,19 +10,22 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
+use Modules\Marketing\DTOs\CreativePackage;
 use Modules\SocialPublishing\Models\SocialAccount;
 use Modules\SocialPublishing\Models\SocialPublication;
 use Modules\SocialPublishing\Services\DeliveryWorker;
 use Modules\SocialPublishing\Services\PublicationService;
-use Modules\SocialPublishing\SocialPublishingModuleServiceProvider;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Tests\Support\SocialAccountFixture;
+use Tests\Support\SocialComposition;
+
+uses(SocialComposition::class);
 
 function socialTestActor(string $origin = 'web'): ActorContext
 {
     $user = User::factory()->create();
     $user->roles()->attach(Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Admin'])->id);
     Auth::guard('web')->login($user);
-    CmsModule::updateOrCreate(['identifier' => 'social-publishing'], ['name' => 'SocialPublishing', 'provider' => SocialPublishingModuleServiceProvider::class, 'version' => '1.0.0', 'is_installed' => true, 'is_active' => true, 'settings' => ['is_enabled' => true]]);
     config(['modules.social-publishing.is_enabled' => true]);
 
     return new ActorContext($user->id, $origin);
@@ -31,7 +33,7 @@ function socialTestActor(string $origin = 'web'): ActorContext
 
 function socialTestAccount(): SocialAccount
 {
-    return SocialAccount::create(['provider' => 'facebook', 'remote_id' => '123', 'label' => 'Página de prueba', 'identity' => 'facebook:123', 'authorization_generation' => 1, 'status' => 'connected', 'access_token' => 'isolated-token', 'grants' => ['pages_show_list', 'pages_manage_posts', 'pages_read_engagement'], 'metadata' => [], 'expires_at' => now()->addDay()]);
+    return SocialAccount::create(['provider' => 'facebook', 'remote_id' => '123', 'label' => 'Página de prueba', 'identity' => 'facebook:123', 'authorization_generation' => 1, 'status' => 'connected', 'access_token' => 'isolated-token', 'grants' => ['pages_show_list', 'pages_manage_posts', 'pages_read_engagement'], 'metadata' => SocialAccountFixture::metadata('facebook'), 'expires_at' => now()->addDay()]);
 }
 
 function socialTestDraft(ActorContext $actor): SocialPublication

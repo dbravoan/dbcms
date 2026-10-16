@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\GeoSeoController;
-use App\Http\Middleware\AuthenticateMcpPassport;
 use App\Http\Middleware\ThrottleApiAuthentication;
 use Illuminate\Support\Facades\Route;
-use Modules\AiAssistant\Http\Middleware\EnsureAiAuthorized;
 
 Route::prefix('v1')->group(function (): void {
     // Authentication Routes
@@ -23,7 +21,4 @@ Route::prefix('v1')->group(function (): void {
     });
 });
 
-// Model Context Protocol (MCP) endpoints are registered by the Mcp module
-// (modules/Mcp/Routes/api.php) under the api/mcp prefix.
-
-Route::prefix('orchestration')->name('api.orchestration.')->middleware([AuthenticateMcpPassport::class.':ai:use', EnsureAiAuthorized::class.':use:ai'])->group(__DIR__.'/orchestration.php');
+// The optional Mcp module registers the standard endpoint at /mcp/cms.

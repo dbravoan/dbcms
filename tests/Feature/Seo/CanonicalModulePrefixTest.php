@@ -3,13 +3,14 @@
 declare(strict_types=1);
 
 use App\Contracts\Services\LocalizationServiceInterface;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CmsFixtures;
+use Tests\Support\PublicContentComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, PublicContentComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en'], ['es', 'us']);
     config(['cms.page_cache.enabled' => false]);
 });
 
@@ -60,6 +61,5 @@ test('every alias resolves to its module key', function (): void {
         'galeria' => 'gallery',
         'gallery' => 'gallery',
         'blog' => 'blog',
-        'page' => 'page',
     ])->not->toHaveKey('categoria');
 });

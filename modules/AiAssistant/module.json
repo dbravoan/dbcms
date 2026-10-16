@@ -1,4 +1,5 @@
 {
+  "availability_setting": "is_enabled",
     "name": "Copiloto Asistente IA",
     "identifier": "ai_assistant",
     "version": "1.0.0",
@@ -244,13 +245,6 @@
             "type": "text",
             "label": "vllm model",
             "default": ""
-        },
-        "higgsfield_api_key": {
-            "type": "password",
-            "label": "Higgsfield · credencial anterior ID:secret",
-            "default": "",
-            "secret": true,
-            "description": "Compatibilidad con instalaciones anteriores. Los nuevos campos separados se guardan cifrados."
         },
         "higgsfield_api_key_id": {
             "type": "password",

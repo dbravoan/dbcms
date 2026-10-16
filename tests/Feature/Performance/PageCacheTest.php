@@ -2,17 +2,19 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
 use App\Http\Middleware\CachePublicPage;
 use App\Http\Middleware\ResolveMarketAndLocaleMiddleware;
 use App\Models\User;
 use App\Services\Cms\PageCacheService;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route;
-use Modules\Pages\Models\Page;
+use Tests\Support\CmsFixtures;
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::home();
+    CmsFixtures::identities();
     config([
         'cms.theme' => 'db-cyber',
         'cms.admin_theme' => 'dbcms',

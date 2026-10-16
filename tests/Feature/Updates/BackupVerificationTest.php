@@ -28,13 +28,18 @@ afterEach(function (): void {
 });
 
 it('restores and compares a real consistent MySQL backup before accepting it', function (): void {
+    $adminPassword = getenv('DBCMS_TEST_DB_ADMIN_PASSWORD');
+    if (getenv('DBCMS_TEST_ISOLATED') !== '1' || $adminPassword === false || $adminPassword === '') {
+        throw new LogicException('Set disposable MySQL admin credentials through DBCMS_TEST_DB_ADMIN_PASSWORD.');
+    }
     $configuration = config('database.connections.mysql');
-    $configuration['username'] = env('UPDATE_TEST_DB_ADMIN_USER', 'root');
-    $configuration['password'] = env('UPDATE_TEST_DB_ADMIN_PASSWORD', 'ci-only-password');
+    $configuration['username'] = getenv('DBCMS_TEST_DB_ADMIN_USER') ?: 'root';
+    $configuration['password'] = $adminPassword;
     config(['database.connections.update_backup_admin' => $configuration]);
     $admin = DB::connection('update_backup_admin');
-    $this->backupTestDatabase = 'update_fixture_'.bin2hex(random_bytes(8));
-    $admin->statement('CREATE DATABASE `'.$this->backupTestDatabase.'` CHARACTER SET utf8mb4');
+    $database = 'update_fixture_'.bin2hex(random_bytes(8));
+    $admin->statement('CREATE DATABASE `'.$database.'` CHARACTER SET utf8mb4');
+    $this->backupTestDatabase = $database;
     $configuration['database'] = $this->backupTestDatabase;
     config(['database.connections.update_backup_fixture' => $configuration, 'database.default' => 'update_backup_fixture']);
     $fixture = DB::connection('update_backup_fixture');

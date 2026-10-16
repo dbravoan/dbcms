@@ -1,4 +1,4 @@
-@extends('themes.db-minimal.layouts.app')
+@extends('themes::db-minimal.layouts.app')
 
 @section('title', __('Finalizar Pedido - dbCMS Minimal'))
 

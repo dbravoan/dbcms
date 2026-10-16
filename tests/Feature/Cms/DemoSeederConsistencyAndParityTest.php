@@ -4,18 +4,19 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Cms;
 
+use App\Content\Pages\Models\Page;
 use App\Models\Market;
 use App\Models\Menu;
 use App\Models\User;
 use App\Services\Cms\MenuService;
 use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\Pages\Models\Page;
+use Tests\Support\DemoComposition;
 use Tests\TestCase;
 
 class DemoSeederConsistencyAndParityTest extends TestCase
 {
-    use RefreshDatabase;
+    use DemoComposition, RefreshDatabase;
 
     protected function setUp(): void
     {

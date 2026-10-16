@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Cms;
 
-use Database\Seeders\PlatformShowcaseSeeder;
+use App\Core\Sections\SectionRendererService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\Pages\Services\SectionRendererService;
 use Tests\TestCase;
 
 class RichSectionStylingAndEffectsTest extends TestCase
@@ -18,7 +17,7 @@ class RichSectionStylingAndEffectsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(PlatformShowcaseSeeder::class);
+
         $this->renderer = app(SectionRendererService::class);
     }
 

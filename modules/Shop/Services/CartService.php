@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\ValidationException;
 use Modules\Shop\DTOs\CartSummary;
 use Modules\Shop\Models\Product;
-use Modules\Shop\Models\ShopSetting;
 
 class CartService
 {
@@ -147,7 +146,7 @@ class CartService
     {
         $items = $this->getItems($market);
         $subtotal = array_reduce($items, static fn (float $sum, array $item): float => $sum + $item['subtotal'], 0.0);
-        $taxRate = (float) ShopSetting::get('shop.tax_rate', 21.0);
+        $taxRate = (float) module_setting('shop', 'tax_rate', 21.0);
         $tax = round($subtotal * $taxRate / 100, 2);
 
         return new CartSummary($items, $subtotal, $tax, $subtotal + $tax + $shipping);
@@ -155,7 +154,7 @@ class CartService
 
     public function formatPrice(float $price, ?Market $market = null): string
     {
-        $currency = $market->currency ?? (string) ShopSetting::get('shop.currency', 'EUR');
+        $currency = $market->currency ?? (string) module_setting('shop', 'currency', 'EUR');
 
         return match ($currency) {
             'USD' => '$'.number_format($price, 2),

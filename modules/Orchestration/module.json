@@ -1,0 +1,11 @@
+{
+    "identifier": "orchestration",
+    "name": "Orchestration",
+    "version": "1.0.0",
+    "provider": "Modules\\Orchestration\\OrchestrationModuleServiceProvider",
+    "description": "Interprets instructions as authorized capability execution plans.",
+    "requires": {
+        "core": "^2.0",
+        "ai_assistant": "^1.0"
+    }
+}

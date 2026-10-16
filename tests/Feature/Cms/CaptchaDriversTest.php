@@ -3,36 +3,19 @@
 declare(strict_types=1);
 
 use App\Contracts\Services\ModuleSettingsServiceInterface;
-use App\Models\CmsModule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ViewErrorBag;
-use Modules\Captcha\CaptchaModuleServiceProvider;
 use Modules\Captcha\Services\CaptchaService;
 use Modules\Forms\Blocks\CustomFormBlock;
 use Modules\Forms\Models\CustomForm;
 use Modules\Forms\Models\CustomFormTranslation;
 use Modules\Forms\Models\FormField;
 use Modules\Forms\Models\FormSubmission;
+use Tests\Support\CmsFixtures;
+use Tests\Support\FormsCaptchaComposition;
 
-uses(RefreshDatabase::class);
-
-function captchaDriverModule(): void
-{
-    CmsModule::updateOrCreate(
-        ['identifier' => 'captcha'],
-        [
-            'name' => 'Security & Dynamic Captcha',
-            'version' => '1.0.0',
-            'description' => 'test',
-            'provider' => CaptchaModuleServiceProvider::class,
-            'is_pageable' => false,
-            'is_installed' => true,
-            'is_active' => true,
-            'settings' => null,
-        ],
-    );
-}
+uses(RefreshDatabase::class, FormsCaptchaComposition::class);
 
 function contactFormWithCaptcha(): CustomForm
 {
@@ -61,7 +44,6 @@ function setCaptchaSettings(array $settings): void
 }
 
 beforeEach(function (): void {
-    captchaDriverModule();
     view()->share('errors', new ViewErrorBag);
 });
 
@@ -200,16 +182,18 @@ test('a submission is validated against the active external driver', function ()
 });
 
 test('the csp allows the external provider frames only while its driver is active', function (): void {
+    CmsFixtures::localization();
+    CmsFixtures::home();
     setCaptchaSettings(['driver' => 'recaptcha', 'site_key' => 'SITE', 'secret_key' => 'SECRET']);
 
-    $policy = (string) $this->get('/es/es/contacto')->headers->get('Content-Security-Policy');
+    $policy = (string) $this->get('/es/es')->assertOk()->headers->get('Content-Security-Policy');
 
-    expect($policy)->toContain('frame-src https://www.google.com')
+    expect($policy)->toContain("frame-src 'self' https://www.google.com")
         ->and($policy)->toContain('connect-src')->toContain('https://www.google.com');
 
     setCaptchaSettings(['driver' => 'internal']);
 
-    $internalPolicy = (string) $this->get('/es/es/contacto')->headers->get('Content-Security-Policy');
+    $internalPolicy = (string) $this->get('/es/es')->assertOk()->headers->get('Content-Security-Policy');
 
     expect($internalPolicy)->not->toContain('https://www.google.com')
         ->and($internalPolicy)->not->toContain('challenges.cloudflare.com');

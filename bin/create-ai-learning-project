@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+    cat <<'TEXT'
+Usage: bin/create-ai-learning-project DESTINATION [--deploy=none|github-actions|ansistrano|rsync|docker]
+
+Create a new, uninstalled IA en práctica project from a clean official dbCMS
+release checkout. DESTINATION must not exist; its parent must exist without
+symbolic links, and its basename must be a lowercase project slug.
+
+The deployment profile defaults to none. Only Blog, Basic, ia-practica and the
+dbcms administrative brand are retained. Git and Docker are required on the host;
+PHP and Composer run through the existing Docker project initializer.
+TEXT
+}
+
+die() { printf 'Error: %s\n' "$*" >&2; exit 1; }
+
+if [[ "${1:-}" == --help || "${1:-}" == -h ]]; then
+    usage
+    exit
+fi
+[[ "$#" -ge 1 && "$#" -le 2 ]] || { usage >&2; exit 64; }
+destination_argument=$1
+deployment=none
+if [[ "$#" -eq 2 ]]; then
+    [[ "$2" == --deploy=* ]] || die 'Expected --deploy=none|github-actions|ansistrano|rsync|docker.'
+    deployment=${2#--deploy=}
+fi
+case "$deployment" in none|github-actions|ansistrano|rsync|docker) ;; *) die 'Unsupported deployment profile.' ;; esac
+
+command -v git >/dev/null || die 'Git is required; a runtime archive without Git provenance cannot export projects.'
+command -v tar >/dev/null || die 'tar is required.'
+if [[ ! -f /.dockerenv ]]; then
+    command -v docker >/dev/null || die 'Docker is required; PHP and Composer must not run on the host.'
+fi
+source_root=$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
+repository_root=$(git -C "$source_root" rev-parse --show-toplevel 2>/dev/null) || die 'Run this tool from a dbCMS Git source checkout, not a runtime distribution.'
+[[ "$repository_root" == "$source_root" ]] || die 'The exporter must belong to the root of the dbCMS source checkout.'
+[[ -z "$(git -C "$source_root" status --porcelain --untracked-files=no)" ]] || die 'Commit or restore tracked source changes before exporting an official release.'
+[[ ! -f "$source_root/cms-project.json" ]] || die 'Use the original dbCMS source checkout, not an initialized derived project.'
+
+case "$destination_argument" in /*) candidate=$destination_argument ;; *) candidate=$PWD/$destination_argument ;; esac
+project_name=${candidate##*/}
+[[ "$project_name" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || die 'The destination basename must be a lowercase project slug, without a trailing slash.'
+ancestor=$candidate
+while [[ "$ancestor" != / ]]; do
+    [[ ! -L "$ancestor" ]] || die 'The destination and its ancestors may not be symbolic links.'
+    ancestor=$(dirname -- "$ancestor")
+done
+parent=$(dirname -- "$candidate")
+[[ -d "$parent" ]] || die 'The destination parent directory must already exist.'
+parent=$(cd -P -- "$parent" && pwd)
+destination=$parent/$project_name
+[[ "$destination" != "$source_root" && "$destination" != "$source_root/"* ]] || die 'The destination must be outside the source checkout.'
+[[ ! -e "$destination" && ! -L "$destination" ]] || die 'The destination already exists; no existing directory or file will be reused.'
+
+version=$(git -C "$source_root" show HEAD:VERSION)
+[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die 'VERSION must identify a stable official release.'
+source_commit=$(git -C "$source_root" rev-parse HEAD)
+tag=refs/tags/v$version
+printf 'Verifying official annotated tag v%s...\n' "$version"
+remote_refs=$(git ls-remote --exit-code https://github.com/dbravoan/dbcms.git "$tag" "$tag^{}") || die 'The official release tag could not be read; no project was created.'
+tag_object=
+official_commit=
+while read -r sha ref; do
+    [[ "$sha" =~ ^[a-f0-9]{40}$ ]] || continue
+    case "$ref" in "$tag") tag_object=$sha ;; "$tag^{}") official_commit=$sha ;; esac
+done <<< "$remote_refs"
+[[ -n "$tag_object" && -n "$official_commit" ]] || die 'The official release must have an annotated tag with a peeled commit.'
+[[ "$source_commit" == "$official_commit" ]] || die 'Source HEAD does not match the official release commit for VERSION.'
+
+# Reject links before extraction so neither tar nor subsequent pruning can walk
+# outside this new artifact. Git submodules are not standalone archive contents.
+tree=$(git -C "$source_root" ls-tree -r "$source_commit")
+while read -r mode remainder; do
+    [[ "$mode" != 120000 && "$mode" != 160000 ]] || die 'The source release contains symbolic links or submodules; this exporter requires ordinary files.'
+done <<< "$tree"
+for required in bin/project-init modules/Blog/module.json block-packages/Basic/block-package.json themes/ia-practica/theme.json resources/views/themes/admin/dbcms/theme.json .env.example .env.installation.example .env.production.example; do
+    git -C "$source_root" cat-file -e "$source_commit:$required" 2>/dev/null || die "The release is missing $required."
+done
+[[ "$(git -C "$source_root" rev-parse HEAD)" == "$source_commit" && -z "$(git -C "$source_root" status --porcelain --untracked-files=no)" ]] || die 'The source changed during verification; retry from the clean release checkout.'
+
+archive=$(mktemp "${TMPDIR:-/tmp}/dbcms-ai-learning.XXXXXXXX.tar")
+trap 'rm -f -- "$archive"' EXIT
+# Archive the verified HEAD commit, never the working tree or its ignored runtime.
+git -C "$source_root" archive --format=tar "$source_commit" > "$archive"
+mkdir -- "$destination"
+tar -xf "$archive" -C "$destination" \
+    --exclude=storage --exclude=bootstrap/cache --exclude=vendor --exclude=node_modules \
+    --exclude='.env' --exclude='.env.*' --exclude='*.key' --exclude='*.pem' \
+    --exclude=public/storage --exclude=public/uploads --exclude=public/build --exclude=public/hot \
+    --exclude=public/llms.txt --exclude=public/llms-full.txt --exclude=cms-project.json
+# Examples are source templates, never copied installation credentials.
+tar -xf "$archive" -C "$destination" .env.example .env.installation.example .env.production.example
+# Keep only the source ignore placeholders in freshly empty runtime directories.
+while IFS= read -r -d '' path; do
+    [[ "$path" == */.gitignore ]] || continue
+    tar -xf "$archive" -C "$destination" "$path"
+done < <(git -C "$source_root" ls-tree -r --name-only -z "$source_commit" -- storage bootstrap/cache)
+shopt -s nullglob dotglob
+for entry in "$destination/modules/"*; do
+    [[ "${entry##*/}" == Blog ]] || rm -rf -- "$entry"
+done
+for entry in "$destination/block-packages/"*; do
+    [[ "${entry##*/}" == Basic ]] || rm -rf -- "$entry"
+done
+for entry in "$destination/themes/"*; do
+    [[ "${entry##*/}" == ia-practica ]] || rm -rf -- "$entry"
+done
+for entry in "$destination/resources/views/themes/admin/"*; do
+    [[ "${entry##*/}" == dbcms ]] || rm -rf -- "$entry"
+done
+rm -f -- "$destination/database/seeders/PlatformShowcaseSeeder.php"
+printf 'Preparing independent project %s at %s...\n' "$project_name" "$destination"
+if ! (cd -- "$destination" && ./bin/project-init "$project_name" --brand=dbcms --theme=ia-practica "--deploy=$deployment"); then
+    die "Project initialization failed. The new destination remains at $destination for inspection; the source installation was not changed."
+fi
+# Persist the source projection in the canonical profile so future update plans
+# preserve this physical selection. Verify initializer provenance; never replace it.
+metadata_script=$(cat <<'PHP'
+$path = getcwd().'/cms-project.json';
+if (!is_file($path) || is_link($path)) {
+    throw new RuntimeException('The initialized project profile must be an ordinary file.');
+}
+$profile = json_decode(file_get_contents($path), false, 512, JSON_THROW_ON_ERROR);
+if (!($profile instanceof stdClass) || !(($profile->core ?? null) instanceof stdClass) || ($profile->schema ?? null) !== 1
+    || ($profile->name ?? null) !== $argv[3] || ($profile->brand ?? null) !== 'dbcms'
+    || ($profile->themes ?? null) !== ['ia-practica'] || ($profile->default_theme ?? null) !== 'ia-practica'
+    || ($profile->deployment ?? null) !== $argv[4]
+    || ($profile->core->repository ?? null) !== 'dbravoan/dbcms'
+    || ($profile->core->version ?? null) !== $argv[1] || ($profile->core->sha ?? null) !== $argv[2]) {
+    throw new RuntimeException('The initializer profile does not match the verified official release and selected project.');
+}
+$selection = ['module_directories' => ['Blog'], 'block_package_directories' => ['Basic'], 'include_showcase' => false];
+if (property_exists($profile, 'source_selection')) {
+    throw new RuntimeException('A source selection is already present; it will not be overwritten.');
+}
+$profile->source_selection = $selection;
+$content = json_encode($profile, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)."\n";
+$temporary = tempnam(dirname($path), '.cms-project-');
+if ($temporary === false) {
+    throw new RuntimeException('Cannot stage the project profile.');
+}
+try {
+    if (file_put_contents($temporary, $content, LOCK_EX) !== strlen($content)
+        || !chmod($temporary, fileperms($path) & 0777) || !rename($temporary, $path)) {
+        throw new RuntimeException('Cannot atomically save the project source selection.');
+    }
+} finally {
+    if (is_file($temporary)) {
+        unlink($temporary);
+    }
+}
+PHP
+)
+metadata_runtime=(php)
+if [[ ! -f /.dockerenv ]]; then
+    metadata_runtime=(docker run --rm --user "$(id -u):$(id -g)" \
+        -v "$destination:/var/www/html" -w /var/www/html dbcms-project-init php)
+fi
+if ! (cd -- "$destination" && "${metadata_runtime[@]}" -r "$metadata_script" -- "$version" "$source_commit" "$project_name" "$deployment"); then
+    die "Source selection could not be recorded. The uninstalled project remains at $destination for inspection."
+fi
+printf '\nProject prepared from official v%s (%s). It is not installed yet.\n' "$version" "$source_commit"
+printf 'Next steps:\n  cd %q\n' "$destination"
+cat <<'TEXT'
+  cp .env.example .env
+  # Edit ONLY this new .env: use an independent COMPOSE_PROJECT_NAME, APP_URL,
+  # database credentials and free APP_PORT/VITE_PORT/FORWARD_* host ports.
+  ./vendor/bin/sail up -d --build
+  ./vendor/bin/sail npm ci
+  ./vendor/bin/sail npm run build
+
+Open the new APP_URL and finish the installation WITHOUT demo content.
+Then use the administrator email created by that installation:
+  ./vendor/bin/sail artisan cms:starter:ai-learning --author=YOUR_ADMIN_EMAIL --market=es
+
+Review docs/AI_LEARNING_STARTER.md for the selected-profile quality lane.
+TEXT

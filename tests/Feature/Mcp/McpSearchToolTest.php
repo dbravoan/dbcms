@@ -3,25 +3,31 @@
 declare(strict_types=1);
 
 use App\Contracts\Services\ModuleSettingsServiceInterface;
-use App\Core\Search\SearchDocument;
 use App\Core\Search\SearchIndexer;
+use App\Models\Market;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Models\Post;
-use Modules\Mcp\Services\McpServerService;
+use Tests\Support\CmsFixtures;
+use Tests\Support\McpFixtures;
+use Tests\Support\McpProtocolClient;
+use Tests\Support\McpSearchComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, McpSearchComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    McpFixtures::identities();
+    CmsFixtures::localization(['es', 'en'], ['es', 'us']);
+    $post = Post::create(['user_id' => User::where('email', 'admin@db-cms.io')->firstOrFail()->id, 'is_published' => true, 'published_at' => now()]);
+    $post->translations()->create(['locale' => 'es', 'title' => 'Arquitectura modular', 'slug' => 'arquitectura', 'content' => 'Documentación de arquitectura modular.']);
+    $post->markets()->attach(Market::where('code', 'es')->firstOrFail());
     mcpTestBindIdentity();
     app(SearchIndexer::class)->indexAll();
 });
 
 function callTool(string $name, array $args): array
 {
-    $response = app(McpServerService::class)->handle([
+    $response = app(McpProtocolClient::class)->handle([
         'jsonrpc' => '2.0',
         'id' => 'test',
         'method' => 'tools/call',
@@ -38,15 +44,14 @@ function callTool(string $name, array $args): array
 }
 
 test('cms_search is advertised and handled by the server', function (): void {
-    $manifest = app(McpServerService::class)->handle([
+    $manifest = app(McpProtocolClient::class)->handle([
         'jsonrpc' => '2.0',
         'id' => 'search-manifest',
         'method' => 'tools/list',
     ]);
     $names = array_column((array) ($manifest['result']['tools'] ?? []), 'name');
 
-    expect($names)->toContain('cms_search')
-        ->and(app(McpServerService::class)->supportsTool('cms_search'))->toBeTrue();
+    expect($names)->toContain('cms_search');
 });
 
 test('cms_search returns ranked results with their canonical urls', function (): void {
@@ -83,13 +88,8 @@ test('cms_search tells agents whether the result page is citable', function (): 
     foreach (range(1, 3) as $i) {
         $post = Post::withoutEvents(fn () => Post::create(['user_id' => User::query()->firstOrFail()->getKey(), 'is_published' => true, 'published_at' => now()]));
         $post->translations()->create(['locale' => 'es', 'title' => 'Contenido citable '.$i, 'slug' => 'citable-'.$i, 'content' => 'Contenido público citable '.$i]);
-        $indexer->index(new SearchDocument(
-            'post',
-            (string) $post->getKey(),
-            'es',
-            'http://localhost/es/es/blog/citable-'.$i,
-            'Contenido citable '.$i,
-        ));
+        $post->markets()->attach(Market::where('code', 'es')->firstOrFail());
+        $indexer->indexEntity('post', $post->getKey());
     }
 
     $before = callTool('cms_search', ['query' => 'contenido citable']);

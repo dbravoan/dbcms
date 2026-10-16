@@ -8,6 +8,7 @@ use App\Contracts\Services\AdminThemeServiceInterface;
 use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Http\Middleware\EnsureAdminAuthenticated;
 use App\Http\Middleware\SetBackofficeLocale;
+use App\Models\User;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -78,17 +79,18 @@ abstract class BaseModuleServiceProvider extends ServiceProvider implements Modu
         }
     }
 
-    public function getWidgets(): array
-    {
-        return [];
-    }
-
     /**
      * {@inheritDoc}
      */
     public function getAdminNavigation(): array
     {
         return [];
+    }
+
+    /** @return array{views: array<string, string>, data: array<string, mixed>}|null */
+    public function getAdminDashboard(User $user): ?array
+    {
+        return null;
     }
 
     public function hasDedicatedPanel(): bool

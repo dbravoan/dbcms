@@ -1,4 +1,4 @@
-@extends('themes.db-editorial.layouts.app')
+@extends('themes::db-editorial.layouts.app')
 
 @section('title', app()->getLocale() === 'es' ? 'Galerías & Exposiciones Visuales' : (app()->getLocale() === 'ca' ? 'Galeries & Exposicions Visuals' : 'Art & Media Galleries'))
 

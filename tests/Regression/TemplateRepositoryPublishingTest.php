@@ -88,7 +88,7 @@ test('release waits for exact successful main CI and both native images before p
     expect(strpos($runs, 'imagetools inspect'))->toBeGreaterThan(strpos($runs, 'imagetools create'));
 });
 
-test('release reuses the successful CI push for the exact main commit without repeating quality', function (): void {
+test('release verifies exact main CI and runs the release suite on that same commit', function (): void {
     $workflow = Yaml::parseFile(__DIR__.'/../../.github/workflows/release.yml');
     $source = (string) file_get_contents(__DIR__.'/../../.github/workflows/release.yml');
     $verifier = $workflow['jobs']['verify-ci'] ?? [];
@@ -98,7 +98,12 @@ test('release reuses the successful CI push for the exact main commit without re
         $verifier['steps'] ?? [],
     ));
 
-    expect($source)->not->toContain('./.github/workflows/quality.yml', 'bin/ci-check')
+    $quality = $workflow['jobs']['release-quality'];
+    expect($quality['uses'])->toBe('./.github/workflows/quality.yml')
+        ->and($quality['with']['suite'])->toBe('release')
+        ->and($quality['with']['ref'])->toBe('${{ needs.verify-ci.outputs.target_sha }}')
+        ->and((array) $workflow['jobs']['docker-publish']['needs'])->toContain('release-quality')
+        ->and((array) $workflow['jobs']['build-standalone-zip']['needs'])->toContain('release-quality')
         ->and($dispatchInputs)->toHaveKey('sha')
         ->and($dispatchInputs['sha']['required'] ?? false)->toBeTrue()
         ->and($script)->toContain('ci.yml', 'head_sha', 'main', 'push', 'success')

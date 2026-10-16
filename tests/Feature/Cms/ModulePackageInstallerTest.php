@@ -6,7 +6,6 @@ use App\Core\Modules\ModuleManager;
 use App\DTOs\Modules\ModulePackageDTO;
 use App\Models\CmsModule;
 use App\Services\Cms\ModulePackageInstallerService;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Validation\ValidationException;
 
@@ -92,17 +91,28 @@ test('module package rejects an existing identifier in another folder', function
     expect(fn () => app(ModulePackageInstallerService::class)->install(moduleArchive($this->packageRoot)))->toThrow(ValidationException::class);
 });
 
+test('module package rejects an identifier already discovered on disk without a database record', function (): void {
+    $existing = $this->packageRoot.'/modules/Existing';
+    File::ensureDirectoryExists($existing);
+    $manifest = ['identifier' => 'package_qa', 'name' => 'Existing package', 'version' => '1.0.0', 'provider' => 'Modules\\Existing\\ExistingModuleServiceProvider'];
+    File::put($existing.'/module.json', json_encode($manifest, JSON_THROW_ON_ERROR));
+
+    expect(CmsModule::where('identifier', 'package_qa')->exists())->toBeFalse();
+    expect(fn () => app(ModulePackageInstallerService::class)->install(moduleArchive($this->packageRoot)))->toThrow(ValidationException::class);
+    expect(is_dir($this->packageRoot.'/modules/PackageQa'))->toBeFalse()
+        ->and(File::get($existing.'/module.json'))->toBe(json_encode($manifest, JSON_THROW_ON_ERROR));
+});
+
 test('module manager registers packages inactive and rolls back newly installed code on database failure', function (): void {
     $package = moduleArchive($this->packageRoot);
-    $file = new UploadedFile($package->path, 'package.zip', 'application/zip', null, true);
-    app(ModuleManager::class)->uploadPackage($file);
+    app(ModuleManager::class)->upload($package);
     $record = CmsModule::where('identifier', 'package_qa')->firstOrFail();
     expect($record->is_active)->toBeFalse()->and($record->is_installed)->toBeFalse();
     $record->delete();
     File::deleteDirectory($this->packageRoot.'/modules/PackageQa');
     CmsModule::creating(fn () => throw new RuntimeException('Registration failed'));
     try {
-        expect(fn () => app(ModuleManager::class)->uploadPackage($file))->toThrow(RuntimeException::class, 'Registration failed');
+        expect(fn () => app(ModuleManager::class)->upload($package))->toThrow(RuntimeException::class, 'Registration failed');
         expect(is_dir($this->packageRoot.'/modules/PackageQa'))->toBeFalse();
     } finally {
         CmsModule::flushEventListeners();

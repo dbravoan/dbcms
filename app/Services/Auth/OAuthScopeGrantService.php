@@ -23,7 +23,7 @@ final class OAuthScopeGrantService
         return match ($scope) {
             OAuthScope::READ_CONTENT->value => true,
             OAuthScope::MCP_ACCESS->value, OAuthScope::MCP_READ->value => $user->hasPermission('access:admin'),
-            OAuthScope::MCP_WRITE->value, OAuthScope::MCP_PUBLISH->value, OAuthScope::MCP_DESTRUCTIVE->value, OAuthScope::WRITE_CONTENT->value => $this->canManageContent($user),
+            OAuthScope::MCP_WRITE->value, OAuthScope::MCP_WRITE->value, OAuthScope::MCP_DESTRUCTIVE->value, OAuthScope::WRITE_CONTENT->value => $this->canManageContent($user),
             OAuthScope::M2M_SERVICE->value => (bool) $user->getAttribute('is_service_account') && $user->hasPermission('access:admin'),
             OAuthScope::MANAGE_USERS->value => $user->hasPermission('manage:users'),
             OAuthScope::AI_USE->value => $user->hasPermission('use:ai'),

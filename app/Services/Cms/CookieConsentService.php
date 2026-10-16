@@ -4,24 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Cms;
 
-use App\Core\Modules\ModuleManager;
+use App\Core\Security\Contracts\CookieDisclosureContributorInterface;
+use Illuminate\Container\Attributes\Tag;
 use Illuminate\Http\Request;
 
 class CookieConsentService
 {
-    public function __construct(private readonly ModuleManager $modules) {}
-
-    /**
-     * Check if a CMS module is installed and active.
-     */
-    public function isModuleActive(string $identifier): bool
-    {
-        try {
-            return $this->modules->isModuleEnabled($identifier);
-        } catch (\Throwable) {
-            return false;
-        }
-    }
+    /** @param iterable<CookieDisclosureContributorInterface> $contributors */
+    public function __construct(#[Tag('cms.cookie-disclosures')] private readonly iterable $contributors = []) {}
 
     /**
      * Get list of disclosed cookie categories based on currently active modules.
@@ -72,85 +62,10 @@ class CookieConsentService
             ],
         ];
 
-        // 2. Functional / Shop Cookies (If Shop module is active)
-        if ($this->isModuleActive('shop')) {
-            $categories['functional'] = [
-                'key' => 'functional',
-                'title' => $locale === 'ca' ? 'Cookies Funcionals i Botiga' : ($locale === 'en' ? 'Functional & Shop Cookies' : 'Cookies Funcionales y Tienda'),
-                'description' => $locale === 'ca'
-                    ? 'Permeten recordar els articles afegits al carretó de la compra, les preferències de divisa i mantenir la continuïtat de les comandes.'
-                    : ($locale === 'en'
-                        ? 'Enables shopping cart persistence, currency preferences, and order checkout continuity.'
-                        : 'Permiten recordar los artículos agregados al carrito de compra, preferencias de moneda y mantener la continuidad de los pedidos.'),
-                'required' => false,
-                'default' => true,
-                'cookies' => [
-                    [
-                        'name' => 'shop_cart_items',
-                        'provider' => 'dbCMS E-Commerce',
-                        'purpose' => $locale === 'ca' ? 'Persistència d\'articles al carretó de la compra entre pàgines.' : ($locale === 'en' ? 'Persistence of shopping cart items between visits.' : 'Persistencia de artículos en el carrito de compra entre páginas.'),
-                        'duration' => $locale === 'ca' ? '30 dies' : ($locale === 'en' ? '30 days' : '30 días'),
-                    ],
-                    [
-                        'name' => 'currency_preference',
-                        'provider' => 'dbCMS E-Commerce',
-                        'purpose' => $locale === 'ca' ? 'Recorda la moneda seleccionada en el catàleg multi-divisa.' : ($locale === 'en' ? 'Remembers selected currency in multi-currency catalog.' : 'Recuerda la moneda seleccionada en el catálogo multi-divisa.'),
-                        'duration' => $locale === 'ca' ? '30 dies' : ($locale === 'en' ? '30 days' : '30 días'),
-                    ],
-                ],
-            ];
-        }
-
-        // 3. Analytics & Performance Cookies (If Analytics module is active)
-        if ($this->isModuleActive('analytics')) {
-            $categories['analytics'] = [
-                'key' => 'analytics',
-                'title' => $locale === 'ca' ? 'Cookies d\'Anàlisi i Rendiment' : ($locale === 'en' ? 'Analytics & Performance Cookies' : 'Cookies de Análisis y Rendimiento'),
-                'description' => $locale === 'ca'
-                    ? 'Recullen informació anònima i agregada sobre la interacció dels usuaris per mesurar i optimitzar el rendiment de la plataforma.'
-                    : ($locale === 'en'
-                        ? 'Collects anonymous and aggregated usage data to measure and improve platform performance.'
-                        : 'Recopilan información anónima y agregada sobre la interacción de los usuarios para medir y optimizar el rendimiento de la plataforma.'),
-                'required' => false,
-                'default' => false,
-                'cookies' => [
-                    [
-                        'name' => '_ga',
-                        'provider' => 'Google Analytics',
-                        'purpose' => $locale === 'ca' ? 'Identificador únic per distingir usuaris únics de forma anonimitzada.' : ($locale === 'en' ? 'Unique identifier used to distinguish visitors anonymously.' : 'Identificador único para distinguir usuarios únicos de forma anonimizada.'),
-                        'duration' => $locale === 'ca' ? '2 anys' : ($locale === 'en' ? '2 years' : '2 años'),
-                    ],
-                    [
-                        'name' => '_ga_*',
-                        'provider' => 'Google Analytics',
-                        'purpose' => $locale === 'ca' ? 'Estat i comptador de sessions de navegació.' : ($locale === 'en' ? 'Maintains session state across page requests.' : 'Estado y contador de sesiones de navegación.'),
-                        'duration' => $locale === 'ca' ? '2 anys' : ($locale === 'en' ? '2 years' : '2 años'),
-                    ],
-                ],
-            ];
-        }
-
-        // 4. Marketing & Ads Cookies (If Ads module is active)
-        if ($this->isModuleActive('ads')) {
-            $categories['marketing'] = [
-                'key' => 'marketing',
-                'title' => $locale === 'ca' ? 'Cookies Publicitàries i Màrqueting' : ($locale === 'en' ? 'Marketing & Advertising Cookies' : 'Cookies Publicitarias y Marketing'),
-                'description' => $locale === 'ca'
-                    ? 'S\'utilitzen per gestionar campanyes promocionals, personalitzar continguts patrocinats i mesurar l\'efectivitat dels anuncis.'
-                    : ($locale === 'en'
-                        ? 'Used to deliver relevant advertising, personalize sponsored content, and track campaign performance.'
-                        : 'Se utilizan para gestionar campañas promocionales, personalizar contenidos patrocinados y medir la efectividad de anuncios.'),
-                'required' => false,
-                'default' => false,
-                'cookies' => [
-                    [
-                        'name' => 'cms_ad_tracker',
-                        'provider' => 'dbCMS Advertising',
-                        'purpose' => $locale === 'ca' ? 'Registre anònim d\'impressions i clics en anuncis interns.' : ($locale === 'en' ? 'Anonymous tracking of impressions and clicks on internal ads.' : 'Registro anónimo de impresiones y clics en anuncios internos.'),
-                        'duration' => $locale === 'ca' ? '30 dies' : ($locale === 'en' ? '30 days' : '30 días'),
-                    ],
-                ],
-            ];
+        foreach ($this->contributors as $contributor) {
+            foreach ($contributor->categories($locale) as $key => $category) {
+                $categories[$key] = $category;
+            }
         }
 
         return $categories;
@@ -164,7 +79,7 @@ class CookieConsentService
         $request = $request ?? request();
         $rawCookie = $request->cookie('cms_cookie_consent');
 
-        return is_string($rawCookie) && ! empty(trim($rawCookie));
+        return is_string($rawCookie) && is_array(json_decode($rawCookie, true));
     }
 
     /**
@@ -172,26 +87,7 @@ class CookieConsentService
      */
     public function hasConsent(string $category, ?Request $request = null): bool
     {
-        if ($category === 'necessary' || $category === 'technical') {
-            return true;
-        }
-
-        $request = $request ?? request();
-        $rawCookie = $request->cookie('cms_cookie_consent');
-        $cookie = is_string($rawCookie) ? $rawCookie : '';
-
-        if (empty($cookie)) {
-            return false;
-        }
-
-        $decoded = json_decode($cookie, true);
-        if (is_array($decoded)) {
-            return ! empty($decoded[$category]);
-        }
-
-        $parts = array_map('trim', explode(',', $cookie));
-
-        return in_array($category, $parts, true);
+        return $this->getConsentPreferences($request)[$category] ?? false;
     }
 
     /**
@@ -218,19 +114,11 @@ class CookieConsentService
 
         $decoded = json_decode($cookie, true);
         if (is_array($decoded)) {
-            foreach ($decoded as $key => $val) {
-                $preferences[$key] = filter_var($val, FILTER_VALIDATE_BOOLEAN);
+            foreach (array_keys($preferences) as $key) {
+                $preferences[$key] = ($decoded[$key] ?? false) === true;
             }
             $preferences['necessary'] = true;
-
-            return $preferences;
         }
-
-        $parts = array_map('trim', explode(',', $cookie));
-        foreach (['functional', 'analytics', 'marketing'] as $cat) {
-            $preferences[$cat] = in_array($cat, $parts, true);
-        }
-        $preferences['necessary'] = true;
 
         return $preferences;
     }

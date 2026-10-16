@@ -2,18 +2,21 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
+use App\Content\Pages\Models\PageSection;
 use App\Core\Sections\SectionEditorService;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
+use App\Services\Capabilities\ContentSnapshotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\ContentAudit\Services\ContentAuditService;
-use Modules\Pages\Models\Page;
-use Modules\Pages\Models\PageSection;
+use Tests\Support\CmsFixtures;
+use Tests\Support\VisualContentFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    VisualContentFixtures::home();
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
 });
 
@@ -97,8 +100,8 @@ test('the backoffice editor focuses the requested section in the block manager',
 test('the content audit snapshot includes the block-manager sections', function (): void {
     $page = Page::firstOrFail();
 
-    $snapshot = app(ContentAuditService::class)->captureSnapshot($page);
+    $snapshot = app(ContentSnapshotService::class)->capture($page);
 
-    expect($snapshot)->toHaveKey('sections');
-    expect($snapshot['sections'])->toBeArray();
+    expect($snapshot)->toHaveKey('section_records');
+    expect($snapshot['section_records'])->toBeArray();
 });

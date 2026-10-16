@@ -12,6 +12,7 @@ use App\Core\Sections\SectionLayout;
 use App\Models\Market;
 use Illuminate\Database\Eloquent\Builder;
 use Modules\Gallery\Models\Gallery;
+use Modules\Gallery\Models\GalleryItem;
 
 class GalleryAlbumBlock extends AbstractBlockType implements TranslatableBlockInterface
 {
@@ -60,6 +61,24 @@ class GalleryAlbumBlock extends AbstractBlockType implements TranslatableBlockIn
         return ['title'];
     }
 
+    public function getEditorData(): array
+    {
+        $galleries = Gallery::where('is_active', true)->with(['translations', 'items'])->get();
+
+        return [
+            'gallery_albums' => $galleries->map(fn (Gallery $gallery): array => ['id' => $gallery->id, 'title' => $gallery->title, 'slug' => $gallery->slug, 'cover_url' => $gallery->items->first()?->image_url, 'image_count' => $gallery->items->count()])->all(),
+            'gallery_images' => $galleries->flatMap(fn (Gallery $gallery) => $gallery->items->map(fn (GalleryItem $item): array => ['id' => $item->id, 'url' => $item->image_url, 'title' => $item->title, 'gallery_id' => $gallery->id]))->values()->all(),
+        ];
+    }
+
+    public function getEditorSchema(): array
+    {
+        $fields = parent::getEditorSchema();
+        $fields['album_slug'] = ['type' => 'select', 'label' => 'Galería', 'options' => ['' => 'Todas'] + array_column($this->getEditorData()['gallery_albums'], 'title', 'slug')];
+
+        return $fields;
+    }
+
     public function getDefaultPayload(): array
     {
         return [
@@ -74,7 +93,7 @@ class GalleryAlbumBlock extends AbstractBlockType implements TranslatableBlockIn
     {
         $locale = $locale ?? app()->getLocale();
         $title = htmlspecialchars((string) ($payload['title'] ?? 'Galerías'));
-        $albumSlug = (string) ($payload['album_id'] ?? $payload['album_slug'] ?? $payload['gallery_slug'] ?? '');
+        $albumSlug = (string) ($payload['album_slug'] ?? '');
         $columns = SectionLayout::gridColumns($payload, '3');
         $limit = (int) ($payload['limit'] ?? 6);
 

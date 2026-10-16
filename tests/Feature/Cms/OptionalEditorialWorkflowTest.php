@@ -2,24 +2,19 @@
 
 declare(strict_types=1);
 
+namespace Tests\Feature\Cms;
+
 use App\Core\Content\Contracts\EditorialWorkflowInterface;
 use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
 use App\Core\Content\EntitySchema;
 use App\Models\User;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityMutationService;
 use App\Services\Content\NoEditorialWorkflow;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
-
-final class OptionalWorkflowEntity extends Model
-{
-    protected $table = 'optional_workflow_entities';
-
-    protected $fillable = ['name', 'is_active'];
-}
+use Tests\Support\OptionalWorkflowEntity;
 
 beforeEach(function (): void {
     Schema::create('optional_workflow_entities', function (Blueprint $table): void {
@@ -39,7 +34,7 @@ beforeEach(function (): void {
 });
 
 test('shared entity writes need no optional editorial tables or registered workflow', function (): void {
-    $crud = app(EntityCrudService::class);
+    $crud = app(EntityMutationService::class);
     $created = $crud->create('optional_workflow_thing', ['attributes' => ['name' => 'Initial entry', 'is_active' => true]], $this->actor);
     $updated = $crud->update('optional_workflow_thing', $created['id'], ['attributes' => ['name' => 'Updated entry']]);
     expect(OptionalWorkflowEntity::findOrFail($created['id'])->name)->toBe('Updated entry')

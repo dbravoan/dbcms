@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Contracts\Services\CampaignAttributionGatewayInterface;
 use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Core\Modules\ModuleManager;
 use App\Models\CmsModule;
@@ -10,11 +9,13 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
+use Modules\Marketing\Contracts\CampaignAttributionGatewayInterface;
+use Tests\Support\AnalyticsComposition;
+
+uses(AnalyticsComposition::class);
 
 beforeEach(function (): void {
     config(['cms.installation_id' => 'ga4-installation-a']);
-    app(ModuleManager::class)->discoverModules();
-    app(ModuleManager::class)->activate('analytics');
     Http::preventStrayRequests();
     $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
     openssl_pkey_export($key, $private);
@@ -73,7 +74,6 @@ test('inactive or unconfigured Analytics does not contact Google or fabricate ze
     app(ModuleManager::class)->deactivate('analytics');
     $gateway = app(CampaignAttributionGatewayInterface::class);
     expect($gateway->report('campaign', 'piece', '2026-10-01', '2026-10-13')['sessions'])->toBeNull();
-    app(ModuleManager::class)->activate('analytics');
     app(ModuleSettingsServiceInterface::class)->set('analytics', 'ga4_property_id', '');
     expect($gateway->report('campaign', 'piece', '2026-10-01', '2026-10-13')['status'])->toBe('unavailable');
     Http::assertNothingSent();

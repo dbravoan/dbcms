@@ -1,7 +1,7 @@
-@extends('themes.db-cyber.layouts.app')
+@extends('themes::db-cyber.layouts.app')
 
 @section('title', $translation->meta_title ?? $translation->title ?? $gallery->title)
-@section('meta_description', $translation->meta_description ?? $translation->description ?? $gallery->description)
+@section('meta_description', $translation->meta_description ?? $translation->description ?? $gallery->description ?? '')
 
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-10" x-data="{ lightboxImage: null, lightboxTitle: '' }">

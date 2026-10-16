@@ -2,7 +2,10 @@
 
 declare(strict_types=1);
 
+namespace Tests\Regression;
+
 use App\Core\Capabilities\PlanValidator;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
 final class ExecutionPlanValidationTest extends TestCase

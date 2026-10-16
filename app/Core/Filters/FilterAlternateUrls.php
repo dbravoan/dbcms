@@ -70,7 +70,7 @@ final class FilterAlternateUrls
         LocalizationServiceInterface $localization,
         string $locale,
     ): ?string {
-        $path = $this->builder->translatedPath($set, $dimensions, $set->locale, $locale);
+        $path = $this->builder->translatedPath($set, $dimensions, $set->locale, $locale, $market);
 
         if ($path === null || $path === '') {
             return null;

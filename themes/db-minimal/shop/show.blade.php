@@ -1,4 +1,4 @@
-@extends('themes.db-minimal.layouts.app')
+@extends('themes::db-minimal.layouts.app')
 
 @section('title', ($translation->meta_title ?? $translation->name) . ' - dbCMS Minimal')
 @section('meta_description', $translation->meta_description ?? $translation->summary ?? '')

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
-use App\Core\Blocks\Types\CodeEmbedBlock;
 use App\Services\Content\SafeContentRenderer;
+use BlockPackages\Basic\Blocks\CodeEmbedBlock;
 use PHPUnit\Framework\TestCase;
+
+require_once dirname(__DIR__, 3).'/block-packages/Basic/Blocks/CodeEmbedBlock.php';
 
 final class SafeContentRendererTest extends TestCase
 {

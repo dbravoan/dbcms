@@ -2,17 +2,20 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
 use App\Models\Menu;
 use App\Models\MenuItem;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Modules\Pages\Models\Page;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    CmsFixtures::home();
+    Menu::create(['name' => 'Fixture menu', 'slug' => 'fixture-menu', 'is_active' => true]);
 });
 
 test('page edit screen loads successfully with 200 OK without styling_json crashes', function (): void {

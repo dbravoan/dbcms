@@ -16,6 +16,7 @@ final class ModuleImpactGetController extends Controller
 
     public function __invoke(string $identifier): JsonResponse
     {
+        abort_unless($this->moduleManager->isModuleDiscovered($identifier), 404);
         $impact = $this->moduleManager->getDeactivationImpact($identifier);
 
         return response()->json($impact);

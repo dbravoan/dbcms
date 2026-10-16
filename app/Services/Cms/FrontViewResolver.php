@@ -10,7 +10,7 @@ use Illuminate\Contracts\View\Factory;
  * Single source of truth for front-office theme view resolution.
  *
  * Every front controller, widget and block used to repeat the same
- * `view()->exists("themes.{theme}.…") ? … : fallback` dance. Centralising it
+ * `view()->exists("themes::{theme}.…") ? … : fallback` dance. Centralising it
  * keeps the theme override rules consistent and makes the active theme an
  * explicit dependency instead of a `config('cms.theme')` call spread around.
  */
@@ -46,7 +46,7 @@ final class FrontViewResolver
     public function themeView(string $view): string
     {
         /** @var view-string&non-falsy-string $resolved */
-        $resolved = 'themes.'.$this->theme().'.'.$view;
+        $resolved = 'themes::'.$this->theme().'.'.$view;
 
         return $resolved;
     }
@@ -74,10 +74,10 @@ final class FrontViewResolver
         $candidates = [
             $this->themeView("layouts.{$layout}"),
         ];
-        // Catalogue compatibility: derived projects have no dependency on these.
+        // Source distributions may use the bundled reference layout.
         if (config('cms.project') === null) {
-            $candidates[] = 'themes.'.self::DEFAULT_THEME.".layouts.{$layout}";
-            $candidates[] = 'themes.'.self::FALLBACK_THEME.".layouts.{$layout}";
+            $candidates[] = 'themes::'.self::DEFAULT_THEME.".layouts.{$layout}";
+            $candidates[] = 'themes::'.self::FALLBACK_THEME.".layouts.{$layout}";
         }
 
         foreach ($candidates as $candidate) {
@@ -93,7 +93,6 @@ final class FrontViewResolver
      * Resolve a module widget view honouring the theme override paths.
      *
      * Canonical: themes/{theme}/{module}/widgets/{view}
-     * Legacy:    themes/{theme}/widgets/{module}/{view}
      */
     /**
      * @param  view-string  $fallback
@@ -104,11 +103,10 @@ final class FrontViewResolver
         $theme = $this->theme();
 
         $candidates = [
-            "themes.{$theme}.{$module}.widgets.{$view}",
-            "themes.{$theme}.widgets.{$module}.{$view}",
+            "themes::{$theme}.{$module}.widgets.{$view}",
         ];
         if (config('cms.project') === null) {
-            $candidates[] = 'themes.'.self::DEFAULT_THEME.".{$module}.widgets.{$view}";
+            $candidates[] = 'themes::'.self::DEFAULT_THEME.".{$module}.widgets.{$view}";
         }
         $candidates[] = $fallback;
 

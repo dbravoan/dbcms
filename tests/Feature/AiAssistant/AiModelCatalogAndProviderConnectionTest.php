@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\AiAssistant;
 
-use App\Core\Modules\ModuleManager;
-use App\Models\CmsModule;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,10 +13,12 @@ use Modules\AiAssistant\Contracts\AiConfigBridgeInterface;
 use Modules\AiAssistant\Contracts\AiProviderRegistryInterface;
 use Modules\AiAssistant\Http\Controllers\Admin\Providers\Save\PostController as SaveProviderPostController;
 use Modules\AiAssistant\Http\Controllers\Admin\Providers\SetDefault\PostController as SetDefaultProviderPostController;
+use Tests\Support\AiComposition;
 use Tests\TestCase;
 
 class AiModelCatalogAndProviderConnectionTest extends TestCase
 {
+    use AiComposition;
     use RefreshDatabase;
 
     protected User $adminUser;
@@ -34,9 +34,6 @@ class AiModelCatalogAndProviderConnectionTest extends TestCase
         ]);
         $this->adminUser->roles()->syncWithoutDetaching([$role->id]);
 
-        // Ensure module is registered and active
-        app(ModuleManager::class)->discoverModules();
-        CmsModule::updateOrCreate(['identifier' => 'ai_assistant'], ['is_active' => true, 'is_installed' => true]);
     }
 
     public function test_catalog_returns_all_grouped_providers(): void

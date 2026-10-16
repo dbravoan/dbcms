@@ -2,17 +2,17 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Services\PageDomainService;
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Contracts\View\View;
+use BlockPackages\Charts\Blocks\KpiBlock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Modules\Blog\Services\PostDomainService;
-use Modules\Charts\Widgets\KpiCountersWidget;
-use Modules\Pages\Services\PageDomainService;
+use Tests\Support\BlogComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, BlogComposition::class);
 
 beforeEach(function (): void {
     $this->spanish = Language::firstOrCreate(['code' => 'es'], ['name' => 'Spanish', 'native_name' => 'Español', 'is_default' => true, 'is_active' => true]);
@@ -26,8 +26,9 @@ beforeEach(function (): void {
     $this->actingAs($this->user);
 
     // Create a featured post so the widget has content
-    (new PostDomainService)->createPost([
+    app(PostDomainService::class)->createPost([
         'user_id' => $this->user->id,
+        'market_ids' => [$this->marketEs->id],
         'is_featured' => true,
         'is_published' => true,
         'published_at' => now(),
@@ -36,7 +37,7 @@ beforeEach(function (): void {
         ],
     ]);
 
-    $this->pageService = new PageDomainService;
+    $this->pageService = app(PageDomainService::class);
 });
 
 test('it renders a composite page containing Hero, Before/After slider, KPI counters, and Featured Blog widget', function (): void {
@@ -49,74 +50,33 @@ test('it renders a composite page containing Hero, Before/After slider, KPI coun
                 'meta_description' => 'Portada con widgets interactivos',
             ],
         ],
-        'sections' => [
-            [
-                'type' => 'hero',
-                'order' => 1,
-                'styling_json' => [
-                    'layout' => ['is_fullwidth' => true],
-                    'appearance' => ['background_color' => '#f8fafc'],
-                    'scroll_magic' => ['behavior' => 'fade-up', 'delay' => '0.2s'],
-                ],
-                'translations' => [
-                    'es' => ['title' => 'Bienvenido al CMS Agentic', 'subtitle' => 'Arquitectura Modular Multi-Mercado', 'cta_text' => 'Explorar', 'cta_url' => '/es/es/blog'],
-                ],
-            ],
-            [
-                'type' => 'widget',
-                'widget_key' => 'charts.kpi_counters',
-                'order' => 2,
-                'styling_json' => [
-                    'layout' => ['is_fullwidth' => false],
-                    'scroll_magic' => ['behavior' => 'reveal-left'],
-                ],
-                'translations' => [
-                    'es' => ['stats' => [['value' => '7', 'label' => 'Revisiones QA documentadas', 'description' => 'Dato de fixture']]],
-                ],
-            ],
-            [
-                'type' => 'widget',
-                'widget_key' => 'before_after.comparison_slider',
-                'order' => 3,
-                'styling_json' => [
-                    'layout' => ['is_fullwidth' => false],
-                ],
-                'translations' => [
-                    'es' => [
-                        'before_label' => 'Antes',
-                        'after_label' => 'Después',
-                    ],
-                ],
-            ],
-            [
-                'type' => 'widget',
-                'widget_key' => 'blog.featured_posts',
-                'order' => 4,
-                'styling_json' => [
-                    'layout' => ['is_fullwidth' => false],
-                ],
-                'translations' => [
-                    'es' => ['limit' => 3],
-                ],
-            ],
-        ],
+        'market_ids' => [$this->marketEs->id],
+        'sections_json' => json_encode(['es' => [
+            ['type' => 'hero', 'title' => 'Bienvenido al CMS Agentic', 'content' => 'Arquitectura Modular Multi-Mercado', 'cta_text' => 'Explorar', 'cta_url' => '/es/es/blog', 'scroll_magic' => ['behavior' => 'fade-up', 'delay' => '0.2s']],
+            ['type' => 'kpi', 'items' => [['value' => '7', 'label' => 'Revisiones QA documentadas', 'description' => 'Dato de fixture']]],
+            ['type' => 'before_after', 'title' => 'Comparación de imágenes', 'image_url' => '/before.jpg', 'after_image_url' => '/after.jpg', 'before_label' => 'Antes', 'after_label' => 'Después'],
+            ['type' => 'blog.featured_posts', 'limit' => 3],
+        ]], JSON_THROW_ON_ERROR),
     ]);
 
     $response = $this->get('/es/es/inicio');
 
     $response->assertStatus(200)
         ->assertSee('Bienvenido al CMS Agentic')
+        ->assertSee('Arquitectura Modular Multi-Mercado')
         ->assertSee('data-scroll-magic="fade-up"', false)
         ->assertSee('Revisiones QA documentadas')
         ->assertSee('Dato de fixture')
+        ->assertSee('src="/before.jpg"', false)
+        ->assertSee('src="/after.jpg"', false)
+        ->assertSee('Comparación de imágenes')
+        ->assertSee('type="range"', false)
+        ->assertSee('aria-label="Antes / Después"', false)
         ->assertDontSee('Uptime Guarantee')
         ->assertSee('Destacado de Inteligencia Artificial');
 });
 
 test('KPI widgets do not invent metrics when no statistics are configured', function (): void {
-    $widget = new KpiCountersWidget;
-    $view = $widget->render();
-    expect($view)->toBeInstanceOf(View::class);
-    expect($view->getData()['stats'])->toBe([]);
-    expect($view->render())->not->toContain('Uptime Guarantee', '99.9%', '10M+');
+    $block = new KpiBlock;
+    expect($block->render([]))->not->toContain('Uptime Guarantee', '99.9%', '10M+');
 });

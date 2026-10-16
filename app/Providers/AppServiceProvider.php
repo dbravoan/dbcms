@@ -26,22 +26,7 @@ use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Contracts\Services\NotificationRecipientResolverInterface;
 use App\Contracts\Services\PublishedSectionTextInterface;
 use App\Contracts\Services\SearchAnalyticsInterface;
-use App\Core\Blocks\BlockRegistry;
-use App\Core\Blocks\Contracts\BlockRegistryInterface;
-use App\Core\Blocks\Types\BeforeAfterBlock;
-use App\Core\Blocks\Types\CarouselBlock;
-use App\Core\Blocks\Types\CodeEmbedBlock;
-use App\Core\Blocks\Types\CtaBlock;
-use App\Core\Blocks\Types\FaqBlock;
-use App\Core\Blocks\Types\FeaturesBlock;
-use App\Core\Blocks\Types\HeroBlock;
-use App\Core\Blocks\Types\KpiBlock;
-use App\Core\Blocks\Types\PricingBlock;
-use App\Core\Blocks\Types\RichTextBlock;
-use App\Core\Blocks\Types\RoiBlock;
-use App\Core\Blocks\Types\SearchBoxBlock;
-use App\Core\Blocks\Types\TestimonialsBlock;
-use App\Core\Blocks\Types\VideoBlock;
+use App\Core\Blocks\Events\BlockPackageAvailabilityChanged;
 use App\Core\Content\Contracts\EditorialWorkflowInterface;
 use App\Core\Content\Contracts\EntitySchemaRegistryInterface;
 use App\Core\Content\EntitySchemaRegistry;
@@ -51,10 +36,13 @@ use App\Core\Modules\ModuleManager;
 use App\Core\Modules\ModuleSettingsExtensionRegistry;
 use App\Core\Modules\NullMaintenanceModeService;
 use App\Core\Notifications\NotificationRecipientPolicyRegistry;
+use App\Events\ModuleAvailabilityChanged;
 use App\Http\ViewComposers\AdminLayoutComposer;
 use App\Http\ViewComposers\FrontendLayoutComposer;
+use App\Http\ViewComposers\FrontofficeAdminBarComposer;
+use App\Models\Language;
+use App\Models\Market;
 use App\Models\User;
-use App\Observers\ContentTranslationCacheObserver;
 use App\Observers\PageCacheObserver;
 use App\Observers\UserSecurityObserver;
 use App\Services\Admin\AdminDashboardService;
@@ -86,7 +74,10 @@ use App\Services\Storage\ExternalStorageService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -95,15 +86,6 @@ use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Passport\Passport;
-use Modules\Blog\Models\CategoryTranslation;
-use Modules\Blog\Models\PostSectionTranslation;
-use Modules\Blog\Models\PostTranslation;
-use Modules\Gallery\Models\GalleryTranslation;
-use Modules\Pages\Models\PageTranslation;
-use Modules\Pages\Models\SectionTranslation;
-use Modules\Shop\Models\ProductCategoryTranslation;
-use Modules\Shop\Models\ProductSectionTranslation;
-use Modules\Shop\Models\ProductTranslation;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -137,26 +119,24 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(AdminNavigationServiceInterface::class, AdminNavigationService::class);
         $this->app->singleton(AdminThemeServiceInterface::class, AdminThemeService::class);
         $this->app->singleton(BrandServiceInterface::class, BrandService::class);
-        $this->app->singleton(BlockRegistryInterface::class, BlockRegistry::class);
         $this->app->singleton(EntitySchemaRegistryInterface::class, EntitySchemaRegistry::class);
         $this->app->singleton(EntitySearchServiceInterface::class, EntitySearchService::class);
         $this->app->singleton(ExternalStorageService::class);
         $this->app->singleton(CacheDependencyCollector::class);
+        $this->app->make(ModuleManager::class)->registerConfiguredModules();
     }
 
     public function boot(): void
     {
+        Event::listen([ModuleAvailabilityChanged::class, BlockPackageAvailabilityChanged::class], static function (ModuleAvailabilityChanged|BlockPackageAvailabilityChanged $event): void {
+            DB::afterCommit(static function () use ($event): void {
+                if ($event instanceof ModuleAvailabilityChanged) {
+                    Artisan::call('route:clear');
+                }
+                Artisan::call('queue:restart');
+            });
+        });
         User::observe(UserSecurityObserver::class);
-        foreach ([
-            PageTranslation::class, SectionTranslation::class,
-            PostTranslation::class, PostSectionTranslation::class, CategoryTranslation::class,
-            ProductTranslation::class, ProductSectionTranslation::class, ProductCategoryTranslation::class,
-            GalleryTranslation::class, 'Modules\\Gallery\\Models\\GalleryItemTranslation',
-        ] as $translationModel) {
-            if (class_exists($translationModel)) {
-                $translationModel::observe(ContentTranslationCacheObserver::class);
-            }
-        }
         // Public (unauthenticated) write endpoints — forms, comments, shop
         // checkout/inquiry/cart and geo preference — are throttled per IP.
         RateLimiter::for('public-writes', fn (Request $request): Limit => Limit::perMinute(
@@ -194,8 +174,6 @@ class AppServiceProvider extends ServiceProvider
         URL::defaults([
             'market' => 'es',
             'locale' => 'es',
-            'shopPrefix' => 'tienda',
-            'blogPrefix' => 'blog',
         ]);
 
         if (! $this->app->isProduction()) {
@@ -208,23 +186,9 @@ class AppServiceProvider extends ServiceProvider
             $this->loadMigrationsFrom($passportMigrations);
         }
 
-        // Load all module migrations
-        $modulesPath = base_path('modules');
-        if (File::exists($modulesPath)) {
-            foreach (File::directories($modulesPath) as $moduleDir) {
-                $migrationDir = $moduleDir.'/Database/Migrations';
-                if (File::exists($migrationDir)) {
-                    $this->loadMigrationsFrom($migrationDir);
-                }
-            }
-        }
-
         // Register themes view path
-        $themesPath = base_path('themes');
-        if (File::exists($themesPath)) {
-            View::addLocation(base_path());
-            View::addNamespace('themes', $themesPath);
-        }
+        $themeViewPaths = array_filter([base_path('themes'), resource_path('views/themes')], is_dir(...));
+        View::addNamespace('themes', array_values($themeViewPaths));
 
         // The front theme is selected at runtime via `cms.theme`; long-lived
         // processes (queue workers, tests) may switch it, so drop the cached view
@@ -241,28 +205,30 @@ class AppServiceProvider extends ServiceProvider
         // Invalidate the public page cache whenever cacheable content changes.
         // Content is edited continuously, so freshness is event-driven (see
         // App\Services\Cms\PageCacheService for the namespace-version strategy).
-        $pageCacheObserver = $this->app->make(PageCacheObserver::class);
-        $collector = $this->app->make(CacheDependencyCollector::class);
+        $this->app->booted(function (): void {
+            $pageCacheObserver = $this->app->make(PageCacheObserver::class);
+            $collector = $this->app->make(CacheDependencyCollector::class);
 
-        foreach ((array) config('cms.page_cache_models', []) as $model) {
-            if (! class_exists($model)) {
-                continue;
-            }
-
-            $model::observe($pageCacheObserver);
-
-            // While a public page is rendered, record which cacheable entities it
-            // reads so PageCacheService can invalidate only the affected pages.
-            $model::retrieved(function (Model $retrieved) use ($collector): void {
-                // Read the key from the raw attributes: partial selects (and
-                // Model::shouldBeStrict) must not throw MissingAttributeException.
-                $key = $retrieved->getAttributes()[$retrieved->getKeyName()] ?? null;
-
-                if ($key !== null) {
-                    $collector->record($retrieved->getTable(), $key);
+            foreach ((array) config('cms.page_cache_models', []) as $model) {
+                if (! class_exists($model)) {
+                    continue;
                 }
-            });
-        }
+
+                $model::observe($pageCacheObserver);
+
+                // While a public page is rendered, record which cacheable entities it
+                // reads so PageCacheService can invalidate only the affected pages.
+                $model::retrieved(function (Model $retrieved) use ($collector): void {
+                    // Read the key from the raw attributes: partial selects (and
+                    // Model::shouldBeStrict) must not throw MissingAttributeException.
+                    $key = $retrieved->getAttributes()[$retrieved->getKeyName()] ?? null;
+
+                    if ($key !== null) {
+                        $collector->record($retrieved->getTable(), $key);
+                    }
+                });
+            }
+        });
 
         // Register default admin & cms components namespace
         Blade::anonymousComponentPath(resource_path('views/components/cms'), 'cms');
@@ -284,28 +250,22 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Bind global admin layout context through View Composer
-        View::composer(['admin.layout', 'admin.*'], AdminLayoutComposer::class);
+        View::composer(['admin.*', '*::admin.*'], AdminLayoutComposer::class);
+        View::composer('components.frontoffice-admin-bar', FrontofficeAdminBarComposer::class);
+        View::composer('components.admin.market-picker', function (\Illuminate\View\View $view): void {
+            $markets = $this->app->make(LocalizationServiceInterface::class)->activeMarkets();
+            $view->with('pickerMarkets', $markets);
+            $view->with('pickerMarketLocales', $markets->mapWithKeys(static fn (Market $market): array => [
+                (string) $market->id => $market->languages->where('is_active', true)->pluck('code')->all(),
+            ])->all());
+        });
+        View::composer('components.admin.locale-tabs', function (\Illuminate\View\View $view): void {
+            $view->with('languageFlags', $this->app->make(LocalizationServiceInterface::class)->activeLanguages()
+                ->mapWithKeys(static fn (Language $language): array => [$language->code => $language->flag])->all());
+        });
 
         // Bind global frontend presentation context through View Composer
-        View::composer(['themes::*', 'themes.*', '*.partials.*', 'themes.*.partials.*', 'themes.components.*'], FrontendLayoutComposer::class);
-
-        // Register Core Static & Composite Blocks
-        /** @var BlockRegistryInterface $blockRegistry */
-        $blockRegistry = $this->app->make(BlockRegistryInterface::class);
-        $blockRegistry->register(new HeroBlock);
-        $blockRegistry->register(new RichTextBlock);
-        $blockRegistry->register(new FeaturesBlock);
-        $blockRegistry->register(new KpiBlock);
-        $blockRegistry->register(new PricingBlock);
-        $blockRegistry->register(new FaqBlock);
-        $blockRegistry->register(new TestimonialsBlock);
-        $blockRegistry->register(new CarouselBlock);
-        $blockRegistry->register(new CtaBlock);
-        $blockRegistry->register(new BeforeAfterBlock);
-        $blockRegistry->register(new CodeEmbedBlock);
-        $blockRegistry->register(new RoiBlock);
-        $blockRegistry->register(new SearchBoxBlock);
-        $blockRegistry->register(new VideoBlock);
+        View::composer(['themes::*', '*.partials.*'], FrontendLayoutComposer::class);
 
         // RBAC Gates
         Gate::before(function (User $user, string $ability): ?bool {
@@ -318,6 +278,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('access:admin', fn (User $user): bool => $user->isAdmin() || $user->hasPermission('access:admin') || $user->roles()->exists());
         Gate::define('manage:modules', fn (User $user): bool => $user->hasPermission('manage:modules'));
+        Gate::define('manage:blocks', fn (User $user): bool => $user->hasPermission('manage:blocks'));
         Gate::define('manage:users', fn (User $user): bool => $user->hasPermission('manage:users'));
         Gate::define('manage:posts', fn (User $user): bool => $user->hasPermission('manage:posts'));
         Gate::define('manage:pages', fn (User $user): bool => $user->hasPermission('manage:pages'));
@@ -329,9 +290,5 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage:storage', fn (User $user): bool => $user->hasPermission('manage:storage'));
         Gate::define('manage:seo', fn (User $user): bool => $user->hasPermission('manage:seo'));
 
-        // Discover and boot active pluggable CMS modules dynamically
-        /** @var ModuleManager $moduleManager */
-        $moduleManager = $this->app->make(ModuleManager::class);
-        $moduleManager->bootActiveModules();
     }
 }

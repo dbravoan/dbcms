@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd /var/www/html
+export DBCMS_CREATIVE_WORKERS="${DBCMS_CREATIVE_WORKERS:-false}"
+export DBCMS_SOCIAL_WORKERS="${DBCMS_SOCIAL_WORKERS:-false}"
+for enabled in "$DBCMS_CREATIVE_WORKERS" "$DBCMS_SOCIAL_WORKERS"; do
+    case "$enabled" in true|false) ;; *) echo 'Worker flags must be true or false.' >&2; exit 1 ;; esac
+done
 : "${APP_KEY:?Set a persistent APP_KEY before starting production}"
 mkdir -p storage/app/runtime storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache public/uploads
 chown -R dbcms:dbcms storage bootstrap/cache public/uploads

@@ -7,33 +7,37 @@ namespace Modules\Gallery\Widgets;
 use App\Contracts\Services\PublicContentDiscoveryInterface;
 use App\Core\Widgets\BaseWidgetComponent;
 use App\Models\Market;
-use Illuminate\Contracts\View\View;
 
 class GalleryGridWidget extends BaseWidgetComponent
 {
-    public static function getKey(): string
+    public function getRequiredModule(): ?string
+    {
+        return 'gallery';
+    }
+
+    public function getType(): string
     {
         return 'gallery.grid';
     }
 
-    public static function getTitle(): string
+    public function getName(): string
     {
         return 'Filterable Image Gallery Grid';
     }
 
-    public static function getOptionsSchema(): array
+    public function getEditorSchema(): array
     {
         return [
-            'gallery_slug' => ['type' => 'string', 'label' => 'Gallery Slug'],
-            'columns' => ['type' => 'select', 'options' => [2, 3, 4], 'default' => 3],
+            'gallery_slug' => ['type' => 'text', 'label' => 'Gallery Slug'],
+            'grid_columns' => ['type' => 'select', 'options' => [2, 3, 4], 'default' => 3],
         ];
     }
 
-    public function render(array $parameters = []): View|string
+    public function render(array $parameters = [], ?Market $market = null, ?string $locale = null): string
     {
         $slug = isset($parameters['gallery_slug']) ? (string) $parameters['gallery_slug'] : 'default';
-        $market = app()->bound('current.market') ? app('current.market') : null;
-        $locale = app()->getLocale();
+        $market ??= app()->bound('current.market') ? app('current.market') : null;
+        $locale ??= app()->getLocale();
         $gallery = $market instanceof Market
             ? app(PublicContentDiscoveryInterface::class)->query('gallery', $market, $locale, ['items'])->whereHas('translations', fn ($translation) => $translation->where('locale', $locale)->where('slug', $slug))->first()
             : null;

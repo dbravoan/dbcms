@@ -10,7 +10,7 @@ use Carbon\CarbonInterface;
 /**
  * Builds complete SEO/GEO metadata for front-office pages.
  *
- * Every theme renders the result through `themes.components.seo-head`, so
+ * Every theme renders the result through `themes::components.seo-head`, so
  * canonical/OG/Twitter/hreflang/robots/JSON-LD are emitted identically across
  * themes and modules.
  */
@@ -50,14 +50,6 @@ final class SeoMetaService
             $schema = $this->schema->generateEntityGraph($entitySchema, $url, $locale, $breadcrumbs);
         } else {
             $schema = $this->schema->generateWebPageGraph($title, $description, $url, $locale, $breadcrumbs);
-
-            // Sitelinks searchbox on the home page (replaces the per-theme inline block).
-            if ($this->isHomePage()) {
-                $schema['potentialAction'] = $this->schema->generateSearchAction(
-                    (string) (request()->attributes->get('market')->code ?? 'es'),
-                    app()->getLocale()
-                );
-            }
         }
 
         if ($modifiedAt !== null) {
@@ -143,16 +135,5 @@ final class SeoMetaService
         $value = trim(preg_replace('/\s+/u', ' ', strip_tags($value)) ?? '');
 
         return mb_strlen($value) > $limit ? rtrim(mb_substr($value, 0, $limit - 1)).'…' : $value;
-    }
-
-    /**
-     * Whether the current request is the site home (for the searchbox action).
-     */
-    private function isHomePage(): bool
-    {
-        $path = trim(request()->path(), '/');
-        $segments = array_values(array_filter(explode('/', $path)));
-
-        return count($segments) <= 2;
     }
 }

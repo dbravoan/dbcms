@@ -6,9 +6,9 @@ use App\Contracts\Services\AdminThemeServiceInterface;
 use App\Contracts\Services\BrandServiceInterface;
 use App\Contracts\Services\GeneralSettingsServiceInterface;
 use App\Contracts\Services\ModuleSettingsServiceInterface;
+use App\Core\Forms\FieldTypeRegistry;
 use App\DTOs\BrandIdentity;
 use App\Services\Cms\ThemeManagerService;
-use Modules\Captcha\Services\CaptchaService;
 
 if (! function_exists('cms_asset_entries')) {
     /** @return list<string> Shared runtime plus the selected brand and public theme. */
@@ -104,16 +104,6 @@ if (! function_exists('captcha_available')) {
      */
     function captcha_available(): bool
     {
-        $service = CaptchaService::class;
-
-        if (! class_exists($service)) {
-            return false;
-        }
-
-        try {
-            return (bool) app($service)->isEnabled();
-        } catch (Throwable) {
-            return false;
-        }
+        return app(FieldTypeRegistry::class)->get('captcha')?->available() ?? false;
     }
 }

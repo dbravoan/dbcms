@@ -2,13 +2,13 @@
 
 [![Use this template](https://img.shields.io/badge/GitHub-Use%20this%20template-2ea44f?style=for-the-badge&logo=github)](https://github.com/new?template_name=dbcms&template_owner=dbravoan)
 [![Arquitectura](https://img.shields.io/badge/Arquitectura-Clean%20%26%20Spec--Driven-indigo.svg)](#arquitectura-humania)
-[![Módulos](https://img.shields.io/badge/Módulos-16%20desacoplados-emerald.svg)](#módulos-incluidos)
+[![Módulos](https://img.shields.io/badge/Módulos-opcionales-emerald.svg)](#módulos-incluidos)
 [![Multi-mercado](https://img.shields.io/badge/Multi--mercado-sin%20duplicación%20de%20base%20de%20datos-emerald.svg)](#normalización-multi-mercado)
 [![GEO y SEO](https://img.shields.io/badge/Optimización-GEO%20%26%20SEO-blue.svg)](#seo-y-geo)
 [![MCP](https://img.shields.io/badge/MCP-Streamable%20HTTP%20%2B%20JSON--RPC%20%2B%20SSE-purple.svg)](#servidor-mcp)
 [![Entorno](https://img.shields.io/badge/Entorno-Sail%20(Docker)%20Zero--Host-sky.svg)](#puesta-en-marcha)
 [![Versionado](https://img.shields.io/badge/Versionado-SemVer%202.0.0-orange.svg)](#versionado-y-despliegue)
-[![Versión](https://img.shields.io/badge/Versión-1.3.0-orange.svg)](CHANGELOG.md)
+[![Versión](https://img.shields.io/badge/Versión-2.0.0-orange.svg)](CHANGELOG.md)
 [![PHPStan](https://img.shields.io/badge/PHPStan-nivel%208%20sin%20baseline-magenta.svg)](#calidad-y-verificación)
 [![Tests](https://img.shields.io/badge/Tests-Pest%20(Unit%2C%20Feature%2C%20Architecture)-green.svg)](#calidad-y-verificación)
 [![Stack](https://img.shields.io/badge/Stack-Laravel%2013%20·%20PHP%208.3-red.svg)](#qué-es-dbcms)
@@ -36,6 +36,13 @@
 
 ## Qué es dbCMS
 
+La versión 2.0 parte de un núcleo instalable sin módulos. Para arrancar una
+publicación real con el mínimo, el [starter IA en práctica](docs/AI_LEARNING_STARTER.md)
+añade únicamente Blog, bloques Basic y un tema editorial: guías por tarea,
+cheatsheets entre departamentos, agentes y trabajo con programas de escritorio.
+El contenido se instala por decisión explícita y sigue editable desde el panel.
+2.0 está orientada a instalaciones nuevas; no convierte instalaciones 1.x.
+
 dbCMS es una plataforma de contenidos y comercio **multi-mercado**: cada entidad (página, entrada, producto, categoría) se traduce a varios idiomas y se asigna a los mercados que correspondan, sin duplicar filas en la base de datos. Las URL quedan segmentadas por mercado e idioma (`/es/es/…`, `/us/en/…`) y cada mercado puede tener su propia configuración de SEO, moneda y contenidos.
 
 El sistema está construido bajo el paradigma **Human+IA**: el mismo núcleo sirve a editores humanos, a desarrolladores y a agentes autónomos.
@@ -50,7 +57,7 @@ El sistema está construido bajo el paradigma **Human+IA**: el mismo núcleo sir
 | --- | --- |
 | Framework | Laravel 13 (PHP 8.3) |
 | Base de datos | MySQL 8 |
-| Caché y colas | Redis |
+| Caché, sesiones y colas | Archivos y base de datos; Redis opcional |
 | Testing | Pest 4 (Unit, Feature, Architecture) |
 | Análisis estático | PHPStan (nivel 8) + Larastan |
 | Estilo | Laravel Pint |
@@ -62,11 +69,11 @@ El sistema está construido bajo el paradigma **Human+IA**: el mismo núcleo sir
 
 | Capacidad | Descripción |
 | --- | --- |
-| Módulos desacoplados | 18 módulos independientes en `modules/`, instalables y activables desde el panel o desde MCP |
+| Módulos desacoplados | Extensiones opcionales en `modules/`, seleccionadas e instaladas explícitamente |
 | Multi-mercado real | Mercados, idiomas y divisas gestionados desde el backoffice; URL localizadas y clústeres hreflang |
-| Constructor de páginas | Páginas compuestas por secciones estilizadas, animaciones y widgets embebidos (módulo troncal `pages`) |
+| Constructor de páginas | Parte del núcleo (`app/Content/Pages`), con secciones y extensiones visuales compartidas |
 | Blog y tienda | Blog multiautor con etiquetas y tiempo de lectura; catálogo de productos con carrito y pago |
-| Temas | 6 temas de frontoffice intercambiables en caliente y 2 temas de backoffice |
+| Temas | Catálogo de temas de frontoffice intercambiables en caliente y 2 temas de backoffice |
 | Editorial anti-IA | Validación de naturalidad del texto: ritmo de frases, clichés, mayúsculas y puntuación en castellano |
 | SEO y GEO | `/llms.txt`, `/llms-full.txt`, sitemaps segmentados, `robots.txt`, feed RSS y datos estructurados Schema.org |
 | Servidor MCP | Streamable HTTP nativo, JSON-RPC y SSE con tokens Passport y scopes `mcp:*` |
@@ -75,11 +82,14 @@ El sistema está construido bajo el paradigma **Human+IA**: el mismo núcleo sir
 
 ## Módulos incluidos
 
-Cada módulo vive en su propia carpeta `modules/{Nombre}/` con su manifiesto `module.json`, sus migraciones, rutas, modelos, servicios y vistas. El módulo troncal, marcado con `is_core: true`, es **`pages`**.
+Cada módulo opcional vive en `modules/{Nombre}/` con manifiesto, migraciones, rutas,
+modelos, servicios y vistas. Pages pertenece al núcleo en `app/Content/Pages`.
+Charts, KPI/ROI y BeforeAfter son paquetes visuales; comparten registro y ciclo de
+disponibilidad con los demás bloques y widgets. El contrato está en
+[Core and extensions](specs/CORE_AND_EXTENSIONS.md).
 
 | Módulo | Identificador | Qué aporta |
 | --- | --- | --- |
-| Composite Page Builder | `pages` | Constructor de páginas por secciones estilizadas, animaciones y widgets embebidos. **Módulo troncal.** |
 | Blog Engine | `blog` | Blog multiautor y multi-mercado con categorías, etiquetas, tiempo de lectura y widgets |
 | Product Catalog & E-Commerce | `shop` | Catálogo y tienda con precios por mercado, constructor modular de producto, carrito y pago |
 | Media Gallery | `gallery` | Galerías de imágenes con filtros, optimización WebP y visor lightbox |
@@ -87,18 +97,18 @@ Cada módulo vive en su propia carpeta `modules/{Nombre}/` con su manifiesto `mo
 | Google AdSense & Ad Placements | `ads` | Auto-anuncios de AdSense, banners responsivos y segmentación por mercado |
 | Analytics & GDPR Consent | `analytics` | Google Analytics 4, Tag Manager y banner de consentimiento conforme al RGPD |
 | Meta Pixel & Server CAPI | `meta` | Meta Pixel y Conversions API del servidor (CAPI) para derivar eventos de leads |
-| Charts & Data Visualization | `charts` | KPI animados, estadísticas comparativas y gráficos interactivos |
-| Before & After Comparison | `before_after` | Comparador interactivo «antes y después» para casos clínicos, diseño y reformas |
 | Security & Dynamic Captcha | `captcha` | Captcha dinámico SVG y matemático con tokens cifrados para formularios y accesos |
 | Mantenimiento & Construcción | `maintenance` | Modo mantenimiento y página «en construcción» con temporizador y acceso de administradores |
 | Auditoría de Contenidos | `content_audit` | Flujo editorial de calidad, permisos de publicación por rol, cola de aprobación, comparador de versiones y bloqueo editorial anti-IA configurable |
 | Copiloto Asistente IA | `ai_assistant` | Asistencia editorial y maquetación de bloques con Gemini, OpenAI, DeepSeek, Anthropic, Ollama y OpenCode |
 | General Search | `search` | Buscador del frontoffice sobre todas las entidades, con URL amigable y facetas |
 | Servidor MCP | `mcp` | Servidor MCP estándar con transporte SSE / JSON-RPC 2.0 y autenticación Passport |
+| Marketing infrastructure | `marketing` | Archivos privados y contratos compartidos de los módulos de marketing |
+| Orchestration | `orchestration` | Planes de ejecución autorizados; requiere AiAssistant |
 | CreativeStudio | `creative-studio` | Campañas, presupuestos, revisiones y composición local de imágenes/vídeo con exportación privada |
 | SocialPublishing | `social-publishing` | Preparación, aprobación humana, calendario y entrega social; TikTok mediante exportación manual |
 
-CreativeStudio y SocialPublishing se distribuyen **desactivados por defecto**. Sus guías de conexión se pueden consultar antes de activarlos. La generación remota requiere proveedores configurados; las funciones multimedia y las entregas necesitan los procesos y requisitos del [runbook de marketing](docs/MARKETING_MODULES_RUNBOOK.md). La entrega 1.2.0 valida contratos simulados de proveedores; los pilotos con cuentas reales quedan pendientes. Consulta la [trazabilidad y validación de integración](docs/RELEASE_1.2.0_INTEGRATION.md).
+Los módulos opcionales se distribuyen sin instalar. `CMS_MODULES` selecciona explícitamente la composición inicial. CreativeStudio, SocialPublishing y Analytics requieren `marketing`; Orchestration requiere `ai_assistant`. Sus guías de conexión se pueden consultar antes de activarlos. La generación remota requiere proveedores configurados; las funciones multimedia y las entregas necesitan los procesos y requisitos del [runbook de marketing](docs/MARKETING_MODULES_RUNBOOK.md). La entrega 1.2.0 valida contratos simulados de proveedores; los pilotos con cuentas reales quedan pendientes. Consulta la [trazabilidad y validación de integración](docs/archive/RELEASE_1.2.0_INTEGRATION.md).
 
 Los módulos se instalan, activan, desactivan y desinstalan desde el backoffice (`/admin/modules`) o mediante las herramientas MCP, con análisis de impacto antes de cada operación destructiva. Desinstalar retira acceso y capacidades, conserva tablas y contenido y permite reinstalar sin perder datos. Discovery no reactiva un módulo desinstalado.
 
@@ -118,7 +128,7 @@ El tema activo se elige con la variable `CMS_THEME` o desde el backoffice. Inclu
 | `db-sunset` | Glassmorphism sobre fondo obsidiana con degradados de atardecer |
 | `default-clean` | Tema neutro de referencia: respaldo seguro y base para crear temas nuevos |
 
-La resolución de vistas sigue una cascada: primero la vista sobreescrita del tema activo, después la vista del módulo y por último el tema de referencia `default-clean`. Más detalles en [`docs/17_FRONTOFFICE_THEME_GUIDE.md`](docs/17_FRONTOFFICE_THEME_GUIDE.md).
+Las vistas priorizan el tema activo y recurren a la implementación base del componente o módulo. En la distribución fuente, los widgets también pueden usar `db-cyber`; los layouts buscan primero el tema activo, después `db-cyber` y finalmente `default-clean`. Los proyectos derivados no recurren a temas que no hayan seleccionado. Más detalles en [`docs/17_FRONTOFFICE_THEME_GUIDE.md`](docs/17_FRONTOFFICE_THEME_GUIDE.md).
 
 ### Backoffice
 
@@ -158,16 +168,16 @@ Puedes elegir GitHub Actions, Ansistrano local, rsync local, Docker local o ning
 Los métodos locales no dependen de GitHub y rsync funciona sin repositorio Git.
 No generan instaladores ZIP/TAR. Las actualizaciones se revisan en una PR, rama
 o copia de trabajo según el proyecto. Estas funciones se preparan para
-la versión 1.3.0; su publicación requiere superar CI y publicar una release nueva.
+la versión 2.0.0; su publicación requiere superar CI y publicar una release nueva.
 
 Tienes 3 formas de comenzar con dbCMS:
 1. **GitHub Template**: Haz clic en [**Use this template**](https://github.com/new?template_name=dbcms&template_owner=dbravoan) y prepara marca, temas y despliegue mediante la PR de inicialización.
 2. **Composer dentro de Docker**: Sigue el recorrido completo de `create-project` y `bin/project-init` en la [guía de derivados](docs/DERIVED_PROJECTS_GUIDE.md); no requiere PHP ni Composer en el host.
-3. **Instalador ZIP para navegador (recomendado)**: Descarga **`dbcms-installer-v1.3.0.zip`** desde [Releases](https://github.com/dbravoan/dbcms/releases), súbelo y extráelo desde Plesk/cPanel y abre el dominio. Incluye dependencias y recursos compilados; no requiere Composer, Node, Artisan ni SSH. Los enlaces automáticos **Source code (zip/tar.gz)** de GitHub son para desarrollo y no sirven como instalador autónomo.
+3. **Instalador ZIP para navegador (recomendado)**: Descarga **`dbcms-installer-v2.0.0.zip`** desde [Releases](https://github.com/dbravoan/dbcms/releases), súbelo y extráelo desde Plesk/cPanel y abre el dominio. Incluye dependencias y recursos compilados; no requiere Composer, Node, Artisan ni SSH. Los enlaces automáticos **Source code (zip/tar.gz)** de GitHub son para desarrollo y no sirven como instalador autónomo.
 
 ### Requisitos locales (Desarrollo)
 
-- **Docker** con Docker Compose. Todo lo demás (PHP 8.3, MySQL 8, Redis, Node) corre dentro de los contenedores.
+- **Docker** con Docker Compose. Todo lo demás (PHP 8.3, MySQL 8, Node y Redis opcional) corre dentro de los contenedores.
 - La política **Zero-Host** (aislamiento total del equipo anfitrión) prohíbe ejecutar `php`, `composer` o `artisan` fuera del contenedor. Usa siempre el comando oficial `./vendor/bin/sail`.
 
 ### Inicio rápido local
@@ -187,13 +197,9 @@ test -f .env || cp .env.example .env
 # 3. Construye y levanta Sail con el UID/GID de tu equipo
 ./vendor/bin/sail up -d --build
 
-# 4. Genera la clave de la aplicación y las claves de Passport
-./vendor/bin/sail artisan key:generate
-./vendor/bin/sail artisan passport:keys
-
-# 5. Ejecuta las migraciones y siembra los datos de demostración
-#    (mercados, idiomas, temas, contenidos y usuarios de prueba)
-./vendor/bin/sail artisan migrate --seed
+# 4. Instala el núcleo: conexión MySQL, administrador, claves y migraciones.
+#    El comando pregunta los datos y sella la instalación al completarla.
+./vendor/bin/sail artisan cms:install --without-demo
 ```
 
 La plantilla y Composer distribuyen fuentes: antes de abrir el sitio, compila los recursos en Docker. El instalador ZIP ya incluye `vendor/` y `public/build/` y no requiere estos pasos.
@@ -203,7 +209,7 @@ La plantilla y Composer distribuyen fuentes: antes de abrir el sitio, compila lo
 ./vendor/bin/sail npm run build
 ```
 
-Durante el desarrollo puedes usar `./vendor/bin/sail npm run dev` en lugar del build estático. El bootstrap de dependencias no genera ni renueva las claves: los comandos anteriores las preparan para esta instalación nueva. Conserva la APP_KEY al configurar una instalación existente.
+Durante el desarrollo puedes usar `./vendor/bin/sail npm run dev` en lugar del build estático. El bootstrap de dependencias no genera ni renueva las claves; el instalador las prepara. Para una demostración, elige `--with-demo` en lugar de `--without-demo` al instalar y selecciona antes los módulos que necesites mediante `CMS_MODULES`. Conserva la APP_KEY al configurar una instalación existente.
 
 Arranca explícitamente con `./vendor/bin/sail up -d` antes de Artisan, Composer o las pruebas. Sail oficial necesita el servicio activo y no crea un contenedor efímero automáticamente para esos comandos. Para detener el entorno, usa `./vendor/bin/sail down`.
 
@@ -214,13 +220,13 @@ El contenedor inicial sin `vendor/` y `bin/project-init` son el bootstrap previo
 | Servicio | URL | Credenciales |
 | --- | --- | --- |
 | Frontoffice | http://localhost | — |
-| Backoffice | http://localhost/admin | Usuarios de demostración (tabla siguiente) |
+| Backoffice | http://localhost/admin | Administrador definido durante la instalación |
 | Adminer (gestor de base de datos) | http://localhost:8088 | Servidor `mysql`, usuario `sail`, contraseña `secret`, base de datos `laravel` |
 | Mailpit (correo de desarrollo) | http://localhost:8025 | — |
 
 ### Credenciales de demostración
 
-El sembrador crea cinco usuarios, todos con la contraseña `secret123`:
+La instalación con `--with-demo` crea estos usuarios de demostración con la contraseña `secret123`; la instalación mínima no los incluye:
 
 | Rol | Correo | Permisos |
 | --- | --- | --- |
@@ -241,7 +247,7 @@ En desarrollo, abre **http://localhost/install** para usar el mismo asistente.
 Para servidores de producción existe el instalador de línea de comandos:
 
 ```bash
-./vendor/bin/sail artisan cms:install --with-demo
+./vendor/bin/sail artisan cms:install --without-demo
 ```
 
 Admite `--db-*` para la conexión, `--admin-*` para el administrador, `--brand` y `--theme` para la identidad visual, y `--without-demo` para una instalación mínima. La guía completa está en [`docs/DEPLOYMENT_AND_VERSIONING.md`](docs/DEPLOYMENT_AND_VERSIONING.md).
@@ -258,7 +264,7 @@ Admite `--db-*` para la conexión, `--admin-*` para el administrador, `--brand` 
 | `resources/views/themes/admin/` | Temas del backoffice |
 | `docs/` | Documentación técnica (véase el [índice](#documentación)) |
 | `specs/` | Especificaciones formales del diseño dirigido por especificaciones |
-| `tests/` | Suites de Pest: `Unit/`, `Feature/` y `Architecture/` |
+| `tests/` | Contratos puros, humo del núcleo, integración, regresiones, concurrencia y frontend; [guía de pruebas](docs/TESTING.md) |
 
 ### Convenciones esenciales
 
@@ -274,9 +280,9 @@ La referencia completa está en [`docs/DEVELOPER_CONVENTIONS_AND_STANDARDS.md`](
 
 ### Arquitectura modular
 
-- Cada módulo declara un manifiesto `module.json` con versión, metadatos, estado troncal (`is_core`), widgets y un esquema de configuración con tipos.
+- Cada módulo declara un manifiesto `module.json` con versión, metadatos, dependencias, widgets y un esquema de configuración con tipos.
 - Cada módulo monta sus rutas de backoffice en `modules/{Nombre}/Routes/admin.php`, protegidas por el middleware `module.enabled:{identificador}`.
-- **Zero-Knowledge** (conocimiento cero): los módulos del núcleo (`pages`, `blog`, `shop`) no importan ni referencian módulos de extensión (`content_audit`, `ai_assistant`). La integración se resuelve con observadores del ciclo de vida, relaciones en tiempo de ejecución (`resolveRelationUsing`) y view composers sobre `@stack('admin_form_sidebar')` y `@stack('admin_modals')`.
+- **Zero-Knowledge** (conocimiento cero): el núcleo y los módulos propietarios de entidades (`blog`, `shop`) no importan ni referencian módulos de extensión (`content_audit`, `ai_assistant`). La integración se resuelve con observadores del ciclo de vida, relaciones en tiempo de ejecución (`resolveRelationUsing`) y view composers sobre `@stack('admin_form_sidebar')` y `@stack('admin_modals')`.
 
 ### Normalización multi-mercado
 
@@ -322,19 +328,14 @@ Los agentes que operen sobre este repositorio deben seguir las reglas de [`AGENT
 
 ## Servidor MCP
 
-El CMS expone su capacidad operativa a agentes externos mediante el estándar **Model Context Protocol**, con dos superficies complementarias:
-
-| Superficie | Endpoint | Protocolo |
-| --- | --- | --- |
-| Servidor MCP nativo (SDK `laravel/mcp`) | `POST /mcp/cms` | Streamable HTTP con handshake `initialize`; compatible con Claude Desktop, Cursor, VS Code, MCP Inspector y OpenCode |
-| JSON-RPC del CMS | `POST /api/mcp` | JSON-RPC 2.0 (`tools/list`, `tools/call`) |
-| SSE del CMS | `GET /api/mcp/sse` | Eventos del servidor para sesiones de larga duración |
-| Mensajes de sesión | `POST /api/mcp/message` | Continuación de una sesión SSE |
-| Catálogo autorizado | `GET /api/mcp/tools` | Herramientas disponibles para la identidad OAuth |
+El CMS expone sus capacidades a agentes mediante **Model Context Protocol**.
+El endpoint es `POST /mcp/cms`, con Streamable HTTP y handshake `initialize`,
+servido por el SDK `laravel/mcp`. El catálogo se consulta mediante `tools/list`
+con la identidad OAuth del cliente y refleja los módulos instalados y activos.
 
 ### Autenticación y scopes
 
-Todas las operaciones requieren un token Bearer de **Laravel Passport** con el scope `mcp:access`, refinado por `mcp:read`, `mcp:write` y `mcp:destructive` según la operación, además de los permisos de la cuenta. Los clientes M2M deben estar asociados explícitamente con una cuenta de servicio y un rol. Cada llamada queda registrada en `mcp_audit_logs`. Publicar, borrar o modificar una aplicación externa devuelve una ejecución para revisar desde el backoffice; `confirm:true` no concede aprobación.
+Todas las operaciones requieren un token Bearer de **Laravel Passport** con el scope `mcp:access`, refinado por `mcp:read`, `mcp:write` y `mcp:destructive` según la operación, además de los permisos de la cuenta. Los clientes M2M deben estar asociados explícitamente con una cuenta de servicio y un rol. Cada llamada queda registrada en `capability_audit_logs`. Publicar, borrar o modificar una aplicación externa devuelve una ejecución para revisar desde el backoffice; `confirm:true` no concede aprobación.
 
 Para emitir un token de agente:
 
@@ -354,11 +355,11 @@ El servidor publica cerca de 40 herramientas, entre ellas:
 - **Editorial**: `cms_get_editorial_prompt`, `cms_validate_editorial_tone`, `cms_humanize_prose`
 - **SEO y GEO**: `cms_audit_seo_geo`, `cms_resolve_filter_url`
 
-Las capacidades genéricas de entidades, recursos y acciones se generan desde registros del CMS. El catálogo efectivo filtra módulos activos, operaciones implementadas, conexiones, modalidades y permisos; el manifiesto estático es una referencia de compatibilidad. La ejecución comparte servicios de dominio y revalida autorización antes de cada paso.
+Las capacidades genéricas de entidades, recursos y acciones se generan desde registros del CMS. El catálogo efectivo filtra módulos activos, operaciones implementadas, conexiones, modalidades y permisos; el manifiesto estático documenta el protocolo canónico. La ejecución comparte servicios de dominio y revalida autorización antes de cada paso.
 
 ### Orquestación nativa del CMS
 
-El motor es PHP/Laravel y utiliza `App\Core\Capabilities`; MCP adapta el protocolo. La entrada de instrucciones se habilita con `CMS_ORCHESTRATION_ENABLED=true`, desactivada por defecto. Requiere el módulo IA activo y un modelo de texto configurado. Las herramientas concretas MCP siguen funcionando sin modelo y con esa entrada desactivada.
+El motor es PHP/Laravel y utiliza `App\Core\Capabilities`; MCP adapta el protocolo. La entrada de instrucciones pertenece al módulo opcional `orchestration`, que debe instalarse y activarse. Requiere el módulo IA activo y un modelo de texto configurado. Las herramientas concretas MCP siguen funcionando sin modelo y con esa entrada desactivada.
 
 El CMS valida planes de hasta 20 pasos, conserva checkpoints e idempotencia y pide aclaraciones ante objetivos ambiguos. Crea borradores solicitados con autor, mercados, traducciones y bloques. Editar contenido publicado conserva la versión pública hasta su revisión. Las aprobaciones humanas se vinculan al actor, los argumentos y la revisión; perder permisos o cambiar el contenido obliga a revisar de nuevo. Un resultado remoto incierto queda detenido para conciliación.
 
@@ -411,7 +412,7 @@ El servicio `AntiAiEditorialService` calcula una heurística de estilo con dicci
 
 El módulo Auditoría y Calidad permite exigir el control de estilo y fijar un umbral de 0 a 100. Los servicios comunes comprueban todos los idiomas y bloques después de sincronizarlos, respetando los roles sujetos a revisión; las operaciones explícitas de publicación mantienen además su validación y confirmación. Por defecto la comprobación es consultiva. Aprobar una revisión puede conservarla privada si la publicación automática está desactivada. El [runbook editorial](docs/CONTENT_AUDIT_WORKFLOW.md) describe permisos, revisiones, restauración, notificaciones y límites.
 
-Los prompts editoriales oficiales, en español e inglés, se descargan desde el backoffice (`/admin/ai/download-prompt`) o se leen en [`docs/prompts/PROMPT_EDITORIAL_HUMAN_IA.md`](docs/prompts/PROMPT_EDITORIAL_HUMAN_IA.md) y [`docs/prompts/EDITORIAL_HUMAN_AI_SYSTEM_PROMPT.md`](docs/prompts/EDITORIAL_HUMAN_AI_SYSTEM_PROMPT.md).
+Los prompts editoriales oficiales, en español e inglés, se descargan desde el backoffice (`/admin/ai/download-prompt`) o se leen en [`modules/AiAssistant/Resources/prompts/PROMPT_EDITORIAL_HUMAN_IA.md`](modules/AiAssistant/Resources/prompts/PROMPT_EDITORIAL_HUMAN_IA.md) y [`modules/AiAssistant/Resources/prompts/EDITORIAL_HUMAN_AI_SYSTEM_PROMPT.md`](modules/AiAssistant/Resources/prompts/EDITORIAL_HUMAN_AI_SYSTEM_PROMPT.md).
 
 Los editores de páginas, artículos y productos incorporan **Traducir con IA**: genera una propuesta conservando bloques, columnas, enlaces y medios, exige revisión antes de sustituir un idioma existente y se guarda mediante el formulario habitual. [Guía de uso](docs/AI_EDITOR_TRANSLATION.md) y [entradas de texto, bloques, imágenes y portadas](docs/AI_EDITOR_ENTRYPOINTS.md). La generación necesita una conexión y un modelo operativo de la modalidad correspondiente.
 
@@ -443,9 +444,14 @@ estático podría conservar contenido retirado. Véase el vhost de
 
 ## Calidad y verificación
 
+`make test` ejecuta contratos rápidos y un recorrido HTTP pequeño del núcleo.
+`make test-integration` verifica la integración en un contenedor desechable;
+`make test-release` añade instalación, concurrencia y actualización reales.
+Los límites y criterios para conservar pruebas están en [TESTING](docs/TESTING.md).
+
 ```bash
 # Gate completo sobre código, archivos y base de datos desechables
-docker compose -p dbcms-quality -f docker/ci/compose.yml run --build --rm app bash bin/ci-check
+docker compose -p dbcms-quality -f docker/ci/compose.yml run --build --rm app bash bin/ci-check release
 # Retirar exclusivamente los servicios/volúmenes de ese proyecto de QA
 docker compose -p dbcms-quality -f docker/ci/compose.yml down --volumes --remove-orphans
 
@@ -468,13 +474,13 @@ anterior, no una ejecución de tests de instalación sobre el runtime de desarro
 Para convertir el repositorio actual en plantilla y crear RegulaSE:
 [guía operativa](docs/GITHUB_TEMPLATE_REGULASE_RUNBOOK.md),
 [definición editorial](docs/REGULASE_PROJECT_BLUEPRINT.md) y
-[auditoría final](docs/FINAL_SYSTEM_AUDIT_2026-10-12.md).
+[auditoría final](docs/archive/FINAL_SYSTEM_AUDIT_2026-10-12.md).
 
 ## Versionado y despliegue
 
-El núcleo incorpora comprobación de releases estables y preparación de actualizaciones desde **Sistema → Actualizaciones**, con permiso `manage:updates`. Las instalaciones autónomas compatibles pueden actualizarse desde el navegador; los proyectos con Git o CI reciben una propuesta revisable para su despliegue. La primera incorporación en versiones antiguas requiere mantenimiento y adopción de una base oficial firmada. Consulta el [procedimiento de actualizaciones](docs/CORE_UPDATES_RUNBOOK.md), incluidos respaldos, conflictos y recuperación.
+El núcleo incorpora comprobación de releases estables y preparación de actualizaciones desde **Sistema → Actualizaciones**, con permiso `manage:updates`. Las instalaciones autónomas compatibles pueden actualizarse desde el navegador; los proyectos con Git o CI reciben una propuesta revisable para su despliegue. Consulta el [procedimiento de actualizaciones](docs/CORE_UPDATES_RUNBOOK.md), incluidos respaldos, conflictos y recuperación.
 
-El proyecto sigue **SemVer 2.0.0** (`MAYOR.MENOR.PARCHE`) y mantiene su versión en el archivo `VERSION`. La versión preparada en esta rama es **1.3.0** (véase [`CHANGELOG.md`](CHANGELOG.md)).
+El proyecto sigue **SemVer 2.0.0** (`MAYOR.MENOR.PARCHE`) y mantiene su versión en el archivo `VERSION`. La versión preparada en esta rama es **2.0.0** (véase [`CHANGELOG.md`](CHANGELOG.md)).
 
 ```bash
 # Consultar la versión activa y el estado del repositorio
@@ -487,7 +493,7 @@ El proyecto sigue **SemVer 2.0.0** (`MAYOR.MENOR.PARCHE`) y mantiene su versión
 git diff -- VERSION package.json package-lock.json
 ```
 
-También admite `--set=2.1.0` para fijar una versión concreta. El comando actualiza `VERSION` y `APP_VERSION` si existe en `.env`; no sincroniza automáticamente `package.json` ni `package-lock.json`. Alinear esas versiones cuando se incrementen. `--tag` está retirado y falla antes de escribir: crear la etiqueta anotada después del commit y de sus verificaciones, siguiendo [el procedimiento de publicación](docs/DEPLOYMENT_AND_VERSIONING.md). Toda etiqueta estable publicada es inmutable; una corrección posterior requiere una nueva versión PATCH. Los flujos de GitHub Actions cubren el ciclo completo:
+También admite `--set=2.1.0` para fijar una versión concreta. El comando actualiza `VERSION` y `APP_VERSION` si existe en `.env`; no sincroniza automáticamente `package.json` ni `package-lock.json`. Alinear esas versiones cuando se incrementen. Crear la etiqueta anotada después del commit y de sus verificaciones, siguiendo [el procedimiento de publicación](docs/DEPLOYMENT_AND_VERSIONING.md). Toda etiqueta estable publicada es inmutable; una corrección posterior requiere una nueva versión PATCH. Los flujos de GitHub Actions cubren el ciclo completo:
 
 | Workflow | Disparador | Acción |
 | --- | --- | --- |
@@ -500,13 +506,13 @@ retiran los workflows oficiales de GitHub. Funcionan con GitLab, otros proveedor
 o, en rsync, sin repositorio Git. `--deploy=none` conserva solo las herramientas
 de desarrollo. Consulta [la guía de creación y despliegue](docs/DERIVED_PROJECTS_GUIDE.md).
 
-La guía completa está en [`docs/DEPLOYMENT_AND_VERSIONING.md`](docs/DEPLOYMENT_AND_VERSIONING.md), la [validación de publicación](docs/RELEASE_VALIDATION_2026-10-13.md) distingue pruebas locales y resultados de GitHub, y el runbook de rendimiento está en [`docs/19_PERFORMANCE_AND_DEPLOYMENT_RUNBOOK.md`](docs/19_PERFORMANCE_AND_DEPLOYMENT_RUNBOOK.md).
+La guía completa está en [`docs/DEPLOYMENT_AND_VERSIONING.md`](docs/DEPLOYMENT_AND_VERSIONING.md), la [validación de publicación](docs/archive/RELEASE_VALIDATION_2026-10-13.md) distingue pruebas locales y resultados de GitHub, y el runbook de rendimiento está en [`docs/19_PERFORMANCE_AND_DEPLOYMENT_RUNBOOK.md`](docs/19_PERFORMANCE_AND_DEPLOYMENT_RUNBOOK.md).
 
 ## Documentación
 
-La documentación técnica vive en `docs/`, organizada por temas. Para mantener o extender el sistema, empezar por la [guía de arquitectura y mantenimiento](docs/ARCHITECTURE_MAINTENANCE_GUIDE.md), sus contratos y recorridos verificados. El [cierre de pendientes](docs/PENDING_CLOSURE_AND_QUALITY_VALIDATION_2026-10-12.md) actualiza la auditoría anterior y recoge los límites externos:
+La documentación técnica vive en `docs/`, organizada por temas. Para mantener o extender el sistema, empezar por la [guía de arquitectura y mantenimiento](docs/ARCHITECTURE_MAINTENANCE_GUIDE.md), sus contratos y recorridos verificados. El [cierre de pendientes](docs/archive/PENDING_CLOSURE_AND_QUALITY_VALIDATION_2026-10-12.md) actualiza la auditoría anterior y recoge los límites externos:
 
-La [auditoría funcional por módulos del 11 de octubre de 2026](docs/CMS_MODULE_FUNCTIONAL_AUDIT_2026-10-11.md) recoge las pruebas locales reales, correcciones, entidades QA y límites de las conexiones y de SEO/GEO/AEO.
+La [auditoría funcional por módulos del 11 de octubre de 2026](docs/archive/CMS_MODULE_FUNCTIONAL_AUDIT_2026-10-11.md) recoge las pruebas locales reales, correcciones, entidades QA y límites de las conexiones y de SEO/GEO/AEO.
 
 - **Fundamentos**: [`01_ARCHITECTURE_AND_CLEAN_CODE.md`](docs/01_ARCHITECTURE_AND_CLEAN_CODE.md), [`02_SPEC_DRIVEN_DESIGN_SDD.md`](docs/02_SPEC_DRIVEN_DESIGN_SDD.md), [`03_TOKEN_OPTIMIZATION_AND_KV_CACHE.md`](docs/03_TOKEN_OPTIMIZATION_AND_KV_CACHE.md), [`09_DIRECTORY_STRUCTURE_AND_FILE_INDEX.md`](docs/09_DIRECTORY_STRUCTURE_AND_FILE_INDEX.md)
 - **Entorno y calidad**: [`06_ZERO_HOST_PHP_SAIL_RUNBOOK.md`](docs/06_ZERO_HOST_PHP_SAIL_RUNBOOK.md), [`08_LTS_UPGRADE_AGENT_SPEC.md`](docs/08_LTS_UPGRADE_AGENT_SPEC.md)

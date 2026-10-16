@@ -17,7 +17,6 @@ return new class extends Migration
             $table->id();
             $table->foreignId('filter_page_id')->constrained('filter_pages')->cascadeOnDelete();
             $table->string('type', 40);
-            $table->string('widget_key')->nullable();
             $table->unsignedSmallInteger('order')->default(0);
             $table->json('styling_json')->nullable();
             $table->boolean('is_active')->default(true);
@@ -37,12 +36,6 @@ return new class extends Migration
             $table->unique(['filter_page_section_id', 'locale', 'market_id'], 'filter_page_sec_trans_unique');
         });
 
-        // The intro is now composed with blocks (the plain-text column is gone).
-        if (Schema::hasColumn('filter_pages', 'intro')) {
-            Schema::table('filter_pages', function (Blueprint $table): void {
-                $table->dropColumn('intro');
-            });
-        }
     }
 
     public function down(): void
@@ -50,10 +43,5 @@ return new class extends Migration
         Schema::dropIfExists('filter_page_section_translations');
         Schema::dropIfExists('filter_page_sections');
 
-        if (! Schema::hasColumn('filter_pages', 'intro')) {
-            Schema::table('filter_pages', function (Blueprint $table): void {
-                $table->text('intro')->nullable()->after('meta_description');
-            });
-        }
     }
 };

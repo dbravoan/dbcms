@@ -13,7 +13,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Testing\Fakes\MailFake;
 
 final class SendModuleNotificationEmailJob implements ShouldQueue
 {
@@ -42,7 +41,7 @@ final class SendModuleNotificationEmailJob implements ShouldQueue
 
                 return;
             }
-            if (! Mail::getFacadeRoot() instanceof MailFake && ! $this->hasRealTransport((string) config('mail.default'))) {
+            if (! $this->hasRealTransport((string) config('mail.default'))) {
                 throw new \RuntimeException('A real email transport is not configured.');
             }
             Mail::to($user->email)->send((new ModuleNotificationMail($notification))->locale($user->locale ?? app()->getLocale()));

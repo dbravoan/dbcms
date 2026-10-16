@@ -8,13 +8,20 @@ use App\Core\Filters\FilterFacets;
 use App\Core\Filters\FilterQueryRedirector;
 use App\Core\Filters\FilterSet;
 use App\Models\Market;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Modules\Shop\Models\Product;
+use Tests\Support\BlogShopComposition;
+use Tests\Support\CmsFixtures;
+use Tests\Support\FilterFixtures;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, BlogShopComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization(['es', 'en'], ['es', 'us']);
+    CmsFixtures::identities();
+    FilterFixtures::blog();
+    FilterFixtures::shop();
+    Product::query()->update(['is_featured' => true]);
     config(['cms.theme' => 'db-cyber', 'cms.admin_theme' => 'dbcms', 'cms.page_cache.enabled' => false]);
 });
 

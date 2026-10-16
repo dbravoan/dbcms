@@ -25,6 +25,7 @@ return new class extends Migration
             $table->text('rejection_reason')->nullable();
             $table->text('notes')->nullable();
             $table->unsignedInteger('current_version')->default(1);
+            $table->unsignedBigInteger('pending_revision_id')->nullable()->index();
             $table->timestamps();
 
             $table->unique(['auditable_type', 'auditable_id'], 'content_audits_entity_unique');

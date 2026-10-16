@@ -5,6 +5,25 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
+test('Font Awesome includes icons declared only by a visual package', () => {
+    const root = mkdtempSync(join(tmpdir(), 'dbcms-package-icons-'));
+    try {
+        for (const directory of ['bin', 'block-packages/Example', 'node_modules/@fortawesome/fontawesome-free/metadata']) {
+            mkdirSync(join(root, directory), { recursive: true });
+        }
+        copyFileSync(new URL('../../bin/generate-fontawesome-css.mjs', import.meta.url), join(root, 'bin/generate-fontawesome-css.mjs'));
+        writeFileSync(join(root, 'block-packages/Example/Block.php'), '<?php return "fa-solid fa-vial";');
+        writeFileSync(join(root, 'node_modules/@fortawesome/fontawesome-free/metadata/icon-families.json'), JSON.stringify({
+            vial: { unicode: 'f492', svgs: { classic: { solid: {} } } },
+        }));
+        const result = spawnSync(process.execPath, [join(root, 'bin/generate-fontawesome-css.mjs')], { encoding: 'utf8' });
+        assert.equal(result.status, 0, result.stderr);
+        assert.match(readFileSync(join(root, 'resources/css/generated/fontawesome.css'), 'utf8'), /\.fa-solid\.fa-vial::before/);
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+});
+
 test('Font Awesome generation is byte identical regardless of filesystem scan order', () => {
     const root = mkdtempSync(join(tmpdir(), 'dbcms-fontawesome-'));
     try {

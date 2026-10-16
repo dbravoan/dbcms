@@ -28,6 +28,7 @@ final class AiGeneratedBlockIntegrityTest extends TestCase
             $blocks[$type] = $block;
         }
         $registry = $this->createStub(BlockRegistryInterface::class);
+        $registry->method('isAvailable')->willReturnCallback(static fn (string $type): bool => isset($blocks[$type]));
         $registry->method('get')->willReturnCallback(static fn (string $type): ?BlockTypeInterface => $blocks[$type] ?? null);
         $registry->method('getActiveBlocks')->willReturn($blocks);
         $registry->method('getDynamicDataPayloads')->willReturn([]);
@@ -69,6 +70,8 @@ final class AiGeneratedBlockIntegrityTest extends TestCase
         ]]), 'provider' => 'fake', 'model' => 'fake', 'prompt_tokens' => 0, 'completion_tokens' => 0, 'latency_ms' => 0]);
         (new ReflectionProperty($service, 'configBridge'))->setValue($service, $bridge);
         $sections = (new ReflectionMethod($service, 'composeSections'))->invoke($service, 'Write an English article about organising books, without statistics or widgets.', 'Library organisation', 'An editorial guide', 'en');
+        self::assertSame('hero', $sections[0]['type']);
+        self::assertSame('Library organisation', $sections[0]['title']);
         self::assertNotContains('charts', array_column($sections, 'type'));
         self::assertNotContains('kpi', array_column($sections, 'type'));
         self::assertNotContains('widget_posts', array_column($sections, 'type'));
@@ -79,6 +82,7 @@ final class AiGeneratedBlockIntegrityTest extends TestCase
     public function test_default_landing_recommendations_do_not_invent_authority(): void
     {
         $types = array_column($this->intelligence()->recommendSequence('SaaS landing', 'en'), 'type');
+        self::assertContains('hero', $types);
         self::assertNotContains('kpi', $types);
         self::assertNotContains('testimonials', $types);
     }
@@ -87,6 +91,7 @@ final class AiGeneratedBlockIntegrityTest extends TestCase
     {
         // An uninitialized provider collaborator would throw if generation ran.
         $service = (new ReflectionClass(AiAssistantDomainService::class))->newInstanceWithoutConstructor();
+        (new ReflectionProperty($service, 'blockIntelligence'))->setValue($service, $this->intelligence());
         $result = $service->generateBlock('charts', 'Create a chart about CMS performance', 'en', 'uk');
         self::assertSame('needs_input', $result['status']);
         self::assertFalse($result['success']);

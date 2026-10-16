@@ -28,4 +28,9 @@ final class Ga4CspContributor implements ContentSecurityPolicyContributorInterfa
             'https://region1.analytics.google.com',
         ];
     }
+
+    public function frameOrigins(): array
+    {
+        return [];
+    }
 }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Capabilities;
 
 use App\Core\Capabilities\Tools\Action\ActionTool;
+use App\Services\Media\MediaUploadService;
+use App\Services\Seo\FilterLandingActions;
 
 /**
  * Catalog of the non-CRUD capabilities: platform lifecycle, caches, editorial
@@ -13,33 +15,41 @@ use App\Core\Capabilities\Tools\Action\ActionTool;
  * Every entry declares the admin permission and the OAuth ability it needs, so
  * the surface stays auditable in one file.
  */
-class CmsActionCatalog
+final class CmsActionCatalog
 {
+    public function __construct(
+        private readonly PlatformAdministrationActions $platform,
+        private readonly ContentSectionActions $sections,
+        private readonly AccountActions $accounts,
+        private readonly MediaUploadService $media,
+        private readonly FilterLandingActions $seo,
+    ) {}
+
     /**
      * @return list<ActionTool>
      */
-    public static function all(CmsActionService $service): array
+    public function all(): array
     {
         return array_merge(
-            self::capabilities($service),
-            self::moduleLifecycle($service),
-            self::themes($service),
-            self::settings($service),
-            self::connection($service),
-            self::cache($service),
-            self::sections($service),
-            self::media($service),
-            self::notifications($service),
-            self::tokens($service),
-            self::auditTrail($service),
-            self::seo($service),
+            self::capabilities($this->platform),
+            self::moduleLifecycle($this->platform),
+            self::themes($this->platform),
+            self::settings($this->platform),
+            self::connection($this->platform),
+            self::cache($this->platform),
+            self::sections($this->sections),
+            self::media($this->media),
+            self::notifications($this->accounts),
+            self::tokens($this->accounts),
+            self::auditTrail($this->accounts),
+            self::seo($this->seo),
         );
     }
 
     /**
      * @return list<ActionTool>
      */
-    private static function capabilities(CmsActionService $service): array
+    private static function capabilities(PlatformAdministrationActions $service): array
     {
         return [
             new ActionTool(
@@ -57,7 +67,7 @@ class CmsActionCatalog
     /**
      * @return list<ActionTool>
      */
-    private static function moduleLifecycle(CmsActionService $service): array
+    private static function moduleLifecycle(PlatformAdministrationActions $service): array
     {
         $identifier = ['type' => 'string', 'description' => 'Module identifier, e.g. shop, blog, mcp'];
 
@@ -113,7 +123,7 @@ class CmsActionCatalog
     /**
      * @return list<ActionTool>
      */
-    private static function themes(CmsActionService $service): array
+    private static function themes(PlatformAdministrationActions $service): array
     {
         return [
             new ActionTool(
@@ -131,7 +141,7 @@ class CmsActionCatalog
     /**
      * @return list<ActionTool>
      */
-    private static function settings(CmsActionService $service): array
+    private static function settings(PlatformAdministrationActions $service): array
     {
         return [
             new ActionTool(
@@ -160,7 +170,7 @@ class CmsActionCatalog
     /**
      * @return list<ActionTool>
      */
-    private static function connection(CmsActionService $service): array
+    private static function connection(PlatformAdministrationActions $service): array
     {
         return [
             new ActionTool(
@@ -198,7 +208,7 @@ class CmsActionCatalog
     /**
      * @return list<ActionTool>
      */
-    private static function cache(CmsActionService $service): array
+    private static function cache(PlatformAdministrationActions $service): array
     {
         return [
             new ActionTool(
@@ -216,7 +226,7 @@ class CmsActionCatalog
     /**
      * @return list<ActionTool>
      */
-    private static function sections(CmsActionService $service): array
+    private static function sections(ContentSectionActions $service): array
     {
         $entity = [
             'type' => ['type' => 'string', 'description' => 'Entity type with blocks: page, post, product'],
@@ -232,20 +242,19 @@ class CmsActionCatalog
                 toolPermission: null,
                 toolAbility: ActionTool::ABILITY_READ,
                 handler: static fn (array $args): array => $service->sectionsGet($args),
-                permissionResolver: static fn (array $args): ?string => $service->entityPermission($args),
+                permissionResolver: static fn (array $args): ?string => empty($args['type']) ? null : app(EntityReadService::class)->schemaFor((string) $args['type'])->permission,
             ),
             new ActionTool(
                 toolName: 'cms_content_sections_sync',
-                toolDescription: 'MCP: replaces the blocks of a sectionable entity. Accepts the block-manager shape (locale → list of blocks) or a plain list; each block carries "type" plus its content',
+                toolDescription: 'MCP: replaces the blocks through the entity publication workflow. Accepts the block-manager shape (locale → list of blocks); each block carries "type" plus its content',
                 toolProperties: $entity + [
-                    'sections' => ['type' => ['array', 'object'], 'description' => 'Locale-keyed blocks or a plain ordered list'],
-                    'status' => ['type' => 'string', 'description' => 'published|draft'],
+                    'sections' => ['type' => ['array', 'object'], 'description' => 'Locale-keyed lists of blocks; an empty object or array clears the sections'],
                 ],
                 toolRequired: ['type', 'id', 'sections'],
                 toolPermission: null,
                 toolAbility: ActionTool::ABILITY_WRITE,
                 handler: static fn (array $args): array => $service->sectionsSync($args),
-                permissionResolver: static fn (array $args): ?string => $service->entityPermission($args),
+                permissionResolver: static fn (array $args): ?string => empty($args['type']) ? null : app(EntityReadService::class)->schemaFor((string) $args['type'])->permission,
             ),
         ];
     }
@@ -253,7 +262,7 @@ class CmsActionCatalog
     /**
      * @return list<ActionTool>
      */
-    private static function media(CmsActionService $service): array
+    private static function media(MediaUploadService $service): array
     {
         return [
             new ActionTool(
@@ -274,7 +283,7 @@ class CmsActionCatalog
     /**
      * @return list<ActionTool>
      */
-    private static function notifications(CmsActionService $service): array
+    private static function notifications(AccountActions $service): array
     {
         return [
             new ActionTool(
@@ -292,7 +301,7 @@ class CmsActionCatalog
     /**
      * @return list<ActionTool>
      */
-    private static function tokens(CmsActionService $service): array
+    private static function tokens(AccountActions $service): array
     {
         return [
             new ActionTool(
@@ -310,7 +319,7 @@ class CmsActionCatalog
     /**
      * @return list<ActionTool>
      */
-    private static function auditTrail(CmsActionService $service): array
+    private static function auditTrail(AccountActions $service): array
     {
         return [
             new ActionTool(
@@ -332,7 +341,7 @@ class CmsActionCatalog
     /**
      * @return list<ActionTool>
      */
-    private static function seo(CmsActionService $service): array
+    private static function seo(FilterLandingActions $service): array
     {
         return [
             new ActionTool(

@@ -1,4 +1,4 @@
-@extends('themes.db-enterprise.layouts.app')
+@extends('themes::db-enterprise.layouts.app')
 
 @section('title', ($isShop ? __('Soluciones & Licencias Enterprise') : __('Catálogo de Soluciones Enterprise')) . ' - dbCMS')
 @section('meta_description', __('Soluciones de software empresarial, suscripciones SaaS, infraestructura cloud y soporte técnico prioritario.'))

@@ -4,13 +4,20 @@ declare(strict_types=1);
 
 use App\Contracts\Services\ModuleSettingsServiceInterface;
 use App\Models\Market;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Modules\Blog\Models\Category;
 use Modules\Blog\Models\Comment;
 use Modules\Blog\Models\Post;
+use Tests\Support\BlogComposition;
+use Tests\Support\BlogFixtures;
+use Tests\Support\CmsFixtures;
+
+uses(BlogComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    CmsFixtures::home();
+    BlogFixtures::post();
     app(ModuleSettingsServiceInterface::class)->set('blog', 'comments_enabled', true);
     $this->publicPost = Post::firstOrFail();
     $this->publicPost->updateQuietly(['allow_comments' => true]);

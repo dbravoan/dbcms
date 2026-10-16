@@ -1,0 +1,11 @@
+{
+  "identifier": "before_after",
+  "name": "BeforeAfter",
+  "version": "1.0.0",
+  "blocks": [
+    "BlockPackages\\BeforeAfter\\Blocks\\BeforeAfterBlock"
+  ],
+  "requires": {
+    "core": ">=1.0.0"
+  }
+}

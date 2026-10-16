@@ -9,7 +9,6 @@ use Closure;
 use Illuminate\Container\Attributes\Tag;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Vite;
-use Modules\Captcha\Services\CaptchaService;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -85,8 +84,10 @@ final class SecurityHeaders
         ];
 
         $connectOrigins = [];
+        $frameOrigins = [];
         foreach ($this->contributors as $contributor) {
             $connectOrigins = array_merge($connectOrigins, $contributor->connectOrigins());
+            $frameOrigins = array_merge($frameOrigins, $contributor->frameOrigins());
         }
         if ($connectOrigins !== []) {
             $directives = array_map(
@@ -96,22 +97,8 @@ final class SecurityHeaders
             );
         }
 
-        // Third-party captcha providers (Google reCAPTCHA / Cloudflare Turnstile)
-        // need their frames and network calls allowlisted. Their scripts ride the
-        // nonce + 'strict-dynamic'.
-        $captchaOrigins = $this->captchaOrigins();
-
-        if ($captchaOrigins['frame'] !== []) {
-            $directives[] = 'frame-src '.implode(' ', $captchaOrigins['frame']);
-        }
-
-        if ($captchaOrigins['connect'] !== []) {
-            $directives = array_map(
-                static fn (string $directive): string => str_starts_with($directive, 'connect-src')
-                    ? $directive.' '.implode(' ', $captchaOrigins['connect'])
-                    : $directive,
-                $directives
-            );
+        if ($frameOrigins !== []) {
+            $directives[] = "frame-src 'self' ".implode(' ', array_unique($frameOrigins));
         }
 
         // Local development talks to the Vite dev server. Only reachable
@@ -141,27 +128,5 @@ final class SecurityHeaders
         }
 
         return implode('; ', $directives);
-    }
-
-    /**
-     * Frame/network origins required by the active captcha driver, if any.
-     *
-     * @return array{frame: array<int, string>, connect: array<int, string>}
-     */
-    private function captchaOrigins(): array
-    {
-        $empty = ['frame' => [], 'connect' => []];
-
-        try {
-            $service = CaptchaService::class;
-
-            if (! class_exists($service) || ! captcha_available()) {
-                return $empty;
-            }
-
-            return app($service)->cspOrigins();
-        } catch (\Throwable) {
-            return $empty;
-        }
     }
 }

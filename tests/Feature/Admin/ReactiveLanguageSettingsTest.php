@@ -7,13 +7,15 @@ use App\Models\Language;
 use App\Models\Menu;
 use App\Models\MenuItemTranslation;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    Menu::create(['name' => 'Fixture menu', 'slug' => 'fixture-menu', 'location' => 'header', 'is_active' => true]);
 });
 
 test('menu items accept a title for every active language, including a new one', function (): void {

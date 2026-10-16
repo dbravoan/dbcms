@@ -1370,7 +1370,7 @@ return [
 
     'mcp' => [
         'bridge_hint' => 'For clients supporting only stdio, this example uses the community mcp-remote bridge (requires Node.js). Check its documentation before installing; local HTTP testing requires --allow-http. Use HTTPS in production.',
-        'transport_hint' => 'Standard endpoint: <code>:endpoint</code> (initialize, tools/list and tools/call). Compatibility: <code>:legacy</code> is custom JSON-RPC and <code>:sse</code> is legacy SSE. All require the Bearer header; URL tokens are rejected.',
+        'transport_hint' => 'Endpoint MCP: <code>:endpoint</code> (initialize, tools/list, tools/call). Bearer Passport; no URL tokens.',
         'oauth_scope_desc' => 'Send the Passport token using <code>Authorization: Bearer</code>. <code>mcp:access</code> grants transport access; <code>mcp:read</code> permits reads; <code>mcp:write</code> permits creating and editing drafts; <code>mcp:publish</code> is a legacy write alias; <code>mcp:destructive</code> permits requesting destructive operations. User permissions and enabled modules restrict every action. Publishing, deletion and external effects require human approval of the concrete change; no scope replaces that approval.',
         'agents_desc' => 'Connect an MCP client using Streamable HTTP. These examples use an existing Passport token and the acting user’s effective permissions.',
         'file_opencode' => 'File: <code>opencode.json</code> at the root of your project',

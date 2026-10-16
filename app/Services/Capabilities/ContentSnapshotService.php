@@ -23,6 +23,7 @@ final class ContentSnapshotService
      */
     public function hydrate(Model $entity, array $snapshot): Model
     {
+        $this->assertEntitySnapshot($entity, $snapshot);
         $draft = clone $entity;
         $draft->unsetRelations();
         $draft->setRawAttributes((array) $snapshot['attributes'], true);
@@ -112,7 +113,8 @@ final class ContentSnapshotService
     /** @param array<string,mixed> $snapshot */
     public function restore(Model $entity, array $snapshot): void
     {
-        Model::withoutEvents(function () use ($entity, $snapshot): void {
+        $this->assertEntitySnapshot($entity, $snapshot);
+        DB::transaction(fn () => Model::withoutEvents(function () use ($entity, $snapshot): void {
             $attributes = (array) $snapshot['attributes'];
             DB::table($entity->getTable())->where($entity->getKeyName(), $entity->getKey())->update($attributes);
             if (method_exists($entity, 'translations')) {
@@ -145,20 +147,77 @@ final class ContentSnapshotService
             }
             if (method_exists($entity, 'markets') && $entity->markets() instanceof BelongsToMany) {
                 $relation = $entity->markets();
-                if (array_key_exists('market_pivots', $snapshot)) {
-                    $relation->newPivotQuery()->delete();
-                    if ($snapshot['market_pivots'] !== []) {
-                        DB::table($relation->getTable())->insert($snapshot['market_pivots']);
-                    }
-                } else {
-                    $relation->sync((array) ($snapshot['market_ids'] ?? []));
+                $relation->newPivotQuery()->delete();
+                if ($snapshot['market_pivots'] !== []) {
+                    DB::table($relation->getTable())->insert($snapshot['market_pivots']);
                 }
             }
             if (array_key_exists('module_relations', $snapshot)) {
                 $this->revisionHandler($entity)?->restoreRevision($entity, (array) $snapshot['module_relations']);
             }
             $entity->refresh();
-        });
+        }));
+    }
+
+    /** @param array<string,mixed> $snapshot */
+    public function assertValid(array $snapshot): void
+    {
+        if (($snapshot['snapshot_version'] ?? null) !== 3) {
+            throw new \DomainException('Only canonical snapshot version 3 is supported.');
+        }
+        foreach (['attributes', 'translation_records', 'section_records', 'market_ids', 'market_pivots'] as $key) {
+            if (! isset($snapshot[$key]) || ! is_array($snapshot[$key])) {
+                throw new \DomainException("Snapshot version 3 requires [{$key}].");
+            }
+        }
+        if ($snapshot['attributes'] === []) {
+            throw new \DomainException('Snapshot attributes must contain the canonical entity row.');
+        }
+        foreach (['translation_records', 'section_records', 'market_ids', 'market_pivots'] as $key) {
+            if (! array_is_list($snapshot[$key])) {
+                throw new \DomainException("Snapshot [{$key}] must be a record list.");
+            }
+        }
+        foreach (['translation_records', 'market_pivots'] as $key) {
+            $this->assertRows($snapshot[$key], $key);
+        }
+        foreach ($snapshot['section_records'] as $section) {
+            if (! is_array($section) || ! isset($section['attributes'], $section['translations']) || ! is_array($section['attributes']) || $section['attributes'] === [] || ! is_array($section['translations']) || ! array_is_list($section['translations'])) {
+                throw new \DomainException('Snapshot sections require canonical attributes and translation records.');
+            }
+            $this->assertRows($section['translations'], 'section translations');
+        }
+        foreach ($snapshot['market_ids'] as $id) {
+            if (! is_int($id) && ! is_string($id)) {
+                throw new \DomainException('Snapshot market identifiers must be integers or strings.');
+            }
+        }
+        if (array_key_exists('module_relations', $snapshot) && ! is_array($snapshot['module_relations'])) {
+            throw new \DomainException('Snapshot module relations must be canonical records.');
+        }
+    }
+
+    /** @param array<array-key,mixed> $rows */
+    private function assertRows(array $rows, string $collection): void
+    {
+        foreach ($rows as $row) {
+            if (! is_array($row) || $row === [] || array_is_list($row)) {
+                throw new \DomainException("Snapshot [{$collection}] requires canonical rows.");
+            }
+        }
+    }
+
+    /** @param array<string,mixed> $snapshot */
+    private function assertEntitySnapshot(Model $entity, array $snapshot): void
+    {
+        $this->assertValid($snapshot);
+        $handler = $this->revisionHandler($entity);
+        if ($handler !== null) {
+            if (! isset($snapshot['module_relations']) || ! is_array($snapshot['module_relations'])) {
+                throw new \DomainException('Snapshot requires canonical module relations.');
+            }
+            $handler->validateRevision($snapshot['module_relations']);
+        }
     }
 
     private function revisionHandler(Model $entity): ?EntityRevisionHandlerInterface

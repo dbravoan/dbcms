@@ -11,7 +11,8 @@ use App\DTOs\Content\EntityMutationData;
 use App\Models\Language;
 use App\Models\Market;
 use App\Models\User;
-use App\Services\Capabilities\EntityCrudService;
+use App\Services\Capabilities\EntityMutationService;
+use App\Services\Capabilities\EntityReadService;
 use App\Services\Content\EditorialDraftService;
 use Illuminate\Support\Facades\Auth;
 use Modules\Gallery\Contracts\GalleryEditorialServiceInterface;
@@ -20,13 +21,13 @@ use Modules\Gallery\Models\Gallery;
 /** Entry adapter; all mutation rules and transactions belong to the common writer. */
 final class GalleryEditorialService implements GalleryEditorialServiceInterface
 {
-    public function __construct(private readonly EntityCrudService $entities, private readonly CapabilityAuthorizer $authorizer) {}
+    public function __construct(private readonly EntityMutationService $entities, private readonly EntityReadService $reader, private readonly CapabilityAuthorizer $authorizer) {}
 
     public function create(array $input): Gallery
     {
         $actor = $this->authorize();
-        $payload = $this->entities->create('gallery', EntityMutationData::fromLegacy($input)->arguments, $actor);
-        $gallery = $this->entities->resolveEntity('gallery', $payload['id']);
+        $payload = $this->entities->create('gallery', EntityMutationData::fromForm($input)->arguments, $actor);
+        $gallery = $this->reader->resolveEntity('gallery', $payload['id']);
         assert($gallery instanceof Gallery);
 
         return $gallery->load(['translations', 'items', 'markets']);
@@ -35,7 +36,7 @@ final class GalleryEditorialService implements GalleryEditorialServiceInterface
     public function update(Gallery $gallery, array $input): array
     {
         $this->authorize();
-        $args = EntityMutationData::fromLegacy($input)->arguments;
+        $args = EntityMutationData::fromForm($input)->arguments;
         if ($gallery->is_active && ! empty($args['attributes']['is_active'])) {
             unset($args['attributes']['is_active']);
         }

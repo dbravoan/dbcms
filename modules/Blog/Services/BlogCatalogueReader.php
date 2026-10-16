@@ -16,7 +16,6 @@ use App\DTOs\Front\PublicContentContext;
 use App\Services\Cms\FrontViewResolver;
 use App\Services\Seo\JsonLdSchemaService;
 use App\Services\Seo\SeoMetaService;
-use Illuminate\Support\Str;
 use Modules\Blog\Contracts\BlogCatalogueReaderInterface;
 use Modules\Blog\Contracts\PostDomainServiceInterface;
 use Modules\Blog\Filters\BlogFilters;
@@ -33,16 +32,6 @@ final class BlogCatalogueReader implements BlogCatalogueReaderInterface
         $service = $this->posts;
         $market = $context->market;
         $locale = $context->locale;
-
-        // Legacy query params (`?q=`, `?category=`) consolidate into the friendly
-        // canonical URL with a 301, so old links never compete in the SERP.
-        if (array_key_exists('q', $context->query) || array_key_exists('category', $context->query)) {
-            $redirect = $this->legacyFilterRedirect($context);
-
-            if ($redirect !== null) {
-                return $redirect;
-            }
-        }
 
         // Filter form submissions (ranges, multi-selects, picks) consolidate into
         // the canonical friendly URL with a 301.
@@ -79,57 +68,6 @@ final class BlogCatalogueReader implements BlogCatalogueReaderInterface
             'filterSet' => new FilterSet('blog', (string) $market->code, $locale, []),
             'filterModule' => app(BlogFilters::class),
         ]);
-    }
-
-    /**
-     * 301 from legacy `?q=` / `?category=` to the canonical friendly URL.
-     */
-    private function legacyFilterRedirect(PublicContentContext $context): ?FrontPageData
-    {
-        $market = $context->market;
-        $locale = $context->locale;
-        $localization = $this->localization;
-        $filters = app(BlogFilters::class);
-        $values = [];
-
-        if (array_key_exists('category', $context->query)) {
-            $raw = (is_scalar($context->query['category'] ?? null) ? (string) $context->query['category'] : '');
-
-            $category = is_numeric($raw)
-                ? Category::with('translations')->where('is_active', true)->forMarket($market)->find((int) $raw)
-                : Category::where('is_active', true)->forMarket($market)->whereHas('translations', fn ($q) => $q->where('slug', $raw)->where('locale', $locale))
-                    ->with('translations')
-                    ->first();
-
-            $translation = $category?->translations->firstWhere('locale', $locale) ?? $category?->translations->first();
-
-            if ($translation?->slug) {
-                $values['category'] = [(string) $translation->slug];
-            }
-        }
-
-        if (array_key_exists('q', $context->query)) {
-            $term = Str::slug((is_scalar($context->query['q'] ?? null) ? (string) $context->query['q'] : ''));
-
-            if ($term !== '') {
-                $values['search'] = $term;
-            }
-        }
-
-        if ($values === []) {
-            return null;
-        }
-
-        $set = new FilterSet('blog', (string) $market->code, $locale, $values);
-        $path = (app(FilterUrlBuilder::class))->canonicalPath($set, $filters->filterDimensions(), $locale);
-
-        if ($path === null) {
-            return null;
-        }
-
-        $blogSlug = $localization->getModulePrefix('blog', $locale);
-
-        return FrontPageData::redirect($localization->url("/{$blogSlug}/{$path}", $market), 301);
     }
 
     public function filtered(PublicContentContext $context, FilterSet $set): FrontPageData

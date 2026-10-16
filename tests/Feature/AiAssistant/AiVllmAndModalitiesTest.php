@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Modules\AiAssistant\Contracts\AiConfigBridgeInterface;
 use Modules\AiAssistant\Contracts\AiProviderRegistryInterface;
 use Modules\AiAssistant\DTOs\ChatRequest;
@@ -17,12 +18,14 @@ use Modules\AiAssistant\DTOs\VideoGenerationRequest;
 use Modules\AiAssistant\Providers\HiggsfieldProvider;
 use Modules\AiAssistant\Providers\MagnificProvider;
 use Modules\AiAssistant\Providers\VllmProvider;
+use Tests\Support\AiComposition;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, AiComposition::class);
 
 const VLLM_BASE = 'http://host.docker.internal:8000/v1';
 
 beforeEach(function (): void {
+    Sleep::fake();
     Http::preventStrayRequests();
     $role = Role::firstOrCreate(['slug' => 'admin'], ['name' => 'Administrator']);
     $user = User::factory()->create(['email' => 'admin@db-cms.io']);

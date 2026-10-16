@@ -3,55 +3,30 @@
 declare(strict_types=1);
 
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Tests\Support\DirectoryFixture;
 
-uses(RefreshDatabase::class);
-
-$originalInstalledLock = null;
-
-beforeEach(function () use (&$originalInstalledLock): void {
-    $this->seed(PlatformShowcaseSeeder::class);
-    // Temporarily remove installed lock for installer tests
-    if (File::exists(storage_path('installed'))) {
-        $originalInstalledLock = (string) File::get(storage_path('installed'));
-        File::delete(storage_path('installed'));
-    }
-});
-
-afterEach(function () use (&$originalInstalledLock): void {
-    // Restore installed lock after tests
-    if ($originalInstalledLock !== null) {
-        File::put(storage_path('installed'), $originalInstalledLock);
-    } else {
-        File::put(storage_path('installed'), (string) json_encode([
-            'installed_at' => now()->toIso8601String(),
-            'admin_email' => 'admin@db-cms.io',
-            'admin_path' => 'admin',
-            'version' => '1.0.0',
-            'platform' => 'dbCMS Enterprise',
-        ], JSON_PRETTY_PRINT));
-    }
-});
-
-test('installer step 1 displays onboarding explanation and server check', function (): void {
+test('installer step 1 exposes server readiness and the database setup link', function (): void {
     $response = $this->get(route('install.step1'));
 
-    $response->assertStatus(200);
-    $response->assertSee('dbCMS');
-    $response->assertSee('¿Qué es dbCMS');
-    $response->assertSee('Multi-mercado real');
-    $response->assertSee('Protocolo MCP nativo');
-    $response->assertSee('Módulos PHP del Servidor');
+    $response->assertOk()->assertViewIs('install.step1_requirements');
+    $requirements = $response->viewData('requirements');
+    $permissions = $response->viewData('permissions');
+    expect($requirements)->toBeArray()->not->toBeEmpty();
+    expect($permissions)->toBeArray()->not->toBeEmpty();
+    foreach ([...array_values($requirements), ...array_values($permissions)] as $passed) {
+        expect($passed)->toBeBool();
+    }
+    expect($response->viewData('canProceed'))->toBe(! in_array(false, [...$requirements, ...$permissions], true));
+    $response->assertSee('href="'.route('install.step2').'"', false);
 });
 
 test('installer step 2 tests database connection via ajax with auto-create support', function (): void {
     $response = $this->postJson(route('install.test-db'), [
         'host' => env('DB_HOST', 'mysql'),
         'port' => (string) env('DB_PORT', '3306'),
-        'database' => 'testing',
+        'database' => env('DB_DATABASE'),
         'username' => env('DB_USERNAME', 'sail'),
         'password' => env('DB_PASSWORD', 'secret'),
         'auto_create' => true,
@@ -65,12 +40,15 @@ test('installer step 2 saves database credentials and redirects to step 3', func
     $response = $this->post(route('install.save-db'), [
         'host' => env('DB_HOST', 'mysql'),
         'port' => (string) env('DB_PORT', '3306'),
-        'database' => 'testing',
+        'database' => env('DB_DATABASE'),
         'username' => env('DB_USERNAME', 'sail'),
         'password' => env('DB_PASSWORD', 'secret'),
     ]);
 
     $response->assertRedirect(route('install.step3'));
+    $stored = Dotenv\Dotenv::parse(File::get(app()->environmentFilePath()));
+    expect($stored['DB_DATABASE'])->toBe(env('DB_DATABASE'))
+        ->and(DB::connection('mysql')->getDatabaseName())->toBe(env('DB_DATABASE'));
 });
 
 test('installer step 3 runs provisioning migrations and seeds cleanly', function (): void {
@@ -97,6 +75,13 @@ test('installer step 4 creates primary admin, custom admin slug and seals instal
 
     expect(User::where('email', 'master@db-cms.io')->exists())->toBeTrue();
     expect(File::exists(storage_path('installed')))->toBeTrue();
+
+    $loginUrl = url('/'.config('cms.admin_path').'/login');
+    $this->get(route('install.step5'))
+        ->assertOk()
+        ->assertViewIs('install.step5_complete')
+        ->assertViewHas('loginUrl', $loginUrl)
+        ->assertSee('href="'.$loginUrl.'"', false);
 });
 
 test('installer step 4 exposes the brand and front theme selectors', function (): void {
@@ -181,12 +166,8 @@ test('installer rejects an unknown brand', function (): void {
     $response->assertSessionHasErrors('brand');
 });
 
-test('installer step 5 displays completed launchpad screen', function (): void {
-    $response = $this->get(route('install.step5'));
-
-    $response->assertStatus(200);
-    $response->assertSee('¡dbCMS ha quedado instalado con éxito!');
-    $response->assertSee('Panel de Administración');
-    $response->assertSee('Portada del Sitio');
-    $response->assertSee('Protocolo MCP');
-});
+test('installer completion requires the installation lock even with a completion session', function (bool $justInstalled): void {
+    $this->withSession(['install.just_installed' => $justInstalled])
+        ->get(route('install.step5'))
+        ->assertRedirect(route('install.step1'));
+})->with([false, true]);

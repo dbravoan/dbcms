@@ -2,13 +2,16 @@
 
 declare(strict_types=1);
 
-use App\Contracts\Services\CampaignAttributionGatewayInterface;
-use App\Contracts\Services\MarketingArtifactStoreInterface;
 use App\Core\Capabilities\CapabilityAuthorizer;
-use App\DTOs\Marketing\ArtifactDescriptor;
-use App\DTOs\Marketing\CreativePackage;
 use App\Enums\OAuthScope;
 use Illuminate\Console\Scheduling\Schedule;
+use Modules\Marketing\Contracts\CampaignAttributionGatewayInterface;
+use Modules\Marketing\Contracts\MarketingArtifactStoreInterface;
+use Modules\Marketing\DTOs\ArtifactDescriptor;
+use Modules\Marketing\DTOs\CreativePackage;
+use Tests\Support\MarketingComposition;
+
+uses(MarketingComposition::class);
 
 test('marketing REST scopes cannot fall back to content management authority', function (): void {
     $policy = app(CapabilityAuthorizer::class);

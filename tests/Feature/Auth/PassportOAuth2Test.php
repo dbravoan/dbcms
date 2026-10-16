@@ -5,8 +5,10 @@ declare(strict_types=1);
 use App\Models\User;
 use Laravel\Passport\ClientRepository;
 use Laravel\Passport\Passport;
+use Tests\Support\PassportTestKeys;
 
 beforeEach(function (): void {
+    PassportTestKeys::configure();
     app(ClientRepository::class)->createPersonalAccessGrantClient('Testing Client');
 });
 

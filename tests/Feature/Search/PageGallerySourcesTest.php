@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Content\Pages\Models\Page;
 use App\Core\Search\Contracts\SearchSourceInterface;
 use App\Core\Search\Contracts\SearchSourceRegistryInterface;
 use App\Core\Search\SearchDocument;
@@ -11,12 +12,14 @@ use App\Models\Language;
 use App\Models\Market;
 use App\Models\SearchDocumentIndex;
 use App\Services\Resources\MarketMutationHandler;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Modules\Gallery\Models\Gallery;
-use Modules\Pages\Models\Page;
+use Tests\Support\CmsFixtures;
+use Tests\Support\GallerySearchComposition;
+
+uses(GallerySearchComposition::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
     $this->market = Market::where('code', 'es')->firstOrFail();
 });
 

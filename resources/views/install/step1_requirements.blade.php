@@ -22,12 +22,12 @@
                 <span class="text-gray-400">Un solo contenido lógico con traducciones y tarifas aisladas para España, EE. UU. o México. Sin duplicar tablas.</span>
             </div>
             <div class="bg-[#181818] p-3 rounded-lg border border-gray-800">
-                <span class="text-[#00FF99] font-bold block mb-1"><i class="fa-solid fa-robot mr-1"></i> Protocolo MCP nativo</span>
-                <span class="text-gray-400">Endpoints en <code>/api/mcp</code> protegidos con OAuth2 para que Claude o Cursor redacten y auditen con seguridad.</span>
+                <span class="text-[#00FF99] font-bold block mb-1"><i class="fa-solid fa-robot mr-1"></i> Conexión MCP opcional</span>
+                <span class="text-gray-400">El módulo MCP añade <code>/mcp/cms</code>, protegido con OAuth2 y permisos, para conectar asistentes.</span>
             </div>
             <div class="bg-[#181818] p-3 rounded-lg border border-gray-800">
                 <span class="text-[#00FF99] font-bold block mb-1"><i class="fa-solid fa-puzzle-piece mr-1"></i> Módulos desacoplados</span>
-                <span class="text-gray-400">Blog, tienda, páginas y formularios operan con migraciones, contratos y paneles propios.</span>
+                <span class="text-gray-400">El núcleo incluye páginas y menús. Blog, tienda y formularios se añaden mediante módulos opcionales.</span>
             </div>
         </div>
     </div>

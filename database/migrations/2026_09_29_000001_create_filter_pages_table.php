@@ -16,10 +16,10 @@ return new class extends Migration
             $table->string('market_code', 20)->nullable();
             $table->string('locale', 10);
             $table->string('signature', 191);
+            $table->string('path', 191)->nullable();
             $table->string('title')->nullable();
             $table->string('heading')->nullable();
             $table->string('meta_description', 500)->nullable();
-            $table->text('intro')->nullable();
             $table->boolean('is_indexable')->default(true);
             $table->timestamps();
 

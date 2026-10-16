@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Gallery\Schema;
 
 use App\Core\Content\EntitySchema;
+use App\Core\Content\PublicContentDefinition;
 use Modules\Gallery\Models\Gallery;
 use Modules\Gallery\Services\GalleryMutationHandler;
 
@@ -25,6 +26,7 @@ final class GalleryEntitySchemas
     {
         return new EntitySchema(
             type: 'gallery',
+            publicContent: new PublicContentDefinition('galleries', 'fa-solid fa-images', includeHub: true),
             label: 'Galería',
             model: Gallery::class,
             description: 'Álbum multimedia localizado con título, descripción y metadatos.',
@@ -32,6 +34,7 @@ final class GalleryEntitySchemas
             mutationHandler: GalleryMutationHandler::class,
             urlPrefix: 'gallery',
             createView: 'admin.galleries.create',
+            adminFormView: 'admin.galleries._form',
             editView: 'admin.galleries.edit',
             fields: [
                 'schema_type' => ['input' => 'translations[{locale}][schema_type]', 'label' => 'Tipo de schema'],

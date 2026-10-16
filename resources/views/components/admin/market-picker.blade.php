@@ -10,7 +10,7 @@
 
 @php
     /** @var \Illuminate\Support\Collection<int, \App\Models\Market> $allMarkets */
-    $allMarkets = $markets ?? \App\Models\Market::query()->where('is_active', true)->orderBy('name')->get();
+    $allMarkets = $markets ?? $pickerMarkets;
 
     $selectedIds = [];
     if ($selected instanceof \Illuminate\Support\Collection) {
@@ -28,9 +28,7 @@
 
     $marketLanguages = [];
     foreach ($allMarkets as $market) {
-        $marketLanguages[(string) $market->id] = $market->relationLoaded('languages')
-            ? $market->languages->pluck('code')->all()
-            : $market->languages()->where('is_active', true)->pluck('code')->all();
+        $marketLanguages[(string) $market->id] = $pickerMarketLocales[(string) $market->id] ?? [];
     }
 
     $inputName = rtrim((string) $name, '[]');

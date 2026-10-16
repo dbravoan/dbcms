@@ -61,7 +61,7 @@ test('available() filters out types whose module is disabled', function (): void
     }
 });
 
-test('resolve() ignores declared-but-unavailable types, falls back to text for unknown ones', function (): void {
+test('resolve() ignores unavailable and unknown field types', function (): void {
     $registry = app(FieldTypeRegistry::class);
 
     // Known + available.
@@ -70,9 +70,7 @@ test('resolve() ignores declared-but-unavailable types, falls back to text for u
     // Declared in config/forms.php but not registered (its module is off) → ignored.
     expect($registry->resolve('captcha'))->toBeNull();
 
-    // Unknown, undeclared legacy type → text fallback.
-    expect($registry->resolve('mystery'))->toBeInstanceOf(CoreFieldType::class)
-        ->and($registry->resolve('mystery')?->key())->toBe('text');
+    expect($registry->resolve('mystery'))->toBeNull();
 });
 
 test('resolve() ignores a registered type that reports itself unavailable', function (): void {

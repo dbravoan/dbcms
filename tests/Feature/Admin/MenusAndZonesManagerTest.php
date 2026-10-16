@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 use App\Models\Menu;
 use App\Models\User;
-use Database\Seeders\PlatformShowcaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CmsFixtures;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
-    $this->seed(PlatformShowcaseSeeder::class);
+    CmsFixtures::localization();
+    CmsFixtures::identities();
+    Menu::create(['name' => 'Fixture menu', 'slug' => 'fixture-menu', 'is_active' => true]);
     $this->admin = User::where('email', 'admin@db-cms.io')->firstOrFail();
 });
 

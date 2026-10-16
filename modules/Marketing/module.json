@@ -1,0 +1,10 @@
+{
+    "identifier": "marketing",
+    "name": "Marketing infrastructure",
+    "version": "1.0.0",
+    "provider": "Modules\\Marketing\\MarketingModuleServiceProvider",
+    "description": "Private artifacts and integration contracts for marketing modules.",
+    "requires": {
+        "core": "^2.0"
+    }
+}
