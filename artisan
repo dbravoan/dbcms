@@ -1,0 +1,33 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Symfony\Component\Console\Input\ArgvInput;
+
+define('LARAVEL_START', microtime(true));
+
+$updateCommand = $_SERVER['argv'][1] ?? '';
+$updateOperation = $_SERVER['argv'][2] ?? '';
+$updateRecoveryCommand = $updateCommand === 'cms:updates' && in_array($updateOperation, ['advance', 'status', 'cancel'], true);
+if (is_file(__DIR__.'/storage/app/private/core-updates/active.json') && ! $updateRecoveryCommand) {
+    fwrite(STDERR, "Actualización del núcleo en curso. Reintenta después.\n");
+    exit(75);
+}
+
+require_once __DIR__.'/bootstrap/UpdateRuntime.php';
+// Workers acquire admission per reservation; schedule:work delegates execution to
+// fresh schedule:run children, each holding admission through task completion.
+if (! $updateRecoveryCommand && ! in_array($updateCommand, ['queue:work', 'queue:listen', 'schedule:work'], true) && ! UpdateRuntime::admit(__DIR__)) {
+    fwrite(STDERR, "Actualización del núcleo en curso. Reintenta después.\n");
+    exit(75);
+}
+
+// Register the Composer autoloader...
+require __DIR__.'/vendor/autoload.php';
+
+// Bootstrap Laravel and handle the command...
+$status = (require_once __DIR__.'/bootstrap/app.php')
+    ->handleCommand(new ArgvInput);
+
+exit($status);

@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd /var/www/html
+export DBCMS_CREATIVE_WORKERS="${DBCMS_CREATIVE_WORKERS:-false}"
+export DBCMS_SOCIAL_WORKERS="${DBCMS_SOCIAL_WORKERS:-false}"
+for enabled in "$DBCMS_CREATIVE_WORKERS" "$DBCMS_SOCIAL_WORKERS"; do
+    case "$enabled" in true|false) ;; *) echo 'Worker flags must be true or false.' >&2; exit 1 ;; esac
+done
+: "${APP_KEY:?Set a persistent APP_KEY before starting production}"
+mkdir -p storage/app/runtime storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache public/uploads
+chown -R dbcms:dbcms storage bootstrap/cache public/uploads
+# Set directory permissions without making secret files world-readable.
+find storage bootstrap/cache public/uploads -type d -exec chmod 775 {} +
+find storage bootstrap/cache public/uploads -type f ! -name '*.key' ! -name '*.pem' ! -name '.env*' -exec chmod 664 {} +
+find storage bootstrap/cache -type f \( -name '*.key' -o -name '*.pem' -o -name '.env*' \) -exec chmod 600 {} +
+su-exec dbcms php -r '
+    require "vendor/autoload.php";
+    require "bootstrap/RuntimeEnvironmentBootstrap.php";
+    try {
+        RuntimeEnvironmentBootstrap::ensure("storage/app/runtime/.env", getenv("APP_KEY"), getenv("APP_URL") ?: "http://localhost");
+    } catch (Throwable) {
+        fwrite(STDERR, "Cannot provision the persistent runtime environment; check the original APP_KEY, URL and volume permissions.\n");
+        exit(1);
+    }
+'
+if [ -d storage/app/private ]; then
+    find storage/app/private -type d -exec chmod 700 {} +
+    find storage/app/private -type f -exec chmod 600 {} +
+fi
+# Generate only for a pristine installation. Sealed installations and partial
+# pairs fail closed; configured external keys are validated without local writes.
+su-exec dbcms php bin/runtime-safety.php passport-initialize
+if [ -f storage/oauth-private.key ]; then chmod 600 storage/oauth-private.key; fi
+if [ -f storage/oauth-public.key ]; then chmod 644 storage/oauth-public.key; fi
+# Public code remains root-owned; create only the fixed storage link as root.
+test ! -e public/storage || test -L public/storage
+ln -sfn ../storage/app/public public/storage
+# Migrations run once as a deployment job, never implicitly in each replica.
+if [ "${RUN_MIGRATIONS:-false}" = true ]; then
+    su-exec dbcms php artisan migrate --force --no-interaction
+fi
+if [ "${APP_ENV:-production}" = production ]; then
+    su-exec dbcms php artisan config:cache
+    su-exec dbcms php artisan route:cache
+    su-exec dbcms php artisan view:cache
+fi
+if [ "$#" -gt 0 ]; then
+    exec su-exec dbcms "$@"
+fi
+exec /usr/bin/supervisord -c /etc/supervisord.conf

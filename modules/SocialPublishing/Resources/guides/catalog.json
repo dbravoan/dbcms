@@ -1,0 +1,565 @@
+[
+  {
+    "id": "facebook",
+    "platform": "Facebook",
+    "title": "Conectar una página de Facebook",
+    "prerequisites": [
+      "Una página con rol que permita crear contenido.",
+      "Una app de Meta con Facebook Login y acceso admitido a Pages API.",
+      "Minisite HTTPS y cliente OAuth propio de esta instalación."
+    ],
+    "steps": [
+      {
+        "id": "app",
+        "title": "Crear la app y preparar la página",
+        "externalAction": "En Meta for Developers crea una app para el uso empresarial admitido y añade Facebook Login. Comprueba en Facebook que la persona que autorizará tiene acceso a crear contenido en la página.",
+        "cmsAction": "Abre la configuración de SocialPublishing y conserva vacíos los clientes de otras redes.",
+        "expectedResult": "Existe una app y una página administrada; esto todavía no es una conexión del CMS.",
+        "links": {
+          "Portal de aplicaciones": "https://developers.facebook.com/apps/",
+          "Publicaciones de Pages API": "https://developers.facebook.com/docs/pages-api/posts/",
+          "Permisos de Facebook Login": "https://developers.facebook.com/docs/facebook-login/permissions/",
+          "Tokens de página": "https://developers.facebook.com/docs/pages-api/access-tokens/"
+        }
+      },
+      {
+        "id": "permissions",
+        "title": "Habilitar productos y permisos",
+        "externalAction": "Solicita pages_show_list, pages_manage_posts y pages_read_engagement. En modo de desarrollo usa únicamente personas y activos admitidos; si Meta exige revisión, complétala antes de ampliar el uso.",
+        "cmsAction": "El conector solicitará exactamente estos permisos y comprobará los devueltos como granted.",
+        "expectedResult": "La app puede listar la página y actuar con el permiso de publicación, sin inferir acceso por su ID.",
+        "links": {
+          "Portal de aplicaciones": "https://developers.facebook.com/apps/",
+          "Publicaciones de Pages API": "https://developers.facebook.com/docs/pages-api/posts/",
+          "Permisos de Facebook Login": "https://developers.facebook.com/docs/facebook-login/permissions/",
+          "Tokens de página": "https://developers.facebook.com/docs/pages-api/access-tokens/"
+        }
+      },
+      {
+        "id": "callback",
+        "title": "Registrar el callback de esta instalación",
+        "externalAction": "En Facebook Login registra como URI de redirección válida el callback que aparece debajo. Debe coincidir exactamente en HTTPS, dominio y ruta.",
+        "cmsAction": "Copia el callback generado para Facebook; se adapta al prefijo del backoffice de este minisite.",
+        "expectedResult": "Meta puede devolver el código al mismo origen que inició la autorización.",
+        "links": {},
+        "callbackRoute": "admin.social-publishing.oauth.callback",
+        "callbackParameters": {
+          "provider": "facebook"
+        }
+      },
+      {
+        "id": "credentials",
+        "title": "Guardar el cliente en el CMS",
+        "externalAction": "Obtén App ID y App Secret de la app. No pegues tokens de personas ni tokens de página en campos públicos.",
+        "cmsAction": "En SocialPublishing guarda facebook_client_id y facebook_client_secret. El secreto se cifra y no se vuelve a mostrar.",
+        "expectedResult": "El CMS tiene el cliente servidor; todavía no se ha verificado una cuenta.",
+        "links": {}
+      },
+      {
+        "id": "authorize",
+        "title": "Autorizar y seleccionar la página",
+        "externalAction": "La persona administra la página desde la pantalla de consentimiento de Meta. Verifica el nombre de la app y los permisos antes de continuar.",
+        "cmsAction": "Pulsa Autorizar en Facebook, completa el consentimiento y elige una página devuelta con tareas CREATE_CONTENT o MANAGE.",
+        "expectedResult": "Se guarda el token de esa página y su identidad confirmada, separado de las demás redes.",
+        "links": {}
+      },
+      {
+        "id": "check",
+        "title": "Comprobar y hacer una prueba aprobada",
+        "externalAction": "Prepara una página y un mensaje de prueba cuya publicación esté autorizada. Un éxito en el check no demuestra que se haya publicado.",
+        "cmsAction": "Pulsa Comprobar; después guarda un borrador, revisa texto, enlace y archivo, aprueba la revisión exacta y programa el envío.",
+        "expectedResult": "El check no publica. La prueba solo se considera real cuando el CMS conserva un identificador de publicación y la página muestra el material.",
+        "links": {}
+      },
+      {
+        "id": "maintenance",
+        "title": "Mantener permisos y revisar incertidumbres",
+        "externalAction": "Revisa tareas de la persona, permisos de app y versión Graph antes de cambiar el cliente. Si revocas acceso, comunícalo a los revisores.",
+        "cmsAction": "Revoca o vuelve a autorizar una cuenta cuando cambie su acceso. Comprueba los envíos pendientes de confirmación antes de intentar otra publicación.",
+        "expectedResult": "Cambiar credenciales exige reconexión; no se reenvían automáticamente los resultados inciertos.",
+        "links": {}
+      }
+    ],
+    "troubleshooting": [
+      "Si no se devuelve una cuenta, revisa los permisos efectivos y el rol de la persona en el paso permissions.",
+      "Si el callback falla, comprueba dominio, HTTPS, ruta y sesión; inicia una autorización nueva.",
+      "Un tutorial marcado como completado es una lista informativa y no verifica acceso, presupuesto ni publicación real."
+    ],
+    "officialSources": {
+      "Portal de aplicaciones": "https://developers.facebook.com/apps/",
+      "Publicaciones de Pages API": "https://developers.facebook.com/docs/pages-api/posts/",
+      "Permisos de Facebook Login": "https://developers.facebook.com/docs/facebook-login/permissions/",
+      "Tokens de página": "https://developers.facebook.com/docs/pages-api/access-tokens/"
+    },
+    "reviewedAt": "2026-10-13",
+    "version": "2026.10.13-v1"
+  },
+  {
+    "id": "instagram",
+    "platform": "Instagram Login",
+    "title": "Conectar Instagram profesional con Instagram Login",
+    "prerequisites": [
+      "Una cuenta profesional Business o Creator.",
+      "Una app de Meta con Instagram API mediante Instagram Login.",
+      "Archivos JPEG o MP4 finales disponibles mediante URL firmada temporal."
+    ],
+    "steps": [
+      {
+        "id": "app",
+        "title": "Preparar la cuenta y la app de Instagram",
+        "externalAction": "En Instagram configura una cuenta profesional Business o Creator. En Meta for Developers crea o selecciona la app y añade Instagram API con Instagram Login. Este flujo no depende de una página de Facebook.",
+        "cmsAction": "Abre el tutorial de Instagram Login, no el de Facebook Login.",
+        "expectedResult": "La app y la cuenta corresponden a la misma familia de autorización que utiliza este conector.",
+        "links": {
+          "Instagram con Instagram Login": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/",
+          "Business Login": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/business-login/",
+          "Publicación de contenido": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/"
+        }
+      },
+      {
+        "id": "permissions",
+        "title": "Solicitar los permisos de Instagram Login",
+        "externalAction": "Configura instagram_business_basic e instagram_business_content_publish. Respeta las personas de prueba y el nivel de acceso aprobado por Meta.",
+        "cmsAction": "El conector confirma los permisos efectivos y el tipo profesional; las casillas del CMS no conceden permisos de Meta.",
+        "expectedResult": "Una cuenta personal o una autorización incompleta no se considera conectada.",
+        "links": {
+          "Instagram con Instagram Login": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/",
+          "Business Login": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/business-login/",
+          "Publicación de contenido": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/"
+        }
+      },
+      {
+        "id": "callback",
+        "title": "Registrar la redirección de Instagram",
+        "externalAction": "En la configuración de Business Login registra el callback HTTPS exacto que se muestra. Añade también las URLs de privacidad y eliminación de datos que exija la app.",
+        "cmsAction": "Copia el callback del proveedor instagram para esta instalación.",
+        "expectedResult": "El código vuelve a la misma sesión humana que inició Instagram Login.",
+        "links": {},
+        "callbackRoute": "admin.social-publishing.oauth.callback",
+        "callbackParameters": {
+          "provider": "instagram"
+        }
+      },
+      {
+        "id": "credentials",
+        "title": "Guardar el cliente propio de Instagram",
+        "externalAction": "Obtén el ID y el secreto de la app de Instagram para este producto. No mezcles estos valores con un flujo antiguo de Facebook Login.",
+        "cmsAction": "Guarda instagram_client_id e instagram_client_secret en SocialPublishing.",
+        "expectedResult": "Las credenciales quedan cifradas y aisladas por instalación y proveedor.",
+        "links": {}
+      },
+      {
+        "id": "authorize",
+        "title": "Autorizar la cuenta profesional",
+        "externalAction": "En la pantalla de Instagram comprueba el usuario profesional y acepta los permisos requeridos. La autorización se verifica con llamadas al proveedor.",
+        "cmsAction": "Pulsa Autorizar junto a Instagram Login y selecciona la cuenta profesional devuelta.",
+        "expectedResult": "El CMS conserva la identidad verificada y los permisos, sin pedir contraseñas de Instagram.",
+        "links": {}
+      },
+      {
+        "id": "check",
+        "title": "Revisar y publicar una prueba real",
+        "externalAction": "Elige una imagen JPEG o un vídeo MP4 corto final de 3–60 segundos. Para carrusel revisa el orden de los archivos y el texto de hasta 2200 caracteres.",
+        "cmsAction": "Comprueba la conexión; crea y aprueba la revisión con sus archivos. Programa una prueba y observa creación de contenedores, procesamiento y publicación.",
+        "expectedResult": "El contenedor listo no equivale a publicación: el resultado necesita el identificador del medio publicado.",
+        "links": {}
+      },
+      {
+        "id": "maintenance",
+        "title": "Renovar acceso y resolver procesamiento",
+        "externalAction": "Mantén la cuenta profesional, los permisos y el acceso aprobado de la app. Las URL de entrega deben seguir siendo accesibles para los contenedores durante su preparación.",
+        "cmsAction": "Autoriza de nuevo al caducar o revocar acceso. Ante un contenedor PUBLISHED sin identificador de medio conserva la comprobación pendiente.",
+        "expectedResult": "La renovación no cambia la cuenta aprobada; un resultado incierto nunca dispara otra publicación a ciegas.",
+        "links": {}
+      }
+    ],
+    "troubleshooting": [
+      "Si no se devuelve una cuenta, revisa los permisos efectivos y el rol de la persona en el paso permissions.",
+      "Si el callback falla, comprueba dominio, HTTPS, ruta y sesión; inicia una autorización nueva.",
+      "Un tutorial marcado como completado es una lista informativa y no verifica acceso, presupuesto ni publicación real."
+    ],
+    "officialSources": {
+      "Instagram con Instagram Login": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/",
+      "Business Login": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/business-login/",
+      "Publicación de contenido": "https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/content-publishing/"
+    },
+    "reviewedAt": "2026-10-13",
+    "version": "2026.10.13-v1"
+  },
+  {
+    "id": "linkedin",
+    "platform": "LinkedIn",
+    "title": "Publicar contenido orgánico en LinkedIn",
+    "prerequisites": [
+      "Una organización con rol ADMINISTRATOR o CONTENT_ADMIN.",
+      "Una app con acceso efectivo a las APIs de Community Management y permisos de organización.",
+      "Versión REST configurable; contrato inicial 202609."
+    ],
+    "steps": [
+      {
+        "id": "app",
+        "title": "Crear la app vinculada a la organización",
+        "externalAction": "En LinkedIn Developers crea la aplicación y vincúlala a la página de empresa. Completa la verificación de la organización si el portal la solicita.",
+        "cmsAction": "Anota la organización de destino; no asumas que el ID de la página basta para acceder a ella.",
+        "expectedResult": "La app está registrada, pendiente de los productos y permisos efectivos.",
+        "links": {
+          "Portal de aplicaciones": "https://www.linkedin.com/developers/apps",
+          "OAuth de tres pasos": "https://learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow",
+          "Posts API": "https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api",
+          "Images API": "https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api",
+          "Videos API": "https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/videos-api"
+        }
+      },
+      {
+        "id": "permissions",
+        "title": "Obtener Community Management y permisos",
+        "externalAction": "Solicita acceso a Community Management y los permisos w_organization_social, r_organization_social y rw_organization_admin que necesita este flujo. Comprueba que tu producto aprobado permite las lecturas de medios.",
+        "cmsAction": "El conector comprueba permisos y las ACL de la organización; una app sin acceso mantiene la exportación manual.",
+        "expectedResult": "El acceso de desarrollador y el rol humano se verifican por separado.",
+        "links": {
+          "Portal de aplicaciones": "https://www.linkedin.com/developers/apps",
+          "OAuth de tres pasos": "https://learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow",
+          "Posts API": "https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api",
+          "Images API": "https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api",
+          "Videos API": "https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/videos-api"
+        }
+      },
+      {
+        "id": "callback",
+        "title": "Configurar el callback de OAuth",
+        "externalAction": "En Auth registra la URL HTTPS exacta de redirección mostrada. No añadas parámetros ni fragments que LinkedIn ignore.",
+        "cmsAction": "Copia el callback linkedin que genera esta instalación.",
+        "expectedResult": "El código de autorización puede intercambiarse exclusivamente por el cliente que inició el flujo.",
+        "links": {},
+        "callbackRoute": "admin.social-publishing.oauth.callback",
+        "callbackParameters": {
+          "provider": "linkedin"
+        }
+      },
+      {
+        "id": "credentials",
+        "title": "Guardar Client ID y Client Secret",
+        "externalAction": "Obtén los valores de Auth en el portal. Mantén el secreto en el servidor y evita incluirlo en URLs compartidas o documentación pública.",
+        "cmsAction": "Guarda linkedin_client_id y linkedin_client_secret en la configuración del módulo.",
+        "expectedResult": "El CMS dispone del cliente OAuth para esta app y no muestra el secreto almacenado.",
+        "links": {}
+      },
+      {
+        "id": "authorize",
+        "title": "Autorizar y elegir una organización",
+        "externalAction": "Autoriza con la persona que tiene rol de contenido en la organización. Completa el consentimiento y revisa los permisos concedidos.",
+        "cmsAction": "Pulsa Autorizar, comprueba la lista de organizaciones con ACL aprobada y selecciona la organización exacta.",
+        "expectedResult": "La cuenta queda vinculada a una organización devuelta por LinkedIn, no a un URN introducido libremente.",
+        "links": {}
+      },
+      {
+        "id": "check",
+        "title": "Probar texto, imágenes o vídeo orgánico",
+        "externalAction": "Prepara contenido orgánico aprobado. Para varias imágenes utiliza multiImage; los carruseles publicitarios quedan fuera. Vídeo e imágenes necesitan una subida previa y estado AVAILABLE.",
+        "cmsAction": "Comprueba la conexión, crea la revisión final, aprueba y programa una prueba. Revisa cada fase de subida y el resultado de Posts API.",
+        "expectedResult": "El CMS guarda el URN del post de x-restli-id; preparar un asset no equivale a publicar el post.",
+        "links": {}
+      },
+      {
+        "id": "maintenance",
+        "title": "Mantener versión y acceso",
+        "externalAction": "Revisa el calendario de versiones de LinkedIn y los permisos concedidos. El contrato inicial usa Linkedin-Version 202609 y X-Restli-Protocol-Version 2.0.0.",
+        "cmsAction": "Renueva o vuelve a autorizar la cuenta cuando sea necesario. Ante un envío incierto conserva la evidencia y usa comprobación, sin duplicar la publicación.",
+        "expectedResult": "La revisión aprobada sigue ligada a la organización y a su generación de autorización.",
+        "links": {}
+      }
+    ],
+    "troubleshooting": [
+      "Si no se devuelve una cuenta, revisa los permisos efectivos y el rol de la persona en el paso permissions.",
+      "Si el callback falla, comprueba dominio, HTTPS, ruta y sesión; inicia una autorización nueva.",
+      "Un tutorial marcado como completado es una lista informativa y no verifica acceso, presupuesto ni publicación real."
+    ],
+    "officialSources": {
+      "Portal de aplicaciones": "https://www.linkedin.com/developers/apps",
+      "OAuth de tres pasos": "https://learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow",
+      "Posts API": "https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api",
+      "Images API": "https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api",
+      "Videos API": "https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/videos-api"
+    },
+    "reviewedAt": "2026-10-13",
+    "version": "2026.10.13-v1"
+  },
+  {
+    "id": "youtube",
+    "platform": "YouTube",
+    "title": "Autorizar un canal y subir vídeo con confirmación",
+    "prerequisites": [
+      "Un canal de YouTube administrado por quien autoriza.",
+      "Un proyecto Google Cloud con YouTube Data API v3 habilitada.",
+      "Un cliente OAuth web, callback HTTPS y acceso de la app admitido por Google."
+    ],
+    "steps": [
+      {
+        "id": "app",
+        "title": "Crear el proyecto y habilitar YouTube Data API",
+        "externalAction": "En Google Cloud crea un proyecto para el minisite y habilita YouTube Data API v3. Configura la pantalla de consentimiento y los usuarios de prueba permitidos.",
+        "cmsAction": "Mantén separado el proyecto de YouTube de las credenciales de medición GA4.",
+        "expectedResult": "El proyecto puede solicitar OAuth; una cuota disponible no prueba acceso al canal.",
+        "links": {
+          "Google Cloud Console": "https://console.cloud.google.com/",
+          "OAuth para servidor web": "https://developers.google.com/identity/protocols/oauth2/web-server",
+          "Subida de vídeos": "https://developers.google.com/youtube/v3/docs/videos/insert",
+          "Subida reanudable": "https://developers.google.com/youtube/v3/guides/using_resumable_upload_protocol",
+          "Estados del vídeo": "https://developers.google.com/youtube/v3/docs/videos"
+        }
+      },
+      {
+        "id": "permissions",
+        "title": "Preparar consentimiento y verificación",
+        "externalAction": "Solicita youtube.upload y youtube.readonly mediante sus URLs oficiales. Configura audiencia y verificación de la app; los proyectos no auditados pueden mantener las subidas en privado.",
+        "cmsAction": "El conector comprueba upload y readonly antes de actuar y no interpreta una subida privada como publicación pública.",
+        "expectedResult": "El alcance real de la cuenta y las limitaciones del proyecto quedan visibles.",
+        "links": {
+          "Google Cloud Console": "https://console.cloud.google.com/",
+          "OAuth para servidor web": "https://developers.google.com/identity/protocols/oauth2/web-server",
+          "Subida de vídeos": "https://developers.google.com/youtube/v3/docs/videos/insert",
+          "Subida reanudable": "https://developers.google.com/youtube/v3/guides/using_resumable_upload_protocol",
+          "Estados del vídeo": "https://developers.google.com/youtube/v3/docs/videos"
+        }
+      },
+      {
+        "id": "callback",
+        "title": "Crear cliente web y registrar redirección",
+        "externalAction": "Crea un cliente OAuth de aplicación web y añade el callback HTTPS exacto de esta instalación a Authorized redirect URIs.",
+        "cmsAction": "Copia el callback youtube del módulo. El flujo utiliza state y PKCE y solicita acceso offline.",
+        "expectedResult": "Google devuelve el código a la sesión que inició el flujo.",
+        "links": {},
+        "callbackRoute": "admin.social-publishing.oauth.callback",
+        "callbackParameters": {
+          "provider": "youtube"
+        }
+      },
+      {
+        "id": "credentials",
+        "title": "Guardar el cliente OAuth de Google",
+        "externalAction": "Obtén Client ID y Client Secret del cliente web. No uses una cuenta de servicio para sustituir la autorización del canal.",
+        "cmsAction": "Guarda youtube_client_id y youtube_client_secret; el secreto permanece cifrado.",
+        "expectedResult": "La configuración identifica la aplicación, mientras la autorización posterior identifica el canal.",
+        "links": {}
+      },
+      {
+        "id": "authorize",
+        "title": "Elegir la cuenta y el canal reales",
+        "externalAction": "Autoriza con el usuario del canal y selecciona correctamente la cuenta de marca si corresponde. Verifica el canal antes de conceder acceso.",
+        "cmsAction": "Pulsa Autorizar en YouTube y selecciona un canal devuelto por channels.list mine.",
+        "expectedResult": "Se guarda el canal exacto y, cuando Google lo devuelve, el refresh token de acceso offline.",
+        "links": {}
+      },
+      {
+        "id": "check",
+        "title": "Aprobar metadatos y comprobar la publicación",
+        "externalAction": "Prepara un MP4 final, título y declaración de contenido infantil; indica contenido sintético cuando corresponda. Autoriza explícitamente una prueba del canal.",
+        "cmsAction": "Comprueba la conexión, revisa los metadatos y aprueba. El conector abre una sesión reanudable, sube fragmentos, espera processingStatus succeeded y solicita visibilidad pública.",
+        "expectedResult": "Solo se muestra publicado tras confirmar canal, procesamiento y privacyStatus public; una subida completa puede seguir pendiente.",
+        "links": {}
+      },
+      {
+        "id": "maintenance",
+        "title": "Recuperar subidas y conservar evidencia",
+        "externalAction": "Revisa cuota, permisos y verificación de la app. No crees otra sesión para un vídeo cuyo resultado se desconoce sin resolver primero su sesión existente.",
+        "cmsAction": "Usa comprobación para consultar bytes recibidos y continuar desde el offset confirmado. Revoca o reconecta si Google retira acceso.",
+        "expectedResult": "Se conservan la sesión, los fragmentos y el identificador del vídeo sin reenviar una subida incierta a ciegas.",
+        "links": {}
+      }
+    ],
+    "troubleshooting": [
+      "Si no se devuelve una cuenta, revisa los permisos efectivos y el rol de la persona en el paso permissions.",
+      "Si el callback falla, comprueba dominio, HTTPS, ruta y sesión; inicia una autorización nueva.",
+      "Un tutorial marcado como completado es una lista informativa y no verifica acceso, presupuesto ni publicación real."
+    ],
+    "officialSources": {
+      "Google Cloud Console": "https://console.cloud.google.com/",
+      "OAuth para servidor web": "https://developers.google.com/identity/protocols/oauth2/web-server",
+      "Subida de vídeos": "https://developers.google.com/youtube/v3/docs/videos/insert",
+      "Subida reanudable": "https://developers.google.com/youtube/v3/guides/using_resumable_upload_protocol",
+      "Estados del vídeo": "https://developers.google.com/youtube/v3/docs/videos"
+    },
+    "reviewedAt": "2026-10-13",
+    "version": "2026.10.13-v1"
+  },
+  {
+    "id": "tiktok",
+    "platform": "TikTok",
+    "title": "Preparar materiales para publicar manualmente en TikTok",
+    "prerequisites": [
+      "Una cuenta donde la persona tenga autorización para publicar.",
+      "Archivos finales y sus derechos revisados.",
+      "La exportación manual no necesita Client Key, token ni app de TikTok."
+    ],
+    "steps": [
+      {
+        "id": "app",
+        "title": "Conocer el portal y registrar app solo si hace falta",
+        "externalAction": "TikTok for Developers permite registrar una app para un producto y uso admitidos. Revisa el registro y los productos antes de iniciar una integración distinta a la exportación manual.",
+        "cmsAction": "Para este minisite añade un destino manual TikTok; no es necesario registrar una app para descargar archivos.",
+        "expectedResult": "La ausencia de una app no bloquea el flujo manual operativo.",
+        "links": {
+          "Portal de desarrollo": "https://developers.tiktok.com/",
+          "Registro de aplicaciones": "https://developers.tiktok.com/doc/getting-started-create-an-app/",
+          "Condiciones de Content Posting": "https://developers.tiktok.com/docs/en/content-sharing-guidelines",
+          "Direct Post API": "https://developers.tiktok.com/doc/content-posting-api-get-started/"
+        }
+      },
+      {
+        "id": "permissions",
+        "title": "Entender las limitaciones de Direct Post",
+        "externalAction": "Las guías oficiales excluyen utilidades limitadas a las cuentas que administra un equipo interno. La publicación directa exige uso admitido, revisión de app y experiencia de consentimiento específica.",
+        "cmsAction": "Este conector mantiene Direct Post deshabilitado y no solicita permisos video.publish ni tokens sin una finalidad admitida.",
+        "expectedResult": "No se promete una publicación automática que TikTok no ha autorizado.",
+        "links": {
+          "Portal de desarrollo": "https://developers.tiktok.com/",
+          "Registro de aplicaciones": "https://developers.tiktok.com/doc/getting-started-create-an-app/",
+          "Condiciones de Content Posting": "https://developers.tiktok.com/docs/en/content-sharing-guidelines",
+          "Direct Post API": "https://developers.tiktok.com/doc/content-posting-api-get-started/"
+        }
+      },
+      {
+        "id": "callback",
+        "title": "Identificar qué flujo utiliza el minisite",
+        "externalAction": "Un eventual producto OAuth de TikTok necesitaría su callback registrado. El flujo de exportación manual de esta versión no realiza un callback de TikTok.",
+        "cmsAction": "No pegues un callback de otra red ni configures secretos de TikTok; utiliza el destino manual.",
+        "expectedResult": "El usuario entiende que la descarga y la publicación en TikTok son pasos distintos.",
+        "links": {}
+      },
+      {
+        "id": "credentials",
+        "title": "Preparar el destino manual sin credenciales",
+        "externalAction": "Comprueba en TikTok que la persona dispone de la cuenta correcta. Mantén la contraseña y el inicio de sesión exclusivamente dentro de TikTok.",
+        "cmsAction": "Añade nombre y red TikTok como destino de exportación en SocialPublishing.",
+        "expectedResult": "Se crea un destino local de trabajo sin almacenar contraseñas ni simular autorización remota.",
+        "links": {}
+      },
+      {
+        "id": "prepare",
+        "title": "Revisar y descargar el paquete",
+        "externalAction": "Selecciona los archivos finales para la cuenta y revisa duración, encuadre, subtítulos y derechos. Revisa también el texto que acompañará al material.",
+        "cmsAction": "Guarda el borrador, revisa la versión exacta y descarga texto, archivos ordenados y manifest de revisión.",
+        "expectedResult": "Hay un paquete utilizable que contiene solo los archivos finales revisados.",
+        "links": {}
+      },
+      {
+        "id": "check",
+        "title": "Publicar desde la aplicación de TikTok",
+        "externalAction": "Abre TikTok con la cuenta autorizada, sube los archivos exportados, pega el texto y elige visibilidad, interacción y declaración de contenido conforme a la app.",
+        "cmsAction": "Comprueba visualmente la publicación en TikTok; conserva el enlace para tu registro editorial. El CMS no registra esta acción como una confirmación API.",
+        "expectedResult": "La publicación manual queda diferenciada de un envío automatizado y de una simulación.",
+        "links": {}
+      },
+      {
+        "id": "maintenance",
+        "title": "Mantener un proceso manual verificable",
+        "externalAction": "Revisa las condiciones y la experiencia requerida antes de plantear un nuevo producto automatizado. Retira los materiales obsoletos del flujo manual y conserva las revisiones aprobadas.",
+        "cmsAction": "Descarga una nueva revisión cuando cambien texto o archivos. Mantén Direct Post deshabilitado mientras no exista acceso y uso admitidos.",
+        "expectedResult": "Los cambios siguen requiriendo revisión; ninguna credencial innecesaria se solicita al usuario.",
+        "links": {}
+      }
+    ],
+    "troubleshooting": [
+      "Una lista de progreso manual no sustituye la comprobación real del resultado.",
+      "Ante datos no disponibles, revisa permisos y configuración; no interpretes la ausencia de datos como cero."
+    ],
+    "officialSources": {
+      "Portal de desarrollo": "https://developers.tiktok.com/",
+      "Registro de aplicaciones": "https://developers.tiktok.com/doc/getting-started-create-an-app/",
+      "Condiciones de Content Posting": "https://developers.tiktok.com/docs/en/content-sharing-guidelines",
+      "Direct Post API": "https://developers.tiktok.com/doc/content-posting-api-get-started/"
+    },
+    "reviewedAt": "2026-10-13",
+    "version": "2026.10.13-v1"
+  },
+  {
+    "id": "ga4",
+    "platform": "Google Analytics 4",
+    "title": "Medir campañas sociales con GA4 Data API",
+    "prerequisites": [
+      "Una propiedad GA4 y permiso para añadir lectores.",
+      "Un proyecto Google Cloud con Google Analytics Data API habilitada.",
+      "Instrumentación GA4 sujeta al consentimiento de la instalación."
+    ],
+    "steps": [
+      {
+        "id": "app",
+        "title": "Habilitar la API de informes",
+        "externalAction": "En Google Cloud habilita Google Analytics Data API en el proyecto que realizará la lectura de informes. Identifica la propiedad numérica de GA4.",
+        "cmsAction": "Abre Analytics y el tutorial GA4. El Property ID numérico no es el Measurement ID que empieza por G-.",
+        "expectedResult": "La propiedad y la API de informes están identificadas por separado.",
+        "links": {
+          "Google Analytics": "https://analytics.google.com/",
+          "Data API Quickstart": "https://developers.google.com/analytics/devguides/reporting/data/v1/quickstart-client-libraries",
+          "Dimensiones y métricas": "https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema",
+          "Consentimiento": "https://developers.google.com/tag-platform/security/guides/consent"
+        }
+      },
+      {
+        "id": "permissions",
+        "title": "Crear una cuenta de servicio de lectura",
+        "externalAction": "Crea una cuenta de servicio y una clave JSON para el servidor. La autenticación solicita analytics.readonly; no habilita edición de la propiedad ni campañas de pago.",
+        "cmsAction": "Conserva el JSON fuera de repositorios y contenidos públicos. El CMS lo guardará como secreto.",
+        "expectedResult": "Existe una identidad de informes con credencial privada, todavía sin acceso a la propiedad.",
+        "links": {
+          "Google Analytics": "https://analytics.google.com/",
+          "Data API Quickstart": "https://developers.google.com/analytics/devguides/reporting/data/v1/quickstart-client-libraries",
+          "Dimensiones y métricas": "https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema",
+          "Consentimiento": "https://developers.google.com/tag-platform/security/guides/consent"
+        }
+      },
+      {
+        "id": "property",
+        "title": "Dar acceso Viewer a la propiedad",
+        "externalAction": "En la administración de acceso de la propiedad GA4 añade el email de la cuenta de servicio con rol Viewer. Revisa que la propiedad corresponde al minisite.",
+        "cmsAction": "Registra el Property ID que recibe ese permiso, sin sustituirlo por el email ni por G-XXXXXXXX.",
+        "expectedResult": "La identidad servidor puede leer esa propiedad concreta; este flujo no utiliza callback OAuth del CMS.",
+        "links": {}
+      },
+      {
+        "id": "consent",
+        "title": "Configurar la medición con consentimiento",
+        "externalAction": "En GA4 revisa el stream web y su Measurement ID. Configura eventos públicos de éxito y evita incluir campos de formularios, identidades personales u otros datos privados.",
+        "cmsAction": "En Analytics conserva ga4_measurement_id y la instrumentación que espera consentimiento antes de cargar GA4.",
+        "expectedResult": "Una sesión solo se mide cuando la configuración y el consentimiento lo permiten.",
+        "links": {}
+      },
+      {
+        "id": "credentials",
+        "title": "Guardar la configuración de informes",
+        "externalAction": "Descarga la clave JSON y revisa client_email, token_uri y private_key sin compartirlos. La API utiliza el endpoint fijo de Google, no URLs arbitrarias del JSON.",
+        "cmsAction": "En Analytics configura ga4_property_id, ga4_service_account_json y ga4_conversion_events. El último campo es una lista separada por comas de eventos de conversión autorizados.",
+        "expectedResult": "Los secretos permanecen cifrados; las consultas solo solicitan datos agregados permitidos.",
+        "links": {}
+      },
+      {
+        "id": "check",
+        "title": "Probar una campaña con UTM aprobadas",
+        "externalAction": "Publica una pieza autorizada con utm_source, utm_medium, utm_campaign y utm_content congelados en su revisión. Visita el destino aceptando o rechazando consentimiento de forma consciente.",
+        "cmsAction": "Consulta el informe por campaña y contenido exactos. El adaptador filtra sessionManualCampaignName y sessionManualAdContent y muestra sessions y keyEvents cuando están disponibles.",
+        "expectedResult": "Cero es distinto de no disponible; los informes pueden tardar en reflejar nuevas visitas y no atribuyen automáticamente cada venta.",
+        "links": {}
+      },
+      {
+        "id": "maintenance",
+        "title": "Revisar privacidad, acceso y frescura",
+        "externalAction": "Rota la clave de la cuenta de servicio y comprueba que conserva Viewer; elimina las claves anteriores cuando termine la rotación. Revisa eventos permitidos y ventanas de los informes.",
+        "cmsAction": "Actualiza el secreto de Analytics y vuelve a comprobar el informe. Conserva fuente, fechas y estado de disponibilidad al interpretar métricas.",
+        "expectedResult": "Los errores de permisos o cuotas se muestran sin inventar cifras ni exponer credenciales.",
+        "links": {}
+      }
+    ],
+    "troubleshooting": [
+      "Una lista de progreso manual no sustituye la comprobación real del resultado.",
+      "Ante datos no disponibles, revisa permisos y configuración; no interpretes la ausencia de datos como cero."
+    ],
+    "officialSources": {
+      "Google Analytics": "https://analytics.google.com/",
+      "Data API Quickstart": "https://developers.google.com/analytics/devguides/reporting/data/v1/quickstart-client-libraries",
+      "Dimensiones y métricas": "https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema",
+      "Consentimiento": "https://developers.google.com/tag-platform/security/guides/consent"
+    },
+    "reviewedAt": "2026-10-13",
+    "version": "2026.10.13-v1"
+  }
+]

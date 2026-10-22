@@ -1,0 +1,20 @@
+@extends(app(\App\Services\Cms\FrontViewResolver::class)->layout())
+
+@section('title', '__HEADLINE__')
+
+@section('content')
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <h1 class="text-3xl font-extrabold text-white mb-6">__HEADLINE__</h1>
+    <div class="space-y-6">
+        @forelse($items as $item)
+            <article>
+                <h2 class="text-xl font-bold">{{ $item->title }}</h2>
+                <p>{{ $item->content }}</p>
+            </article>
+        @empty
+            <p>{{ __('No content available.') }}</p>
+        @endforelse
+    </div>
+    {{ $items->links() }}
+</main>
+@endsection

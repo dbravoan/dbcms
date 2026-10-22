@@ -1,0 +1,30 @@
+@extends('__IDENTIFIER__::portal.layout')
+
+@section('title', 'Acceso al Portal - __STUDLY__')
+
+@section('content')
+<div class="max-w-md mx-auto my-12 bg-[#141414] border border-gray-800 rounded-xl p-8">
+    <h2 class="text-xl font-bold text-white mb-6 text-center">Acceso al portal __STUDLY__</h2>
+
+    @if($errors->any())
+        <div class="bg-red-900/40 border border-red-500 text-red-300 text-xs p-3 rounded mb-4">
+            {{ $errors->first() }}
+        </div>
+    @endif
+
+    <form method="POST" action="{{ route('__IDENTIFIER__.login.submit') }}" class="space-y-4">
+        @csrf
+        <div>
+            <label class="block text-xs font-mono text-gray-400 mb-1">Correo electrónico</label>
+            <input type="email" name="email" value="{{ old('email') }}" required class="w-full bg-[#1e1e1e] border border-gray-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-[#00FF99]">
+        </div>
+        <div>
+            <label class="block text-xs font-mono text-gray-400 mb-1">Contraseña</label>
+            <input type="password" name="password" required class="w-full bg-[#1e1e1e] border border-gray-700 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-[#00FF99]">
+        </div>
+        <button type="submit" class="w-full py-2.5 bg-[#00FF99] text-black font-bold rounded text-sm hover:bg-[#00cc7a] transition-colors">
+            Iniciar sesión
+        </button>
+    </form>
+</div>
+@endsection

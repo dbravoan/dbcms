@@ -1,0 +1,40 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\__STUDLY__\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Language;
+use App\Models\Market;
+use Illuminate\Contracts\View\View;
+use Modules\__STUDLY__\Models\__STUDLY__;
+
+final class __STUDLY__EditGetController extends Controller
+{
+    public function __invoke(__STUDLY__ $item): View
+    {
+        $item->load(['translations', 'markets']);
+
+        $translationsMap = [];
+        foreach ($item->translations as $translation) {
+            if ($translation->market_id !== null) {
+                continue;
+            }
+
+            $translationsMap[$translation->locale] = [
+                'title' => $translation->title,
+                'slug' => $translation->slug,
+                'content' => $translation->content ?? '',
+            ];
+        }
+
+        return view('__IDENTIFIER__::admin.edit', [
+            'item' => $item,
+            'translationsMap' => $translationsMap,
+            'languages' => Language::where('is_active', true)->get(),
+            'markets' => Market::with('languages')->where('is_active', true)->get(),
+            'assignedMarketIds' => $item->markets->pluck('id')->all(),
+        ]);
+    }
+}

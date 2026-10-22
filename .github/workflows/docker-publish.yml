@@ -1,0 +1,207 @@
+name: Independent Docker Images
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Exact main SHA of a published stable release
+        required: true
+      version:
+        description: Published stable version
+        required: true
+        default: "3.0.1"
+concurrency:
+  group: docker-publication
+  cancel-in-progress: false
+permissions:
+  actions: read
+  contents: read
+jobs:
+  verify:
+    if: github.repository == 'dbravoan/dbcms' && (github.event_name == 'push' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: write
+    outputs:
+      target_sha: ${{ steps.identity.outputs.target_sha }}
+      version: ${{ steps.identity.outputs.version }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify the stable tag and signed local preparation
+        id: identity
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          REQUESTED_SHA: ${{ inputs.sha || '' }}
+          REQUESTED_VERSION: ${{ inputs.version || '' }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            version="${RELEASE_TAG#v}"
+            sha="$(git rev-parse "refs/tags/${RELEASE_TAG}^{commit}")"
+          else
+            version="$REQUESTED_VERSION"
+            sha="$REQUESTED_SHA"
+          fi
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "$sha" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git cat-file -t "refs/tags/v${version}")" = tag
+          test "$(git rev-parse "refs/tags/v${version}^{commit}")" = "$sha"
+          python3 bin/github-delivery.py stage --allow-published --sha "$sha" --kind release --version "$version" --directory "$RUNNER_TEMP/delivery" --output "$GITHUB_OUTPUT"
+  docker-publish:
+    name: Build & Verify Docker Image (${{ matrix.arch }})
+    needs: verify
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+
+    env:
+      REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
+
+    permissions:
+      actions: read
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify.outputs.target_sha }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=${{ needs.verify.outputs.version }}
+
+      - name: Build and push multi-arch image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/production/Dockerfile
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=production-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=production-${{ matrix.arch }}
+
+      - name: Verify immutable image runtime
+        id: runtime-smoke
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          IMAGE_DIGEST="${{ steps.build.outputs.digest }}"
+          docker run --rm \
+            --network none --env APP_ENV=production \
+            --env APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+            --env DB_CONNECTION=sqlite --env DB_DATABASE=:memory: \
+            --env SESSION_DRIVER=file --env CACHE_STORE=file --env QUEUE_CONNECTION=sync \
+            "${REGISTRY_IMAGE}@${IMAGE_DIGEST}" php artisan --version
+
+      - name: Export image digest
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${IMAGE_DIGEST#sha256:}"
+
+      - name: Upload architecture digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  docker-merge:
+    name: Publish & Verify Multi-Arch Docker Manifest
+    needs: [verify, docker-publish]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    env:
+      REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
+
+    permissions:
+      actions: read
+      contents: read
+      packages: write
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=${{ needs.verify.outputs.version }}
+            type=raw,value=latest
+
+      - name: Download architecture digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Create and verify multi-architecture manifest
+        env:
+          DOCKER_METADATA_OUTPUT_JSON: ${{ steps.meta.outputs.json }}
+        run: |
+          cd /tmp/digests
+          mapfile -t manifest_tags < <(jq -r '.tags[]' <<< "${DOCKER_METADATA_OUTPUT_JSON}")
+          tag_args=()
+          for tag in "${manifest_tags[@]}"; do
+            tag_args+=("-t" "${tag}")
+          done
+          digest_args=()
+          for digest in *; do
+            digest_args+=("${REGISTRY_IMAGE}@sha256:${digest}")
+          done
+          candidate="${REGISTRY_IMAGE}:candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          docker buildx imagetools create -t "$candidate" "${digest_args[@]}"
+          docker buildx imagetools inspect "$candidate" --raw > /tmp/manifest.json
+          jq -e '[.manifests[].platform.architecture] | index("amd64") != null and index("arm64") != null' /tmp/manifest.json
+          docker buildx imagetools create "${tag_args[@]}" "$candidate"
+

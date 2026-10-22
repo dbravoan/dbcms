@@ -1,0 +1,74 @@
+name: Public Release Pipeline
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Stable version already prepared locally
+        required: true
+        default: "3.0.1"
+      sha:
+        description: Exact main SHA of the signed local release preparation
+        required: true
+concurrency:
+  group: release-publication
+  cancel-in-progress: false
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    if: github.repository == 'dbravoan/dbcms' && (github.event_name == 'push' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout trusted main delivery tools and keys
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Resolve annotated release identity
+        id: identity
+        env:
+          REQUESTED_SHA: ${{ inputs.sha || '' }}
+          REQUESTED_VERSION: ${{ inputs.version || '' }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            [[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            version="${GITHUB_REF_NAME#v}"
+            sha="$(git rev-parse "refs/tags/${GITHUB_REF_NAME}^{commit}")"
+          else
+            version="$REQUESTED_VERSION"
+            sha="$REQUESTED_SHA"
+          fi
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ && "$sha" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git cat-file -t "refs/tags/v${version}")" = tag
+          test "$(git rev-parse "refs/tags/v${version}^{commit}")" = "$sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Verify signed local release and exact main CI
+        env:
+          TARGET_SHA: ${{ steps.identity.outputs.sha }}
+          RELEASE_VERSION: ${{ steps.identity.outputs.version }}
+        run: |
+          python3 bin/github-delivery.py stage --sha "$TARGET_SHA" --kind release --version "$RELEASE_VERSION" --directory "$RUNNER_TEMP/delivery"
+          python3 bin/delivery.py extract-runtime --directory "$RUNNER_TEMP/delivery" --output "$RUNNER_TEMP/runtime"
+      - name: Smoke prepared runtime without installing dependencies
+        run: |
+          docker run --rm --network none --volume "$RUNNER_TEMP/runtime:/app" --workdir /app \
+            --env APP_ENV=production --env APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+            --env DB_CONNECTION=sqlite --env DB_DATABASE=:memory: --env SESSION_DRIVER=file \
+            --env CACHE_STORE=file --env QUEUE_CONNECTION=sync --entrypoint php composer:2 artisan --version
+      - name: Publish the verified bytes as the latest stable release
+        env:
+          TARGET_SHA: ${{ steps.identity.outputs.sha }}
+        run: python3 bin/github-delivery.py publish --sha "$TARGET_SHA" --directory "$RUNNER_TEMP/delivery"
+      - name: Remove staging drafts older than seven days
+        if: success()
+        continue-on-error: true
+        run: python3 bin/github-delivery.py prune

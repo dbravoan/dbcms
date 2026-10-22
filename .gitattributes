@@ -1,0 +1,7 @@
+# Agent-only assets excluded from Composer sources; development tooling is retained.
+/.agents export-ignore
+/.gemini export-ignore
+/.opencode export-ignore
+/dist export-ignore
+/skills-lock.json export-ignore
+/AGENTS.md export-ignore

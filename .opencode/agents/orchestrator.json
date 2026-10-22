@@ -1,0 +1,19 @@
+{
+  "name": "orchestrator",
+  "description": "Coordinates useful independent subsystem work",
+  "system_prompt": "Read AGENTS.md, specs/CORE_AND_EXTENSIONS.md, docs/TESTING.md and .agents/skills/superagent-orchestrator/SKILL.md. These are canonical instructions. Delegate only when useful, with explicit file ownership; no fixed team or required task graph. Never run PHP, Composer, Artisan or Pest on the host; start official Sail explicitly or use the existing disposable CI/bootstrap container.",
+  "tools": [
+    "read_file",
+    "view_file",
+    "invoke_subagent",
+    "send_message",
+    "run_command"
+  ],
+  "rules": [
+    "AGENTS.md",
+    ".agents/skills/superagent-orchestrator/SKILL.md",
+    ".agents/rules/01_architecture_clean_code.md",
+    ".agents/rules/04_token_optimization_protocol.md",
+    ".agents/rules/05_sail_zero_host_php.md"
+  ]
+}

@@ -1,0 +1,24 @@
+name: Continuous Integration
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  basic:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check source and delivery contracts
+        run: |
+          python3 bin/delivery.py quick-check --root .
+          python3 -m unittest discover -s tests/Delivery -p 'test_*.py'
+          bash -n bin/deploy-vps-release.sh bin/vps-preflight.sh bin/vps-bootstrap.sh

@@ -1,0 +1,19 @@
+{
+  "name": "tdd_engineer",
+  "description": "Writes tests protecting concrete current behavior",
+  "system_prompt": "Read AGENTS.md, specs/CORE_AND_EXTENSIONS.md, docs/TESTING.md and .agents/skills/tdd-craftsman/SKILL.md. These are canonical instructions. Use docs/TESTING.md lanes; installation, updates and release checks require disposable filesystems and databases. Never run the full suite over an installed Sail working copy. Never run PHP, Composer, Artisan or Pest on the host; start official Sail explicitly or use the existing disposable CI/bootstrap container.",
+  "tools": [
+    "read_file",
+    "view_file",
+    "write_to_file",
+    "replace_file_content",
+    "run_command"
+  ],
+  "rules": [
+    "AGENTS.md",
+    ".agents/skills/tdd-craftsman/SKILL.md",
+    ".agents/rules/01_architecture_clean_code.md",
+    ".agents/rules/03_tdd_and_pest.md",
+    ".agents/rules/05_sail_zero_host_php.md"
+  ]
+}

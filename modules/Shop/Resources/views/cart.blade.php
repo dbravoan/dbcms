@@ -1,0 +1,166 @@
+@php
+    $layout = app(\App\Services\Cms\FrontViewResolver::class)->layout();
+@endphp
+@extends($layout)
+
+@php
+    $cartTitle = $currentLocale === 'ca' ? 'Carretó de Compra' : ($currentLocale === 'en' ? 'Shopping Cart' : 'Carrito de Compras');
+    $cartSubtitle = $currentLocale === 'ca' ? 'Revisa els teus articles abans de procedir al pagament segur.' : ($currentLocale === 'en' ? 'Review your items before proceeding to secure checkout.' : 'Revisa tus artículos antes de proceder al pago seguro.');
+    $continueShopping = $currentLocale === 'ca' ? 'Continuar Comprant' : ($currentLocale === 'en' ? 'Continue Shopping' : 'Continuar Comprando');
+    $emptyTitle = $currentLocale === 'ca' ? 'El teu carretó està buit' : ($currentLocale === 'en' ? 'Your cart is empty' : 'Tu carrito está vacío');
+    $emptySubtitle = $currentLocale === 'ca' ? 'Descobreix els nostres productes i equipament al catàleg.' : ($currentLocale === 'en' ? 'Discover our products and equipment in the catalog.' : 'Descubre nuestros productos y equipamiento en el catálogo.');
+    $exploreShop = $currentLocale === 'ca' ? 'Explorar Botiga' : ($currentLocale === 'en' ? 'Explore Shop' : 'Explorar Tienda');
+    $summaryTitle = $currentLocale === 'ca' ? '> Resum de la Comanda' : ($currentLocale === 'en' ? '> Order Summary' : '> Resumen del Pedido');
+    $subtotalLabel = $currentLocale === 'ca' ? 'Base Imposable:' : ($currentLocale === 'en' ? 'Taxable Subtotal:' : 'Base Imponible:');
+    $taxLabel = $currentLocale === 'ca' ? 'Impostos (IVA):' : ($currentLocale === 'en' ? 'Taxes (VAT):' : 'Impuestos (IVA):');
+    $shippingLabel = $currentLocale === 'ca' ? 'Enviament:' : ($currentLocale === 'en' ? 'Shipping:' : 'Envío:');
+    $freeLabel = $currentLocale === 'ca' ? 'Gratuït' : ($currentLocale === 'en' ? 'Free' : 'Gratis');
+    $checkoutLabel = $currentLocale === 'ca' ? 'Finalitzar Compra' : ($currentLocale === 'en' ? 'Proceed to Checkout' : 'Finalizar Compra');
+    $securePayment = $currentLocale === 'ca' ? 'Pagament 100% Xifrat & Segur' : ($currentLocale === 'en' ? '100% Encrypted & Secure Payment' : 'Pago 100% Cifrado & Seguro');
+    $colProd = $currentLocale === 'ca' ? 'Producte' : ($currentLocale === 'en' ? 'Product' : 'Producto');
+    $colQty = $currentLocale === 'ca' ? 'Quantitat' : ($currentLocale === 'en' ? 'Quantity' : 'Cantidad');
+@endphp
+
+@section('title', $cartTitle . ' - dbCMS')
+
+@section('content')
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8 font-mono" x-data="{
+    async updateQty(productId, qty) {
+        await fetch('/api/cart/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ product_id: productId, quantity: qty })
+        });
+        window.location.reload();
+    },
+    async removeItem(productId) {
+        if (!confirm('¿Eliminar producto del carrito?')) return;
+        await fetch('/api/cart/remove', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ product_id: productId })
+        });
+        window.location.reload();
+    }
+}">
+
+    <div class="flex items-center justify-between border-b border-gray-800 pb-4">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2">
+                <span class="text-[#00FF99]">&gt;</span>
+                <span>{{ $cartTitle }}</span>
+            </h1>
+            <p class="text-xs text-gray-400 mt-1">{{ $cartSubtitle }}</p>
+        </div>
+        <a href="{{ route('shop.index', ['market' => $currentMarket->code, 'locale' => $currentLocale]) }}" class="text-gray-400 hover:text-white text-xs">
+            &larr; {{ $continueShopping }}
+        </a>
+    </div>
+
+    @if(empty($items))
+        <div class="p-16 text-center cyber-card space-y-4">
+            <span class="text-4xl block text-gray-600"><i class="fa-solid fa-cart-shopping"></i></span>
+            <h3 class="text-lg font-bold text-white">{{ $emptyTitle }}</h3>
+            <p class="text-xs text-gray-400">{{ $emptySubtitle }}</p>
+            <a href="{{ route('shop.index', ['market' => $currentMarket->code, 'locale' => $currentLocale]) }}" class="btn-neon text-xs inline-block">{{ $exploreShop }} &rarr;</a>
+        </div>
+    @else
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- Cart Items Table (2 cols) -->
+            <div class="lg:col-span-2 cyber-card overflow-hidden">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-[#181818] border-b border-gray-800 text-gray-400 uppercase text-[10px]">
+                        <tr>
+                            <th class="p-4">{{ __('Producto') }}</th>
+                            <th class="p-4 text-center">{{ __('Cantidad') }}</th>
+                            <th class="p-4 text-right">Subtotal</th>
+                            <th class="p-4 text-right"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-800">
+                        @foreach($items as $item)
+                            @php
+                                $p = $item['product'];
+                                $trans = $p->translations->where('locale', $currentLocale)->first();
+                            @endphp
+                            <tr class="hover:bg-gray-800/20">
+                                <td class="p-4">
+                                    <div class="flex items-center gap-3">
+                                        @if($p->featured_image)
+                                            <img src="{{ $p->featured_image }}" class="w-12 h-12 object-cover rounded-lg border border-gray-700 bg-black">
+                                        @else
+                                            <div class="w-12 h-12 rounded-lg bg-[#181818] flex items-center justify-center text-lg text-gray-600"><i class="fa-solid fa-box-open"></i></div>
+                                        @endif
+                                        <div>
+                                            <div class="font-bold text-white">{{ $trans?->name }}</div>
+                                            <div class="text-[10px] text-[#00FF99]">{{ $item['formatted_unit_price'] }} / u</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="p-4 text-center">
+                                    <div class="inline-flex items-center border border-gray-700 rounded bg-[#141414]">
+                                        <button type="button" @click="updateQty({{ $p->id }}, {{ $item['quantity'] - 1 }})" class="px-2 py-1 text-gray-400 hover:text-white">-</button>
+                                        <span class="px-2 text-white font-bold">{{ $item['quantity'] }}</span>
+                                        <button type="button" @click="updateQty({{ $p->id }}, {{ $item['quantity'] + 1 }})" class="px-2 py-1 text-gray-400 hover:text-white">+</button>
+                                    </div>
+                                </td>
+                                <td class="p-4 text-right font-bold text-[#00FF99]">
+                                    {{ $item['formatted_subtotal'] }}
+                                </td>
+                                <td class="p-4 text-right">
+                                    <button type="button" @click="removeItem({{ $p->id }})" class="text-red-400 hover:text-red-300 p-1 text-base">&times;</button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Order Summary Card (1 col) -->
+            <div class="cyber-card p-6 space-y-4 h-fit">
+                <h3 class="font-bold text-white uppercase text-xs pb-2 border-b border-gray-800">
+                    {{ $summaryTitle }}
+                </h3>
+
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between text-gray-400">
+                        <span>{{ $subtotalLabel }}</span>
+                        <span>{{ number_format($subtotal, 2) }} {{ $currentMarket->currency }}</span>
+                    </div>
+                    <div class="flex justify-between text-gray-400">
+                        <span>{{ $taxLabel }}</span>
+                        <span>{{ number_format($taxTotal, 2) }} {{ $currentMarket->currency }}</span>
+                    </div>
+                    <div class="flex justify-between text-gray-400">
+                        <span>{{ $shippingLabel }}</span>
+                        <span class="text-emerald-400 font-bold">{{ $freeLabel }}</span>
+                    </div>
+                    <div class="flex justify-between text-white font-bold text-sm pt-3 border-t border-gray-800">
+                        <span>{{ __('Total:') }}</span>
+                        <span class="text-[#00FF99]">{{ number_format($grandTotal, 2) }} {{ $currentMarket->currency }}</span>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <a href="{{ route('shop.checkout', ['market' => $currentMarket->code, 'locale' => $currentLocale]) }}" class="btn-neon w-full py-3 text-center text-xs block">
+                        {{ $checkoutLabel }} &rarr;
+                    </a>
+                </div>
+
+                <div class="text-[10px] text-gray-500 text-center flex items-center justify-center gap-1">
+                    <i class="fa-solid fa-lock"></i><span>{{ $securePayment }}</span>
+                </div>
+            </div>
+
+        </div>
+    @endif
+
+</div>
+@endsection

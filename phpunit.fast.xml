@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         failOnRisky="true"
+         failOnWarning="true">
+    <testsuites>
+        <testsuite name="Fast">
+            <directory suffix="Test.php">./tests/Pure</directory>
+            <file>./tests/Unit/Services/SafeContentRendererTest.php</file>
+            <file>./tests/Unit/Services/CodeEmbedSandboxTest.php</file>
+            <file>./tests/Unit/Services/ValidationMessagesTest.php</file>
+            <file>./tests/Unit/ModuleManifestGraphTest.php</file>
+            <file>./tests/Unit/ContentSnapshotFormatTest.php</file>
+        </testsuite>
+        <testsuite name="Smoke">
+            <directory suffix="Test.php">./tests/Smoke</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory suffix=".php">./app</directory>
+            <directory suffix=".php">./modules</directory>
+            <directory suffix=".php">./block-packages</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="CMS_MODULES" value="" force="true"/>
+        <env name="CMS_SEED_DEMO" value="false" force="true"/>
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="DB_HOST" value="mysql"/>
+        <env name="DB_DATABASE" value="testing"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="SESSION_ENCRYPT" value="false"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="ADMIN_PATH" value="admin"/>
+        <env name="CMS_BRAND" value="dbcms"/>
+        <env name="CMS_THEME" value="db-cyber"/>
+        <env name="APP_LOCALE" value="es" force="true"/>
+        <env name="APP_FALLBACK_LOCALE" value="es" force="true"/>
+    </php>
+</phpunit>

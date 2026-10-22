@@ -1,0 +1,6 @@
+
+    Route::get('/create', __STUDLY__CreateGetController::class)->name('create');
+    Route::post('/', __STUDLY__PostController::class)->name('store');
+    Route::get('/{item}/edit', __STUDLY__EditGetController::class)->name('edit');
+    Route::put('/{item}', __STUDLY__PutController::class)->name('update');
+    Route::delete('/{item}', __STUDLY__DeleteController::class)->name('destroy');

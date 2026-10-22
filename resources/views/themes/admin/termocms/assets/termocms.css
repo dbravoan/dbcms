@@ -1,0 +1,1215 @@
+/**
+ * termoCMS Corporate Theme Design System
+ * --------------------------------------------------------------------------
+ * Brand: Termosalud (Corporate Medical & Aesthetic)
+ * Primary Color: #0090A8 (Teal / Cyan)
+ * Typography: Plus Jakarta Sans
+ * Surface Colors: Slate-50 (#F8FAFC), Pure White (#FFFFFF), Slate-200 (#E2E8F0)
+ * --------------------------------------------------------------------------
+ */
+
+:root {
+    /* Teal remains the brand accent; interactive text needs 4.5:1 on white. */
+    --termo-primary: #007B90;
+    --termo-primary-hover: #006678;
+    --termo-primary-active: #006678;
+    --termo-primary-light: rgba(0, 144, 168, 0.08);
+    --termo-primary-glow: rgba(0, 144, 168, 0.25);
+    --termo-bg-page: #F8FAFC;
+    --termo-bg-card: #FFFFFF;
+    --termo-bg-subtle: #F1F5F9;
+    --termo-border: #E2E8F0;
+    --termo-border-strong: #CBD5E1;
+    --termo-text-main: #0F172A;
+    --termo-text-muted: #64748B;
+    --termo-text-subtle: #64748B;
+}
+
+/* Base Body & Reset for termoCMS */
+html.theme-termocms,
+html.theme-termocms body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    background-color: var(--termo-bg-page) !important;
+    color: var(--termo-text-main) !important;
+}
+
+/* 1. Universal Typography Override: Eliminate Monospace from UI elements */
+html.theme-termocms .font-mono:not(code):not(pre):not(code *):not(pre *):not(.font-code) {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* 1b. Brand logotipo lockup ---------------------------------------------------
+ * Shows only the "TERMOSALUD" wordmark from the official logotipo, cropping the
+ * "MEDICAL & AESTHETIC" tagline that becomes an illegible smear at sidebar size.
+ * Source asset is 400x55; the wordmark ends at x=278 and the tagline starts at
+ * x=306, so a width of 5.16x the height (≈284/55) keeps the wordmark and drops
+ * the tagline. Tune --termo-wordmark-height to scale the whole lockup. */
+.termo-wordmark {
+    --termo-wordmark-height: 26px;
+    display: inline-block;
+    height: var(--termo-wordmark-height);
+    width: calc(var(--termo-wordmark-height) * 5.16);
+    max-width: 100%;
+    overflow: hidden;
+    line-height: 0;
+}
+
+.termo-wordmark > img {
+    display: block;
+    height: 100%;
+    width: auto;
+    max-width: none;
+}
+
+html.theme-termocms pre,
+html.theme-termocms code:not(.badge) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+}
+
+/* 2. Brand Buttons & Buttons Reset */
+html.theme-termocms .btn-neon,
+html.theme-termocms .btn-primary {
+    background-color: var(--termo-primary) !important;
+    border-color: var(--termo-primary) !important;
+    color: #FFFFFF !important;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    font-weight: 600 !important;
+    box-shadow: 0 1px 2px 0 var(--termo-primary-glow) !important;
+}
+
+html.theme-termocms .btn-neon:hover,
+html.theme-termocms .btn-primary:hover {
+    background-color: var(--termo-primary-hover) !important;
+    border-color: var(--termo-primary-hover) !important;
+    box-shadow: 0 4px 12px var(--termo-primary-glow) !important;
+    color: #FFFFFF !important;
+}
+
+/* 3. Cards & Containers Transformation */
+html.theme-termocms .cyber-card {
+    background-color: var(--termo-bg-card) !important;
+    border: 1px solid var(--termo-border) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04) !important;
+    color: var(--termo-text-main) !important;
+}
+
+/* Transform all legacy dark container backgrounds to clean white/slate */
+html.theme-termocms .bg-\[\#0A0A0A\],
+html.theme-termocms .bg-\[\#0D0D0D\],
+html.theme-termocms .bg-\[\#0F0F11\],
+html.theme-termocms .bg-\[\#101010\],
+html.theme-termocms .bg-\[\#121212\],
+html.theme-termocms .bg-\[\#141414\],
+html.theme-termocms .bg-\[\#161616\],
+html.theme-termocms .bg-\[\#181818\],
+html.theme-termocms .bg-\[\#1A1A1A\],
+html.theme-termocms .bg-\[\#1a1a1a\],
+html.theme-termocms .bg-\[\#222222\],
+html.theme-termocms .bg-\[\#2A2A2A\],
+html.theme-termocms .bg-\[\#111111\],
+html.theme-termocms .bg-\[\#111\],
+html.theme-termocms .bg-gray-900:not([class*="fixed inset-0"]),
+html.theme-termocms .bg-zinc-900:not([class*="fixed inset-0"]),
+html.theme-termocms .bg-zinc-950:not([class*="fixed inset-0"]) {
+    background-color: var(--termo-bg-card) !important;
+    border-color: var(--termo-border) !important;
+    color: var(--termo-text-main) !important;
+}
+
+/* Transform black bars/pill containers to light slate */
+html.theme-termocms .bg-black\/60:not([class*="fixed inset-0"]):not([class*="backdrop-blur"]),
+html.theme-termocms .bg-black\/50:not([class*="fixed inset-0"]):not([class*="backdrop-blur"]),
+html.theme-termocms .bg-black\/40:not([class*="fixed inset-0"]):not([class*="backdrop-blur"]),
+html.theme-termocms .bg-black\/30:not([class*="fixed inset-0"]):not([class*="backdrop-blur"]),
+html.theme-termocms .bg-black\/70:not([class*="fixed inset-0"]):not([class*="backdrop-blur"]),
+html.theme-termocms .bg-black\/80:not([class*="fixed inset-0"]):not([class*="backdrop-blur"]),
+html.theme-termocms .bg-black\/90:not([class*="fixed inset-0"]):not([class*="backdrop-blur"]) {
+    background-color: var(--termo-bg-subtle) !important;
+    border-color: var(--termo-border) !important;
+    color: var(--termo-text-main) !important;
+}
+
+/* 4. Form Controls: Inputs, Selects & Textareas */
+html.theme-termocms input.bg-\[\#1A1A1A\],
+html.theme-termocms select.bg-\[\#1A1A1A\],
+html.theme-termocms textarea.bg-\[\#1A1A1A\],
+html.theme-termocms input.bg-\[\#121212\],
+html.theme-termocms select.bg-\[\#121212\],
+html.theme-termocms textarea.bg-\[\#121212\],
+html.theme-termocms input.bg-\[\#141414\],
+html.theme-termocms select.bg-\[\#141414\],
+html.theme-termocms textarea.bg-\[\#141414\],
+html.theme-termocms input.bg-\[\#181818\],
+html.theme-termocms select.bg-\[\#181818\],
+html.theme-termocms textarea.bg-\[\#181818\],
+html.theme-termocms input.bg-gray-900,
+html.theme-termocms select.bg-gray-900,
+html.theme-termocms textarea.bg-gray-900 {
+    background-color: #FFFFFF !important;
+    border: 1px solid var(--termo-border-strong) !important;
+    color: var(--termo-text-main) !important;
+    border-radius: 8px !important;
+}
+
+html.theme-termocms input.bg-\[\#1A1A1A\]:focus,
+html.theme-termocms select.bg-\[\#1A1A1A\]:focus,
+html.theme-termocms textarea.bg-\[\#1A1A1A\]:focus,
+html.theme-termocms input.bg-\[\#121212\]:focus,
+html.theme-termocms select.bg-\[\#121212\]:focus,
+html.theme-termocms textarea.bg-\[\#121212\]:focus {
+    border-color: var(--termo-primary) !important;
+    box-shadow: 0 0 0 2px var(--termo-primary-light) !important;
+    outline: none !important;
+}
+
+html.theme-termocms input::placeholder,
+html.theme-termocms textarea::placeholder {
+    color: var(--termo-text-subtle) !important;
+}
+
+/* 5. Text Hierarchy & Readability */
+html.theme-termocms .text-white:not(.btn-neon):not(.btn-neon *):not(.btn-primary):not(.btn-primary *):not([class*="bg-red-"]):not([class*="bg-rose-"]):not([class*="bg-amber-"]):not([class*="bg-emerald-"]):not([class*="bg-teal-"]):not([class*="bg-purple-6"]):not([class*="bg-blue-6"]):not(.badge-solid) {
+    color: var(--termo-text-main) !important;
+}
+
+html.theme-termocms .text-gray-100,
+html.theme-termocms .text-gray-200,
+html.theme-termocms .text-gray-300 {
+    color: #334155 !important; /* Slate-700 */
+}
+
+html.theme-termocms .text-gray-400,
+html.theme-termocms .text-gray-500 {
+    color: var(--termo-text-muted) !important; /* Slate-500 */
+}
+
+html.theme-termocms .hover\:text-white:hover {
+    color: var(--termo-text-main) !important;
+}
+
+/* 6. Accent Colors: Cyber Neon -> Termosalud Corporate Teal */
+html.theme-termocms .text-\[\#00FF99\],
+html.theme-termocms .text-\[\#00FFCC\],
+html.theme-termocms .text-emerald-400,
+html.theme-termocms .text-cyan-400 {
+    color: var(--termo-primary) !important;
+}
+
+html.theme-termocms .bg-\[\#00FF99\],
+html.theme-termocms .bg-\[\#00FFCC\] {
+    background-color: var(--termo-primary) !important;
+    color: #FFFFFF !important;
+}
+
+html.theme-termocms .border-\[\#00FF99\],
+html.theme-termocms .border-\[\#00FFCC\],
+html.theme-termocms [class*="border-\[\#00FF99\]"],
+html.theme-termocms [class*="border-\[\#00FFCC\]"] {
+    border-color: var(--termo-primary) !important;
+}
+
+/* Los fondos translúcidos del neón se repintan SOLO cuando no son estados de
+   interacción (un botón con `hover:bg-[#00FF99]/90` ya trae su propio color y
+   esta regla le dejaba el icono teal sobre teal claro). */
+html.theme-termocms [class*="bg-\[\#00FF99\]/"]:not([class*="hover:bg-"]),
+html.theme-termocms [class*="bg-\[\#00FFCC\]/"]:not([class*="hover:bg-"]) {
+    background-color: var(--termo-primary-light) !important;
+    color: var(--termo-primary) !important;
+    border-color: rgba(0, 144, 168, 0.25) !important;
+}
+
+html.theme-termocms .hover\:text-\[\#00FF99\]:hover,
+html.theme-termocms .hover\:text-\[\#00FFCC\]:hover {
+    color: var(--termo-primary-hover) !important;
+}
+
+html.theme-termocms .hover\:border-\[\#00FF99\]:hover,
+html.theme-termocms .hover\:border-\[\#00FFCC\]:hover {
+    border-color: var(--termo-primary-hover) !important;
+}
+
+html.theme-termocms .hover\:bg-\[\#00FF99\]:hover,
+html.theme-termocms .hover\:bg-\[\#00FFCC\]:hover {
+    background-color: var(--termo-primary-hover) !important;
+    color: #FFFFFF !important;
+}
+
+/* 7. Borders, Dividers & Tables */
+html.theme-termocms .border-gray-800,
+html.theme-termocms .border-gray-700,
+html.theme-termocms .border-gray-900,
+html.theme-termocms .border-zinc-800,
+html.theme-termocms .border-zinc-700 {
+    border-color: var(--termo-border) !important;
+}
+
+html.theme-termocms .divide-gray-800,
+html.theme-termocms .divide-gray-800\/60,
+html.theme-termocms .divide-gray-800\/80,
+html.theme-termocms .divide-gray-800\/40,
+html.theme-termocms .divide-gray-900,
+html.theme-termocms .divide-gray-900\/60 {
+    border-color: var(--termo-bg-subtle) !important;
+}
+
+html.theme-termocms thead {
+    background-color: var(--termo-bg-page) !important;
+    border-bottom: 1px solid var(--termo-border) !important;
+}
+
+html.theme-termocms thead th {
+    color: #475569 !important; /* Slate-600 */
+    font-weight: 700 !important;
+}
+
+html.theme-termocms tbody tr {
+    background-color: #FFFFFF;
+    transition: background-color 0.15s ease-in-out;
+}
+
+html.theme-termocms tbody tr:hover,
+html.theme-termocms tr.hover\:bg-gray-800\/30:hover {
+    background-color: rgba(0, 144, 168, 0.04) !important;
+}
+
+/* 8. Interactive Elements & Hover States */
+html.theme-termocms .hover\:bg-gray-800:hover,
+html.theme-termocms .hover\:bg-gray-700:hover,
+html.theme-termocms .hover\:bg-gray-900:hover {
+    background-color: var(--termo-bg-subtle) !important;
+    color: var(--termo-text-main) !important;
+}
+
+/* 9. Glow Shadows Softening */
+html.theme-termocms [class*="shadow-\[0_0_"],
+html.theme-termocms [class*="shadow-\[0_10px_30px"] {
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04) !important;
+}
+
+/* 10. Navigation Tabs (AI Assistant, Quality Audit, Maintenance, Settings) */
+html.theme-termocms .flex.border-b.border-gray-800,
+html.theme-termocms .border-b.border-gray-800 {
+    border-color: var(--termo-border) !important;
+}
+
+html.theme-termocms .nav-tab-active,
+html.theme-termocms [class*="border-purple-500 text-purple-400"],
+html.theme-termocms [class*="border-[#00FF99] text-[#00FF99]"] {
+    border-color: var(--termo-primary) !important;
+    color: var(--termo-primary) !important;
+    background-color: var(--termo-primary-light) !important;
+    font-weight: 700 !important;
+}
+
+/* 11. Modals & Dialogs */
+html.theme-termocms .fixed.inset-0.bg-black\/40,
+html.theme-termocms .fixed.inset-0.bg-slate-900\/40,
+html.theme-termocms .fixed.inset-0.bg-slate-900\/60 {
+    background-color: rgba(15, 23, 42, 0.5) !important;
+    backdrop-filter: blur(6px) !important;
+}
+
+/* 12. Block Manager Fullscreen Canvas & Modals */
+html.theme-termocms .fixed.inset-0.z-\[100\].bg-\[\#0A0A0A\] {
+    background-color: var(--termo-bg-page) !important;
+    color: var(--termo-text-main) !important;
+}
+
+html.theme-termocms .bg-\[\#121212\]\/95 {
+    background-color: rgba(255, 255, 255, 0.95) !important;
+    border-bottom: 1px solid var(--termo-border) !important;
+    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.06) !important;
+}
+
+html.theme-termocms .bg-\[\#181818\] {
+    background-color: var(--termo-bg-page) !important;
+    border-color: var(--termo-border) !important;
+}
+
+html.theme-termocms .bg-\[\#141414\] {
+    background-color: #FFFFFF !important;
+    border-color: var(--termo-border) !important;
+}
+
+/* 13. WYSIWYG & Rich Text Editors */
+html.theme-termocms .bg-\[\#0D0D0D\] {
+    background-color: var(--termo-bg-subtle) !important;
+    border: 1px solid var(--termo-border) !important;
+    color: var(--termo-text-main) !important;
+}
+
+/* 14. Secondary Buttons, Action Buttons, Badges, Pills & Spans (bg-gray-800, text-gray-300) */
+html.theme-termocms button.bg-gray-800,
+html.theme-termocms a.bg-gray-800,
+html.theme-termocms button.bg-gray-700,
+html.theme-termocms a.bg-gray-700,
+html.theme-termocms button.bg-gray-900,
+html.theme-termocms a.bg-gray-900,
+html.theme-termocms button.bg-\[\#1A1A1A\],
+html.theme-termocms a.bg-\[\#1A1A1A\],
+html.theme-termocms button.bg-\[\#181818\],
+html.theme-termocms a.bg-\[\#181818\],
+html.theme-termocms button.bg-\[\#141414\],
+html.theme-termocms a.bg-\[\#141414\],
+html.theme-termocms button.bg-\[\#121212\],
+html.theme-termocms a.bg-\[\#121212\],
+html.theme-termocms button.bg-\[\#101010\],
+html.theme-termocms a.bg-\[\#101010\],
+html.theme-termocms .bg-gray-800:not([class*="fixed inset-0"]):not(.peer-checked\:bg-):not(span),
+html.theme-termocms .bg-gray-700:not([class*="fixed inset-0"]):not(span),
+html.theme-termocms .bg-gray-900:not([class*="fixed inset-0"]):not(span) {
+    background-color: #F8FAFC !important;
+    border: 1px solid #CBD5E1 !important;
+    color: #334155 !important;
+    box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.04) !important;
+}
+
+html.theme-termocms button.bg-gray-800:hover,
+html.theme-termocms a.bg-gray-800:hover,
+html.theme-termocms button.bg-gray-700:hover,
+html.theme-termocms a.bg-gray-700:hover,
+html.theme-termocms button.bg-\[\#1A1A1A\]:hover,
+html.theme-termocms a.bg-\[\#1A1A1A\]:hover,
+html.theme-termocms button.bg-\[\#181818\]:hover,
+html.theme-termocms a.bg-\[\#181818\]:hover,
+html.theme-termocms button.bg-\[\#141414\]:hover,
+html.theme-termocms a.bg-\[\#141414\]:hover,
+html.theme-termocms button.bg-\[\#121212\]:hover,
+html.theme-termocms a.bg-\[\#121212\]:hover,
+html.theme-termocms .bg-gray-800:hover,
+html.theme-termocms .bg-gray-700:hover,
+html.theme-termocms .hover\:bg-gray-700:hover,
+html.theme-termocms .hover\:bg-gray-800:hover {
+    background-color: #F1F5F9 !important;
+    border-color: #94A3B8 !important;
+    color: #0F172A !important;
+}
+
+/* Badges, Count Pills & Status Spans (e.g. "X secciones", "v1.0.0", scopes) */
+html.theme-termocms span.bg-gray-800,
+html.theme-termocms span.bg-gray-700,
+html.theme-termocms span.bg-gray-900,
+html.theme-termocms span.bg-\[\#1A1A1A\],
+html.theme-termocms span.bg-\[\#181818\],
+html.theme-termocms span.bg-\[\#141414\],
+html.theme-termocms span.bg-\[\#121212\],
+html.theme-termocms span.bg-black\/60,
+html.theme-termocms span[class*="bg-gray-800"] {
+    background-color: #F1F5F9 !important;
+    border: 1px solid #E2E8F0 !important;
+    color: #475569 !important;
+    font-weight: 600 !important;
+}
+
+/* Pagination in termoCMS */
+html.theme-termocms .bg-\[\#121212\].border-t.border-gray-800 {
+    background-color: #F8FAFC !important;
+    border-color: #E2E8F0 !important;
+}
+
+html.theme-termocms a[class*="rounded bg-[#1A1A1A]"] {
+    background-color: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    color: #334155 !important;
+}
+
+html.theme-termocms a[class*="rounded bg-[#1A1A1A]"]:hover {
+    background-color: #F1F5F9 !important;
+    border-color: #0090A8 !important;
+    color: #0090A8 !important;
+}
+
+html.theme-termocms span[class*="rounded bg-gray-800/40"] {
+    background-color: #F8FAFC !important;
+    border: 1px solid #E2E8F0 !important;
+    color: #CBD5E1 !important;
+}
+
+html.theme-termocms span[class*="rounded bg-[#00FF99]/10"] {
+    background-color: #0090A8 !important;
+    border: 1px solid #0090A8 !important;
+    color: #FFFFFF !important;
+}
+
+/* ==========================================================================
+   15. Code, Pre & Technical Typography (Clean Readable Medical Standards)
+   ========================================================================== */
+html.theme-termocms code:not(.badge) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+    background-color: #F1F5F9 !important; /* bg-slate-100 */
+    color: #0E7490 !important; /* high-contrast dark cyan/teal for optimal legibility */
+    border: 1px solid #CBD5E1 !important; /* border-slate-300 */
+    border-radius: 6px !important;
+    padding: 0.15rem 0.45rem !important;
+    font-size: 0.85em !important;
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Override legacy cyberpunk text colors on code elements */
+html.theme-termocms code.text-\[\#00FF99\],
+html.theme-termocms code.text-white,
+html.theme-termocms code.text-gray-200,
+html.theme-termocms code.text-gray-300,
+html.theme-termocms code.text-gray-400 {
+    color: #0E7490 !important;
+}
+
+/* Ensure code tags with bg-black/50, bg-black/60 or legacy dark surfaces are cleanly lightened */
+html.theme-termocms code.bg-black\/50,
+html.theme-termocms code.bg-black\/60,
+html.theme-termocms code.bg-black\/40,
+html.theme-termocms code.bg-black\/70,
+html.theme-termocms code.bg-black\/80,
+html.theme-termocms code.bg-\[\#1A1A1A\],
+html.theme-termocms code.bg-\[\#121212\],
+html.theme-termocms code.bg-\[\#141414\],
+html.theme-termocms code.bg-\[\#161616\],
+html.theme-termocms code.bg-\[\#181818\],
+html.theme-termocms code.bg-\[\#0D0D0D\],
+html.theme-termocms code.bg-gray-700,
+html.theme-termocms code.bg-gray-800,
+html.theme-termocms code.bg-gray-900,
+html.theme-termocms code[class*="bg-black"],
+html.theme-termocms code[class*="bg-[#"] {
+    background-color: #F1F5F9 !important;
+    border: 1px solid #CBD5E1 !important;
+    color: #0E7490 !important;
+}
+
+/* Preformatted code blocks */
+html.theme-termocms pre {
+    background-color: #F8FAFC !important; /* bg-slate-50 */
+    color: #0F172A !important; /* text-slate-900 */
+    border: 1px solid #E2E8F0 !important; /* border-slate-200 */
+    border-radius: 8px !important;
+    padding: 0.75rem 1rem !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+    box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.03) !important;
+}
+
+html.theme-termocms pre.bg-\[\#0D0D0D\],
+html.theme-termocms pre.bg-\[\#121212\],
+html.theme-termocms pre.bg-\[\#141414\],
+html.theme-termocms pre.bg-\[\#1A1A1A\],
+html.theme-termocms pre.bg-gray-900,
+html.theme-termocms pre[class*="bg-"] {
+    background-color: #F8FAFC !important;
+    border-color: #E2E8F0 !important;
+    color: #0F172A !important;
+}
+
+html.theme-termocms pre code {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: inherit !important;
+    padding: 0 !important;
+    font-size: inherit !important;
+}
+
+/* Monospace URL badges & span pills with dark utility classes */
+html.theme-termocms span.bg-black\/50,
+html.theme-termocms span.bg-black\/60,
+html.theme-termocms span.bg-black\/40 {
+    background-color: rgba(0, 144, 168, 0.08) !important;
+    color: var(--termo-primary) !important;
+    border: 1px solid rgba(0, 144, 168, 0.25) !important;
+}
+
+/* ==========================================================================
+   16. Table Action Links, Semantic Colors & Unified Badges / Chips
+   ========================================================================== */
+
+/* Remove terminal/CLI prompt arrows from headers in corporate theme */
+html.theme-termocms .prompt-prefix {
+    display: none !important;
+}
+
+/* Primary Action in Table Rows (Editar, Administrar) */
+html.theme-termocms td a.text-\[\#00FF99\],
+html.theme-termocms td button.text-\[\#00FF99\],
+html.theme-termocms td.text-right a.text-\[\#00FF99\],
+html.theme-termocms td.text-right button.text-\[\#00FF99\] {
+    color: var(--termo-primary) !important;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    font-weight: 600 !important;
+}
+
+html.theme-termocms td a.text-\[\#00FF99\]:hover,
+html.theme-termocms td button.text-\[\#00FF99\]:hover,
+html.theme-termocms td.text-right a.text-\[\#00FF99\]:hover,
+html.theme-termocms td.text-right button.text-\[\#00FF99\]:hover {
+    color: var(--termo-primary-hover) !important;
+}
+
+/* Secondary Action in Table Rows (Ver, Previsualizar) */
+html.theme-termocms td a.text-gray-400,
+html.theme-termocms td button.text-gray-400,
+html.theme-termocms td.text-right a.text-gray-400,
+html.theme-termocms td.text-right button.text-gray-400 {
+    color: var(--termo-text-muted) !important;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    font-weight: 500 !important;
+}
+
+html.theme-termocms td a.text-gray-400:hover,
+html.theme-termocms td button.text-gray-400:hover,
+html.theme-termocms td.text-right a.text-gray-400:hover,
+html.theme-termocms td.text-right button.text-gray-400:hover {
+    color: var(--termo-text-main) !important;
+}
+
+/* Danger Action in Table Rows (Eliminar, Revocar) */
+html.theme-termocms td a.text-red-400,
+html.theme-termocms td button.text-red-400,
+html.theme-termocms td.text-right a.text-red-400,
+html.theme-termocms td.text-right button.text-red-400,
+html.theme-termocms .text-red-400 {
+    color: #E11D48 !important; /* Rose-600 */
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    font-weight: 600 !important;
+}
+
+html.theme-termocms td a.text-red-400:hover,
+html.theme-termocms td button.text-red-400:hover,
+html.theme-termocms td.text-right a.text-red-400:hover,
+html.theme-termocms td.text-right button.text-red-400:hover,
+html.theme-termocms .hover\:text-red-300:hover,
+html.theme-termocms .hover\:text-red-400:hover {
+    color: #BE123C !important; /* Rose-700 */
+}
+
+/* Semantic High-Contrast Color Normalization for Light Background */
+html.theme-termocms .text-amber-400,
+html.theme-termocms .text-amber-500 {
+    color: #D97706 !important; /* Amber-600 */
+}
+
+html.theme-termocms .text-emerald-400,
+html.theme-termocms .text-green-400 {
+    color: #059669 !important; /* Emerald-600 */
+}
+
+html.theme-termocms .text-purple-400,
+html.theme-termocms .text-purple-300 {
+    color: #7C3AED !important; /* Violet-600 */
+}
+
+html.theme-termocms .text-sky-400,
+html.theme-termocms .text-blue-400 {
+    color: #0284C7 !important; /* Sky-600 */
+}
+
+/* Market Chips & Pills Legacy Normalization */
+html.theme-termocms span.bg-black\/60,
+html.theme-termocms span.bg-black\/50,
+html.theme-termocms span[class*="bg-black/"] {
+    background-color: rgba(0, 144, 168, 0.08) !important;
+    border: 1px solid rgba(0, 144, 168, 0.25) !important;
+    color: var(--termo-primary) !important;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    font-weight: 700 !important;
+}
+
+html.theme-termocms span[class*="border-\[\#00FF99\]\/30"] {
+    border-color: rgba(0, 144, 168, 0.25) !important;
+}
+
+html.theme-termocms span[class*="bg-purple-500/"] {
+    background-color: #EEF2FF !important;
+    border: 1px solid #C7D2FE !important;
+    color: #4F46E5 !important;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    font-weight: 600 !important;
+}
+
+html.theme-termocms span[class*="bg-emerald-500/"] {
+    background-color: #ECFDF5 !important;
+    border: 1px solid #A7F3D0 !important;
+    color: #047857 !important;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    font-weight: 600 !important;
+}
+
+html.theme-termocms span[class*="bg-amber-500/"] {
+    background-color: #FFFBEB !important;
+    border: 1px solid #FDE68A !important;
+    color: #B45309 !important;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    font-weight: 600 !important;
+}
+
+html.theme-termocms span[class*="bg-red-500/"] {
+    background-color: #FFF1F2 !important;
+    border: 1px solid #FECDD3 !important;
+    color: #BE123C !important;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    font-weight: 600 !important;
+}
+
+html.theme-termocms span[class*="bg-blue-500/"],
+html.theme-termocms span[class*="bg-sky-500/"] {
+    background-color: #F0F9FF !important;
+    border: 1px solid #BAE6FD !important;
+    color: #0369A1 !important;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    font-weight: 600 !important;
+}
+
+/* Initial and Avatar Badges in Lists & Tables */
+html.theme-termocms .w-7.h-7.rounded-full.bg-gray-800,
+html.theme-termocms .w-7.h-7.rounded-full {
+    background-color: rgba(0, 144, 168, 0.08) !important;
+    border: 1px solid rgba(0, 144, 168, 0.25) !important;
+    color: var(--termo-primary) !important;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    font-weight: 700 !important;
+}
+
+html.theme-termocms .w-12.h-12.rounded-xl.bg-\[\#1A1A1A\],
+html.theme-termocms .w-12.h-12.rounded-xl {
+    background-color: rgba(0, 144, 168, 0.08) !important;
+    border: 1px solid rgba(0, 144, 168, 0.25) !important;
+    color: var(--termo-primary) !important;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    font-weight: 700 !important;
+}
+
+/* --------------------------------------------------------------------------
+ * termoCMS Corporate Theme - Semantic Backoffice & Copilot Unification
+ * -------------------------------------------------------------------------- */
+
+/* Action Buttons & Tooltips */
+html.theme-termocms .admin-action-btn-primary {
+    color: #0090A8 !important;
+    background-color: #F0FDFA !important;
+    border-color: #99F6E4 !important;
+    box-shadow: 0 1px 2px 0 rgba(0, 144, 168, 0.1) !important;
+}
+html.theme-termocms .admin-action-btn-primary:hover {
+    background-color: #0090A8 !important;
+    color: #FFFFFF !important;
+    border-color: #0090A8 !important;
+    box-shadow: 0 4px 10px rgba(0, 144, 168, 0.25) !important;
+}
+html.theme-termocms .admin-action-btn-view {
+    color: #0284C7 !important;
+    background-color: #F0F9FF !important;
+    border-color: #BAE6FD !important;
+    box-shadow: 0 1px 2px 0 rgba(2, 132, 199, 0.1) !important;
+}
+html.theme-termocms .admin-action-btn-view:hover {
+    background-color: #0284C7 !important;
+    color: #FFFFFF !important;
+    border-color: #0284C7 !important;
+    box-shadow: 0 4px 10px rgba(2, 132, 199, 0.25) !important;
+}
+html.theme-termocms .admin-action-btn-danger {
+    color: #E11D48 !important;
+    background-color: #FFF1F2 !important;
+    border-color: #FECDD3 !important;
+    box-shadow: 0 1px 2px 0 rgba(225, 29, 72, 0.1) !important;
+}
+html.theme-termocms .admin-action-btn-danger:hover {
+    background-color: #E11D48 !important;
+    color: #FFFFFF !important;
+    border-color: #E11D48 !important;
+    box-shadow: 0 4px 10px rgba(225, 29, 72, 0.25) !important;
+}
+html.theme-termocms .admin-action-btn-warning {
+    color: #D97706 !important;
+    background-color: #FFFBEB !important;
+    border-color: #FDE68A !important;
+    box-shadow: 0 1px 2px 0 rgba(217, 119, 6, 0.1) !important;
+}
+html.theme-termocms .admin-action-btn-warning:hover {
+    background-color: #D97706 !important;
+    color: #FFFFFF !important;
+    border-color: #D97706 !important;
+    box-shadow: 0 4px 10px rgba(217, 119, 6, 0.25) !important;
+}
+html.theme-termocms .admin-action-btn-default {
+    color: #475569 !important;
+    background-color: #F1F5F9 !important;
+    border-color: #E2E8F0 !important;
+    box-shadow: 0 1px 2px 0 rgba(71, 85, 105, 0.05) !important;
+}
+html.theme-termocms .admin-action-btn-default:hover {
+    background-color: #E2E8F0 !important;
+    color: #0F172A !important;
+}
+html.theme-termocms .admin-tooltip-text {
+    background-color: #0F172A !important;
+    color: #FFFFFF !important;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    border: none !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2) !important;
+}
+html.theme-termocms .admin-tooltip-arrow {
+    background-color: #0F172A !important;
+    border: none !important;
+}
+
+/* Chips & Badges */
+html.theme-termocms .admin-chip-primary {
+    color: #0090A8 !important;
+    background-color: #F0FDFA !important;
+    border-color: #99F6E4 !important;
+}
+html.theme-termocms .admin-chip-secondary {
+    color: #0284C7 !important;
+    background-color: #F0F9FF !important;
+    border-color: #BAE6FD !important;
+}
+html.theme-termocms .admin-chip-danger {
+    color: #E11D48 !important;
+    background-color: #FFF1F2 !important;
+    border-color: #FECDD3 !important;
+}
+html.theme-termocms .admin-chip-warning {
+    color: #D97706 !important;
+    background-color: #FFFBEB !important;
+    border-color: #FDE68A !important;
+}
+html.theme-termocms .admin-chip-default {
+    color: #475569 !important;
+    background-color: #F1F5F9 !important;
+    border-color: #E2E8F0 !important;
+}
+
+/* Pagination */
+html.theme-termocms .admin-pagination-active {
+    background-color: #0090A8 !important;
+    color: #FFFFFF !important;
+    border-color: #0090A8 !important;
+    box-shadow: 0 1px 3px rgba(0, 144, 168, 0.2) !important;
+}
+html.theme-termocms .admin-pagination-item {
+    background-color: #FFFFFF !important;
+    border-color: #CBD5E1 !important;
+    color: #334155 !important;
+}
+html.theme-termocms .admin-pagination-item:hover {
+    background-color: #F1F5F9 !important;
+    color: #0F172A !important;
+}
+
+/* Copilot IA Bridge Corporate Styling */
+html.theme-termocms .copilot-attach-btn {
+    background-color: #F0FDFA !important;
+    border-color: #99F6E4 !important;
+    color: #0090A8 !important;
+    box-shadow: 0 1px 2px rgba(0, 144, 168, 0.1) !important;
+}
+html.theme-termocms .copilot-attach-btn:hover {
+    background-color: #0090A8 !important;
+    color: #FFFFFF !important;
+}
+html.theme-termocms .copilot-floating-btn {
+    background: linear-gradient(135deg, #0090A8 0%, #007B90 100%) !important;
+    box-shadow: 0 4px 20px rgba(0, 144, 168, 0.4) !important;
+}
+html.theme-termocms .copilot-modal-card {
+    background-color: #FFFFFF !important;
+    border-color: #E2E8F0 !important;
+    color: #0F172A !important;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+}
+html.theme-termocms .copilot-tab-active {
+    background-color: #0090A8 !important;
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+    box-shadow: 0 1px 2px rgba(0, 144, 168, 0.2) !important;
+}
+html.theme-termocms .copilot-tab-inactive {
+    color: #475569 !important;
+}
+html.theme-termocms .copilot-tab-inactive:hover {
+    color: #0F172A !important;
+}
+
+/* ==========================================================================
+   17. Residual Dark Surfaces, Translucent Utilities & Table Dividers
+   ========================================================================== */
+
+/* 17.1 Legacy dark hex surfaces not covered before → light slate */
+html.theme-termocms .bg-\[\#0B0B0B\],
+html.theme-termocms .bg-\[\#0E0E0E\],
+html.theme-termocms .bg-\[\#0F0F0F\],
+html.theme-termocms .bg-\[\#151515\],
+html.theme-termocms .bg-\[\#171717\],
+html.theme-termocms .bg-\[\#252525\] {
+    background-color: var(--termo-bg-subtle) !important;
+    border-color: var(--termo-border) !important;
+}
+
+/* 17.1.bis Active / selected surfaces → soft corporate teal */
+html.theme-termocms .bg-\[\#1e1e1e\],
+html.theme-termocms .bg-\[\#1E1E1E\],
+html.theme-termocms .bg-\[\#1F1F1F\] {
+    background-color: var(--termo-primary-light) !important;
+    border-color: rgba(0, 144, 168, 0.25) !important;
+}
+
+/* 17.2 Translucent dark backgrounds (excluding full-screen overlays) */
+html.theme-termocms .bg-gray-900\/80:not([class*="fixed inset-0"]),
+html.theme-termocms .bg-gray-900\/50:not([class*="fixed inset-0"]),
+html.theme-termocms .bg-gray-900\/40:not([class*="fixed inset-0"]),
+html.theme-termocms .bg-gray-800\/60:not([class*="fixed inset-0"]),
+html.theme-termocms .bg-gray-800\/50:not([class*="fixed inset-0"]),
+html.theme-termocms .bg-gray-800\/40:not([class*="fixed inset-0"]),
+html.theme-termocms .bg-gray-800\/30:not([class*="fixed inset-0"]),
+html.theme-termocms .bg-gray-800\/20:not([class*="fixed inset-0"]),
+html.theme-termocms .bg-gray-950,
+html.theme-termocms .bg-\[\#121212\]\/50,
+html.theme-termocms .bg-\[\#121212\]\/90,
+html.theme-termocms .bg-\[\#141414\]\/90,
+html.theme-termocms .bg-\[\#181818\]\/90 {
+    background-color: var(--termo-bg-subtle) !important;
+    border-color: var(--termo-border) !important;
+}
+
+/* 17.3 Translucent dark hover states */
+html.theme-termocms .hover\:bg-gray-800\/30:hover,
+html.theme-termocms .hover\:bg-gray-800\/40:hover,
+html.theme-termocms .hover\:bg-gray-800\/20:hover,
+html.theme-termocms .hover\:bg-gray-800\/50:hover,
+html.theme-termocms .hover\:bg-gray-800\/60:hover,
+html.theme-termocms .hover\:bg-gray-900\/80:hover,
+html.theme-termocms .hover\:bg-gray-900\/50:hover,
+html.theme-termocms .hover\:bg-\[\#252525\]:hover {
+    background-color: var(--termo-bg-subtle) !important;
+}
+
+/* 17.4 Residual dark borders, including opacity variants */
+html.theme-termocms [class*="border-gray-800/"],
+html.theme-termocms .border-gray-600,
+html.theme-termocms .border-gray-500,
+html.theme-termocms .border-slate-800,
+html.theme-termocms [class*="border-gray-500/"] {
+    border-color: var(--termo-border) !important;
+}
+
+/* 17.5 Table dividers: Tailwind paints border-color on the children,
+   not on the parent carrying `.divide-*`, so we must target the children too. */
+html.theme-termocms .divide-y > :not([hidden]) ~ :not([hidden]),
+html.theme-termocms .divide-x > :not([hidden]) ~ :not([hidden]),
+html.theme-termocms [class*="divide-gray-800"] > :not([hidden]) ~ :not([hidden]),
+html.theme-termocms [class*="divide-gray-900"] > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--termo-border) !important;
+}
+
+html.theme-termocms tbody tr,
+html.theme-termocms tbody tr + tr {
+    border-top-color: var(--termo-border) !important;
+}
+
+/* 17.6 Small status dots, indicators & neutral pills */
+html.theme-termocms .w-2.bg-gray-700,
+html.theme-termocms .h-2.bg-gray-700,
+html.theme-termocms .h-1\.5.bg-gray-700 {
+    background-color: #CBD5E1 !important;
+    border: none !important;
+}
+
+html.theme-termocms .hover\:bg-gray-500:hover {
+    background-color: #94A3B8 !important;
+}
+
+html.theme-termocms .bg-gray-500\/20 {
+    background-color: var(--termo-bg-subtle) !important;
+    border-color: var(--termo-border) !important;
+}
+
+/* ==========================================================================
+   18. Semantic palette completion — tinted surfaces, text & borders
+   ==========================================================================
+   The backoffice is authored dark-first and uses the full Tailwind palette
+   (rose, emerald, amber, sky, purple…) with translucent tints and light text
+   shades. The rules below normalize every opacity variant on any element so
+   buttons, alerts and the diff viewer stay readable on the light theme. */
+
+/* 18.1 Rose / Red */
+html.theme-termocms [class*="bg-rose-500/"],
+html.theme-termocms [class*="bg-rose-600/"],
+html.theme-termocms [class*="bg-rose-800/"],
+html.theme-termocms [class*="bg-rose-900/"],
+html.theme-termocms [class*="bg-rose-950/"],
+html.theme-termocms [class*="bg-red-500/"],
+html.theme-termocms [class*="bg-red-600/"],
+html.theme-termocms [class*="bg-red-800/"],
+html.theme-termocms [class*="bg-red-900/"],
+html.theme-termocms [class*="bg-red-950/"] {
+    background-color: #FFF1F2 !important;
+    border-color: #FECDD3 !important;
+}
+html.theme-termocms [class*="text-rose-200"],
+html.theme-termocms [class*="text-rose-300"],
+html.theme-termocms [class*="text-rose-400"],
+html.theme-termocms [class*="text-red-200"],
+html.theme-termocms [class*="text-red-300"],
+html.theme-termocms [class*="text-red-400"] {
+    color: #BE123C !important;
+}
+html.theme-termocms [class*="border-rose-"],
+html.theme-termocms [class*="border-red-"] {
+    border-color: #FECDD3 !important;
+}
+
+/* 18.2 Emerald / Green / Teal */
+html.theme-termocms [class*="bg-emerald-500/"],
+html.theme-termocms [class*="bg-emerald-600/"],
+html.theme-termocms [class*="bg-emerald-900/"],
+html.theme-termocms [class*="bg-emerald-950/"],
+html.theme-termocms [class*="bg-green-500/"],
+html.theme-termocms [class*="bg-green-900/"],
+html.theme-termocms [class*="bg-teal-500/"],
+html.theme-termocms [class*="bg-teal-900/"] {
+    background-color: #ECFDF5 !important;
+    border-color: #A7F3D0 !important;
+}
+html.theme-termocms [class*="text-emerald-200"],
+html.theme-termocms [class*="text-emerald-300"],
+html.theme-termocms [class*="text-green-300"],
+html.theme-termocms [class*="text-teal-300"] {
+    color: #047857 !important;
+}
+html.theme-termocms [class*="border-emerald-"],
+html.theme-termocms [class*="border-green-"],
+html.theme-termocms [class*="border-teal-"] {
+    border-color: #A7F3D0 !important;
+}
+
+/* 18.3 Amber / Yellow / Orange */
+html.theme-termocms [class*="bg-amber-500/"],
+html.theme-termocms [class*="bg-amber-600/"],
+html.theme-termocms [class*="bg-amber-900/"],
+html.theme-termocms [class*="bg-amber-950/"],
+html.theme-termocms [class*="bg-yellow-500/"],
+html.theme-termocms [class*="bg-orange-500/"] {
+    background-color: #FFFBEB !important;
+    border-color: #FDE68A !important;
+}
+html.theme-termocms [class*="text-amber-200"],
+html.theme-termocms [class*="text-amber-300"],
+html.theme-termocms [class*="text-yellow-300"],
+html.theme-termocms [class*="text-orange-300"] {
+    color: #B45309 !important;
+}
+html.theme-termocms [class*="border-amber-"],
+html.theme-termocms [class*="border-yellow-"],
+html.theme-termocms [class*="border-orange-"] {
+    border-color: #FDE68A !important;
+}
+
+/* 18.4 Sky / Blue / Cyan */
+html.theme-termocms [class*="bg-sky-500/"],
+html.theme-termocms [class*="bg-sky-900/"],
+html.theme-termocms [class*="bg-sky-950/"],
+html.theme-termocms [class*="bg-blue-500/"],
+html.theme-termocms [class*="bg-blue-600/"],
+html.theme-termocms [class*="bg-blue-900/"],
+html.theme-termocms [class*="bg-blue-950/"],
+html.theme-termocms [class*="bg-cyan-500/"] {
+    background-color: #F0F9FF !important;
+    border-color: #BAE6FD !important;
+}
+html.theme-termocms [class*="text-sky-200"],
+html.theme-termocms [class*="text-sky-300"],
+html.theme-termocms [class*="text-blue-200"],
+html.theme-termocms [class*="text-blue-300"],
+html.theme-termocms [class*="text-cyan-300"] {
+    color: #0369A1 !important;
+}
+html.theme-termocms [class*="border-sky-"],
+html.theme-termocms [class*="border-blue-"],
+html.theme-termocms [class*="border-cyan-"] {
+    border-color: #BAE6FD !important;
+}
+
+/* 18.5 Purple / Indigo / Violet / Fuchsia / Pink */
+html.theme-termocms [class*="bg-purple-500/"],
+html.theme-termocms [class*="bg-purple-600/"],
+html.theme-termocms [class*="bg-purple-900/"],
+html.theme-termocms [class*="bg-purple-950/"],
+html.theme-termocms [class*="bg-indigo-500/"],
+html.theme-termocms [class*="bg-violet-500/"],
+html.theme-termocms [class*="bg-fuchsia-500/"],
+html.theme-termocms [class*="bg-pink-500/"] {
+    background-color: #EEF2FF !important;
+    border-color: #C7D2FE !important;
+}
+html.theme-termocms [class*="text-purple-200"],
+html.theme-termocms [class*="text-indigo-200"],
+html.theme-termocms [class*="text-indigo-300"],
+html.theme-termocms [class*="text-violet-300"],
+html.theme-termocms [class*="text-fuchsia-300"],
+html.theme-termocms [class*="text-pink-300"] {
+    color: #4F46E5 !important;
+}
+html.theme-termocms [class*="border-purple-"],
+html.theme-termocms [class*="border-indigo-"],
+html.theme-termocms [class*="border-violet-"],
+html.theme-termocms [class*="border-fuchsia-"],
+html.theme-termocms [class*="border-pink-"] {
+    border-color: #C7D2FE !important;
+}
+
+/* 18.6 Opaque dark semantic surfaces → light tinted panels */
+html.theme-termocms [class*="bg-rose-950"]:not([class*="/"]),
+html.theme-termocms [class*="bg-red-950"]:not([class*="/"]),
+html.theme-termocms [class*="bg-emerald-950"]:not([class*="/"]),
+html.theme-termocms [class*="bg-amber-950"]:not([class*="/"]),
+html.theme-termocms [class*="bg-sky-950"]:not([class*="/"]),
+html.theme-termocms [class*="bg-purple-950"]:not([class*="/"]) {
+    background-color: var(--termo-bg-subtle) !important;
+}
+
+/* 18.7 Near-opaque dark overlays used by alerts/modals on light theme */
+html.theme-termocms .bg-black\/90:not([class*="fixed inset-0"]):not([class*="backdrop-blur"]),
+html.theme-termocms .bg-black\/95:not([class*="fixed inset-0"]):not([class*="backdrop-blur"]) {
+    background-color: var(--termo-bg-card) !important;
+    border-color: var(--termo-border) !important;
+    color: var(--termo-text-main) !important;
+}
+
+
+/* ==========================================================================
+   19. UI kit compartido (admin-btn / admin-switch)
+   --------------------------------------------------------------------------
+   Los controles del backoffice exponen clases semánticas para que el tema los
+   pinte UNA vez, en su paleta, sin reescribir utilidades de Tailwind con
+   !important. Los selectores [class*=...] de las secciones anteriores capturaban
+   subcadenas (por ejemplo un botón con `hover:bg-[#00FF99]/90`) y pintaban teal
+   sobre teal, haciendo desaparecer el icono.
+   ========================================================================== */
+
+/* Botones */
+html.theme-termocms .admin-btn--primary,
+html.theme-termocms .admin-btn--primary:hover {
+    background-color: var(--termo-primary) !important;
+    border-color: var(--termo-primary) !important;
+    color: #FFFFFF !important;
+}
+
+html.theme-termocms .admin-btn--primary:hover {
+    background-color: var(--termo-primary-hover) !important;
+    border-color: var(--termo-primary-hover) !important;
+    color: #FFFFFF !important;
+}
+
+html.theme-termocms .admin-btn--neutral {
+    background-color: #FFFFFF !important;
+    border-color: var(--termo-border-strong) !important;
+    color: #334155 !important;
+}
+
+html.theme-termocms .admin-btn--neutral:hover {
+    background-color: var(--termo-bg-subtle) !important;
+    border-color: #94A3B8 !important;
+    color: #0F172A !important;
+}
+
+html.theme-termocms .admin-btn--ghost {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    color: var(--termo-text-muted) !important;
+}
+
+html.theme-termocms .admin-btn--ghost:hover {
+    background-color: var(--termo-bg-subtle) !important;
+    color: var(--termo-text-main) !important;
+}
+
+html.theme-termocms .admin-btn--danger {
+    background-color: #FEF2F2 !important;
+    border-color: #FECACA !important;
+    color: #B91C1C !important;
+}
+
+html.theme-termocms .admin-btn--danger:hover {
+    background-color: #DC2626 !important;
+    border-color: #DC2626 !important;
+    color: #FFFFFF !important;
+}
+
+html.theme-termocms .admin-btn--warning {
+    background-color: #FFFBEB !important;
+    border-color: #FDE68A !important;
+    color: #B45309 !important;
+}
+
+html.theme-termocms .admin-btn--warning:hover {
+    background-color: #D97706 !important;
+    border-color: #D97706 !important;
+    color: #FFFFFF !important;
+}
+
+html.theme-termocms .admin-btn--success {
+    background-color: var(--termo-primary-light) !important;
+    border-color: rgba(0, 144, 168, 0.35) !important;
+    color: var(--termo-primary) !important;
+}
+
+html.theme-termocms .admin-btn--success:hover {
+    background-color: var(--termo-primary) !important;
+    border-color: var(--termo-primary) !important;
+    color: #FFFFFF !important;
+}
+
+html.theme-termocms .admin-btn--icon {
+    background-color: transparent !important;
+    border-color: transparent !important;
+    color: var(--termo-text-muted) !important;
+}
+
+html.theme-termocms .admin-btn--icon:hover {
+    background-color: var(--termo-bg-subtle) !important;
+    color: var(--termo-text-main) !important;
+}
+
+html.theme-termocms .admin-btn--active,
+html.theme-termocms .admin-btn--active:hover {
+    background-color: var(--termo-primary-light) !important;
+    border-color: var(--termo-primary) !important;
+    color: var(--termo-primary) !important;
+}
+
+/* el icono hereda el color del botón en TODOS los estados */
+html.theme-termocms .admin-btn__icon {
+    color: inherit !important;
+}
+
+/* Interruptores */
+html.theme-termocms .admin-switch-track {
+    background-color: #CBD5E1 !important;
+    border-color: #94A3B8 !important;
+}
+
+html.theme-termocms .admin-switch:checked ~ .admin-switch-track {
+    background-color: var(--termo-primary) !important;
+    border-color: var(--termo-primary) !important;
+}
+
+html.theme-termocms .admin-switch-knob {
+    background-color: #FFFFFF !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25) !important;
+}
+
+html.theme-termocms .admin-switch-label {
+    color: var(--termo-text-main) !important;
+}
+
+html.theme-termocms .admin-switch-hint {
+    color: var(--termo-text-muted) !important;
+}
+
+/* Los paneles oscuros del editor de bloques se pintan como superficies claras */
+html.theme-termocms .cms-block-canvas,
+html.theme-termocms [data-block-manager] {
+    color: var(--termo-text-main);
+}

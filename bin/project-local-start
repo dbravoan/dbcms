@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
+[[ ! -L .env ]] || { echo 'Project .env must be a regular file, not a symbolic link.' >&2; exit 1; }
+! test -f /.dockerenv || { echo 'Run local Sail startup from the Linux host.' >&2; exit 1; }
+SAIL=./vendor/bin/sail
+[[ -f .env && -x "$SAIL" ]] || { echo 'Run ./bin/project-init to prepare the environment and locked dependencies first.' >&2; exit 1; }
+trap 'echo "Local setup stopped. Resolve the error and rerun ./bin/project-init; the recorded project and environment are preserved." >&2' ERR
+"$SAIL" up -d --build
+# Docker health and Laravel readiness are distinct. The HTTP check runs inside
+# Sail and therefore needs no host curl, PHP, Node, or shell evaluation of .env.
+ready=false
+for ((attempt=0; attempt<60; attempt++)); do
+    if "$SAIL" exec -T laravel.test curl --silent --fail --max-time 3 http://127.0.0.1/up >/dev/null 2>&1; then
+        ready=true
+        break
+    fi
+    sleep 2
+done
+[[ "$ready" == true ]] || { echo 'Sail did not become ready. Inspect ./vendor/bin/sail logs and retry.' >&2; exit 1; }
+"$SAIL" npm ci
+"$SAIL" npm run build
+published_url() {
+    local mapping port
+    mapping="$("$SAIL" port "$1" "$2")"
+    mapping="${mapping%%$'\n'*}"
+    port="${mapping##*:}"
+    [[ "$port" =~ ^[0-9]+$ ]] || { echo "Cannot determine published port for $1." >&2; return 1; }
+    printf 'http://localhost:%s' "$port"
+}
+app_url="$(published_url laravel.test 80)"
+mail_url="$(published_url mailpit 8025)"
+adminer_url="$(published_url adminer 8080)"
+printf '\nApplication: %s\nInstaller: %s/install\nMailpit: %s\nAdminer: %s\n\n' "$app_url" "$app_url" "$mail_url" "$adminer_url"
+printf 'Stop: ./vendor/bin/sail down\nRestart: ./vendor/bin/sail up -d\n'

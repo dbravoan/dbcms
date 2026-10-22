@@ -1,0 +1,80 @@
+{
+  "name": "Auditoría de Contenidos & Control de Calidad",
+  "identifier": "content_audit",
+  "version": "1.0.0",
+  "author": "dbCMS Core Team",
+  "description": "Flujo editorial de calidad, inferencia de capacidad de publicación por roles, cola de aprobación previa, notificaciones automáticas y control exhaustivo de cambios con comparador visual (Diff) de versiones.",
+  "provider": "Modules\\ContentAudit\\ContentAuditModuleServiceProvider",
+  "is_pageable": false,
+  "settings": {
+    "is_enabled": {
+      "type": "boolean",
+      "label": "Activar Flujo de Auditoría y Control de Calidad",
+      "description": "Si está activo, los usuarios con roles restringidos deberán enviar a revisión los contenidos antes de que puedan publicarse.",
+      "default": true
+    },
+    "audited_roles": {
+      "type": "roles_multiselect",
+      "label": "Roles con Publicación Restringida (Sujetos a Auditoría)",
+      "description": "Roles del sistema cuyos contenidos deben ser aprobados antes de publicarse.",
+      "default": "author,marketing",
+      "placeholder": "Seleccionar roles..."
+    },
+    "approver_roles": {
+      "type": "roles_multiselect",
+      "label": "Roles Auditores / Aprobadores de Calidad",
+      "description": "Roles facultados para dictaminar y aprobar o rechazar publicaciones.",
+      "default": "admin,editor",
+      "placeholder": "Seleccionar roles aprobadores..."
+    },
+    "audited_entities": {
+      "type": "entities_multiselect",
+      "label": "Entidades Sujetas a Auditoría",
+      "description": "Entidades del sistema bajo control de calidad editorial.",
+      "default": "posts,pages,products,galleries",
+      "placeholder": "Seleccionar entidades..."
+    },
+    "auto_publish_on_approval": {
+      "type": "boolean",
+      "label": "Publicar Automáticamente tras la Aprobación",
+      "description": "Si está activo, al hacer clic en 'Aprobar' el contenido pasa inmediatamente a estado publicado en la web.",
+      "default": true
+    },
+    "track_all_modifications": {
+      "type": "boolean",
+      "label": "Registrar Cambios de Administradores y Editores en Changelog",
+      "description": "Si está activo, mantiene el historial inmutable de versiones y diffs incluso cuando un usuario con rol auditor publica directamente.",
+      "default": true
+    },
+    "require_rejection_reason": {
+      "type": "boolean",
+      "label": "Exigir Motivo y Recomendaciones al Rechazar",
+      "description": "Obliga a los auditores a justificar por escrito el rechazo para guiar al redactor en las correcciones.",
+      "default": true
+    },
+    "enforce_editorial_quality": {
+      "type": "boolean",
+      "label": "Aplicar umbral de estilo a los roles sujetos a auditoría",
+      "description": "Si está activo, los roles sujetos a auditoría no pueden guardar contenidos que no alcancen la el umbral configurado de estilo (ritmo de frases, clichés, mayúsculas y puntuación). Esta heurística no verifica hechos ni identifica autoría humana o por IA.",
+      "default": false
+    },
+    "min_anti_ai_score": {
+      "type": "number",
+      "label": "Puntuación Editorial Mínima (0-100)",
+      "description": "Umbral del validador heurístico de estilo por debajo del cual el guardado se bloquea cuando la exigencia editorial está activa.",
+      "default": 85
+    },
+    "notify_in_app": {
+      "type": "boolean",
+      "label": "Notificaciones en Vivo en Campana del Backoffice",
+      "description": "Genera alertas en el menú superior para avisar de nuevos contenidos pendientes y resoluciones editoriales.",
+      "default": true
+    },
+    "notify_email": {
+      "type": "boolean",
+      "label": "Notificaciones por Correo Electrónico",
+      "description": "Envía correos electrónicos a los auditores y redactores involucrados.",
+      "default": false
+    }
+  }
+}

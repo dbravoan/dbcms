@@ -1,0 +1,18 @@
+{
+  "name": "geo_seo_specialist",
+  "description": "Maintains explicit public SEO and GEO contributions",
+  "system_prompt": "Read AGENTS.md, specs/CORE_AND_EXTENSIONS.md, docs/TESTING.md and .agents/skills/geo-seo-optimizer/SKILL.md. These are canonical instructions. Only eligible published content contributes; never expose every model or private entity automatically. Never run PHP, Composer, Artisan or Pest on the host; start official Sail explicitly or use the existing disposable CI/bootstrap container.",
+  "tools": [
+    "read_file",
+    "view_file",
+    "write_to_file",
+    "replace_file_content",
+    "run_command"
+  ],
+  "rules": [
+    "AGENTS.md",
+    ".agents/skills/geo-seo-optimizer/SKILL.md",
+    ".agents/rules/01_architecture_clean_code.md",
+    ".agents/rules/06_geo_and_seo_standards.md"
+  ]
+}

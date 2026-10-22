@@ -1,0 +1,7 @@
+
+        $this->registerModuleAuth(
+            '__IDENTIFIER___users',
+            \Modules\__STUDLY__\Models\__STUDLY__User::class,
+            '__IDENTIFIER__',
+            '__IDENTIFIER__-api'
+        );

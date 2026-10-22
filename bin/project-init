@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+set -euo pipefail
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_ROOT"
+[[ ! -L .env ]] || { echo 'Project .env must be a regular file, not a symbolic link.' >&2; exit 1; }
+prepare_only=false
+for argument in "$@"; do
+    [[ "$argument" != --prepare-only ]] || prepare_only=true
+done
+if test -f /.dockerenv; then
+    if [[ "$prepare_only" != true && "${DBCMS_BOOTSTRAP_CONTAINER:-}" != 1 ]]; then
+        echo 'Inside an existing container use --prepare-only --no-interaction; Sail must run from the Linux host.' >&2
+        exit 64
+    fi
+    [[ -f composer.lock && -f package-lock.json ]] || { echo 'Locked Composer and npm dependencies are required.' >&2; exit 1; }
+    # Bootstrap decisions read source manifests, never an installed database.
+    # Host networking is needed for port probes, so Compose service DNS is absent.
+    # Keep Laravel/Composer discovery isolated without changing the saved .env.
+    bootstrap_runtime="$(mktemp -d "${TMPDIR:-/tmp}/dbcms-project-bootstrap.XXXXXX")"
+    trap 'rm -rf "$bootstrap_runtime"' EXIT
+    export APP_CONFIG_CACHE="$bootstrap_runtime/config.php"
+    export DB_CONNECTION=sqlite DB_DATABASE=:memory: DB_URL= CACHE_STORE=array SESSION_DRIVER=file QUEUE_CONNECTION=sync
+    mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/views storage/framework/sessions storage/logs
+    composer install --no-interaction --prefer-dist --no-scripts
+    composer dump-autoload --no-interaction
+    if [[ "$prepare_only" == true ]]; then
+        php artisan cms:project:init --no-interaction "$@"
+    else
+        php artisan cms:project:init --local "$@"
+    fi
+    # Source normalization can change composer.lock. Converge vendor to the
+    # confirmed final source before handing the project to Sail or CI.
+    composer install --no-interaction --prefer-dist --no-scripts || {
+        status=$?
+        echo 'Final locked dependency installation failed. Rerun ./bin/project-init to resume the recorded project.' >&2
+        exit "$status"
+    }
+    composer dump-autoload --no-interaction || {
+        status=$?
+        echo 'Final autoload generation failed. Rerun ./bin/project-init to resume the recorded project.' >&2
+        exit "$status"
+    }
+    exit 0
+fi
+command -v docker >/dev/null || { echo 'Docker is required.' >&2; exit 1; }
+if [[ "$(uname -s)" != Linux ]]; then
+    echo 'Guided local setup currently requires Linux with Docker host networking.' >&2
+    exit 1
+fi
+docker info >/dev/null
+# php-base has the locked Composer runtime without building frontend assets before
+# the user has reviewed their source/local plan. No host PHP or Composer is used.
+docker build --target php-base -f docker/production/Dockerfile -t dbcms-project-init .
+# Keep piped answers available to Symfony prompts. -t is only valid when both
+# ends are terminals; -i also forwards stdin for noninteractive invocations.
+terminal=(-i)
+[[ ! -t 0 || ! -t 1 ]] || terminal=(-it)
+docker run --rm "${terminal[@]}" --network host --user "$(id -u):$(id -g)" \
+    -e COMPOSER_HOME=/tmp/composer -e DBCMS_BOOTSTRAP_CONTAINER=1 \
+    -e "DBCMS_PROJECT_DIRECTORY=$PROJECT_ROOT" \
+    -v "$PROJECT_ROOT:/var/www/html" -w /var/www/html \
+    dbcms-project-init ./bin/project-init "$@"
+[[ "$prepare_only" != true ]] || exit 0
+./bin/project-local-start

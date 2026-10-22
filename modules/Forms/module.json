@@ -1,0 +1,12 @@
+{
+  "name": "Dynamic Form Builder",
+  "identifier": "forms",
+  "version": "1.0.0",
+  "author": "dbCMS Core Team",
+  "description": "Dynamic custom form builder with runtime validation, honeypot anti-spam, and localized submission intake",
+  "provider": "Modules\\Forms\\FormsModuleServiceProvider",
+  "is_pageable": false,
+  "requires": {
+    "core": "^3.0"
+  }
+}

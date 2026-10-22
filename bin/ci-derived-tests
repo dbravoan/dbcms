@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ ! -f /.dockerenv ]; then
+    echo 'Run bin/ci-derived-tests inside the Docker CI container.' >&2
+    exit 1
+fi
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+exec php bin/derived-test-selection.php "$@"

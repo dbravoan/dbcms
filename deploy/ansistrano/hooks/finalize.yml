@@ -1,0 +1,10 @@
+---
+- name: Atomically promote, check HTTP health and reconcile the installed core
+  ansible.builtin.command:
+    argv:
+      - bash
+      - "{{ ansistrano_release_path }}/bin/deploy-vps-release.sh"
+      - "{{ ansistrano_release_path }}"
+      - finalize
+  environment: "{{ deployment_environment }}"
+  changed_when: true

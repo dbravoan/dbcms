@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if [ ! -f /.dockerenv ] || [ "${DBCMS_TEST_ISOLATED:-}" != 1 ]; then
+    echo 'Run bin/ci-check in a disposable Docker filesystem and database (DBCMS_TEST_ISOLATED=1).' >&2
+    exit 1
+fi
+cd /var/www/html
+suite="${1:-integration}"
+case "$suite" in fast|integration|release) ;; *) echo 'Expected fast, integration or release.' >&2; exit 2 ;; esac
+# A clean Git snapshot has no empty runtime directories. Create them before
+# Composer's package-discovery hook boots Laravel, including on bind mounts.
+mkdir -p storage/framework/cache/data storage/framework/views storage/framework/sessions storage/logs bootstrap/cache
+composer validate --strict
+composer install --prefer-dist --no-progress --no-interaction
+composer audit
+if [ -f cms-project.json ]; then
+    php artisan cms:project:review
+fi
+cp .env.example .env
+php artisan key:generate --no-interaction
+npm ci
+npm audit --audit-level=moderate
+npm run build
+test -f public/build/manifest.json
+vendor/bin/pint --test
+vendor/bin/phpstan analyse --memory-limit=2G
+if [ -f cms-project.json ]; then
+    # Full catalogue parity suites intentionally exercise files removed during
+    # initialization. Local quality checks also work without a Git repository.
+    # Derived projects validate their selected deployment profile and core
+    # services/security/installation contracts instead.
+    bash bin/ci-derived-tests "$suite" --stop-on-failure
+    node bin/test-frontend.mjs
+    if [ "$suite" = release ]; then
+        RUN_DERIVED_CLONE_SMOKE=1 php -d memory_limit=2G vendor/bin/pest --colors=always \
+            tests/Projects/DerivedInstallationSmokeTest.php
+    fi
+else
+    bash bin/test-suite "$suite" --colors=always --stop-on-failure
+    if [ "$suite" = integration ]; then node bin/test-frontend.mjs; fi
+fi

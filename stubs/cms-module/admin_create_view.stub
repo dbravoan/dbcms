@@ -1,0 +1,23 @@
+@extends('admin.layout')
+
+@section('title', 'Crear __HEADLINE__')
+
+@section('content')
+<div class="max-w-3xl mx-auto space-y-6 font-mono text-xs">
+    <x-admin.form-header title="Crear __HEADLINE__" description="Alta de un nuevo registro de __IDENTIFIER__." :backRoute="route('admin.__IDENTIFIER__.index')" back-label="Volver al listado" />
+
+    <form method="POST" action="{{ route('admin.__IDENTIFIER__.store') }}" class="space-y-6">
+        @csrf
+
+        @include('__IDENTIFIER__::admin._form', [
+            'item' => $item,
+            'languages' => $languages,
+            'markets' => $markets,
+            'translationsMap' => $translationsMap,
+            'assignedMarketIds' => $assignedMarketIds,
+        ])
+
+        <x-admin.form-actions submit-label="{{ __('admin.actions.create_record') }}" :cancelRoute="route('admin.__IDENTIFIER__.index')" />
+    </form>
+</div>
+@endsection

@@ -1,0 +1,41 @@
+{
+  "name": "Blog Engine",
+  "identifier": "blog",
+  "version": "1.0.0",
+  "author": "dbCMS Core Team",
+  "description": "Multi-author, multi-market blog engine with categories, tags, reading time, and embeddable widgets",
+  "provider": "Modules\\Blog\\BlogModuleServiceProvider",
+  "is_pageable": true,
+  "settings": {
+    "comments_enabled": {
+      "type": "boolean",
+      "label": "Habilitar comentarios en el blog",
+      "description": "Permite o desactiva de forma global los comentarios en todas las entradas del blog",
+      "default": true
+    },
+    "comments_require_approval": {
+      "type": "boolean",
+      "label": "Moderar comentarios antes de publicar",
+      "description": "Los comentarios requerirán aprobación de un administrador antes de ser visibles",
+      "default": false
+    },
+    "slug_default": {
+      "type": "text",
+      "label": "Slug base del Blog",
+      "description": "Ruta raíz por defecto para acceder al blog (por ejemplo: blog o noticias)",
+      "default": "blog",
+      "placeholder": "blog"
+    },
+    "slug_{locale}": {
+      "type": "text",
+      "label": "Slug del Blog en {language} ({locale})",
+      "description": "Ruta personalizada para el idioma {language}. Si se deja vacío, se usa el slug base.",
+      "default": "blog",
+      "placeholder": "blog",
+      "defaults": {"es": "blog", "en": "blog", "ca": "blog", "fr": "blog", "de": "blog"}
+    }
+  },
+  "requires": {
+    "core": "^3.0"
+  }
+}

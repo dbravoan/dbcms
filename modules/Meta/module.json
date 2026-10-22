@@ -1,0 +1,50 @@
+{
+  "name": "Meta Conversions API integration helper",
+  "identifier": "meta",
+  "version": "1.0.0",
+  "author": "dbCMS Core Team",
+  "description": "Server-side Conversions API helper for explicit custom integrations. Activation does not install a browser Pixel or dispatch events automatically.",
+  "provider": "Modules\\Meta\\MetaModuleServiceProvider",
+  "is_pageable": false,
+  "widgets": [],
+  "requires": {
+    "core": "^3.0"
+  },
+  "settings": {
+    "pixel_id": {
+      "type": "text",
+      "label": "Meta Pixel ID",
+      "description": "Identificador numérico del Pixel de Meta / Facebook",
+      "placeholder": "123456789012345",
+      "required": true
+    },
+    "capi_token": {
+      "type": "password",
+      "label": "Token de Acceso CAPI",
+      "description": "Token de acceso a Conversions API generado en Meta Business Manager",
+      "secret": true,
+      "required": true
+    },
+    "test_event_code": {
+      "type": "text",
+      "label": "Código de Prueba (Test Event Code)",
+      "description": "Código opcional para depuración de eventos de prueba en Meta Test Events",
+      "placeholder": "TEST12345",
+      "required": false
+    },
+    "enable_capi": {
+      "type": "boolean",
+      "label": "Habilitar Conversiones Server-Side",
+      "description": "Despachar eventos de servidor a Meta Graph API",
+      "default": true
+    },
+    "graph_api_version": {
+      "type": "text",
+      "label": "Versión de Graph API",
+      "description": "Versión explícita para integraciones CAPI propias. Usa una versión vigente validada en tu cuenta Meta.",
+      "default": "v26.0",
+      "placeholder": "v26.0",
+      "required": false
+    }
+  }
+}

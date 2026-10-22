@@ -1,0 +1,31 @@
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities) source(none);
+@source "./";
+
+.front-db-minimal .minimal-card {
+    background: #ffffff;
+    border: 1px solid #e5e5e5;
+}
+
+.front-db-minimal {
+    --cms-accent: #0d9488;
+    --cms-accent-contrast: #ffffff;
+    --cms-fg: #171717;
+    --cms-fg-muted: #525252;
+    --cms-surface: #ffffff;
+    --cms-surface-2: #fafafa;
+    --cms-border: #e5e5e5;
+    --cms-border-strong: #d4d4d4;
+    --cms-accent-soft: rgba(13, 148, 136, 0.08);
+    --cms-accent-border: rgba(13, 148, 136, 0.35);
+    --cms-glow: none;
+    --cms-radius: 8px;
+    --cms-card-blur: none;
+}
+
+.front-db-minimal .cyber-card {
+    background: var(--cms-surface);
+    border: 1px solid var(--cms-border);
+    border-radius: var(--cms-radius);
+    box-shadow: var(--cms-glow, none);
+}

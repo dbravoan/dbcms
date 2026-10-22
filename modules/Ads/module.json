@@ -1,0 +1,22 @@
+{
+  "name": "Google AdSense integration helper",
+  "identifier": "ads",
+  "version": "1.0.0",
+  "author": "dbCMS Core Team",
+  "description": "Helper for explicit custom-theme AdSense units. Activation does not insert ads or load the AdSense library.",
+  "provider": "Modules\\Ads\\AdsModuleServiceProvider",
+  "is_pageable": false,
+  "widgets": [],
+  "requires": {
+    "core": "^3.0"
+  },
+  "settings": {
+    "adsense_client_id": {
+      "type": "text",
+      "label": "AdSense Publisher ID",
+      "description": "ID de editor de Google AdSense (ej. ca-pub-XXXXXXXXXXXXXXXX)",
+      "placeholder": "ca-pub-XXXXXXXXXXXXXXXX",
+      "required": false
+    }
+  }
+}

@@ -1,0 +1,36 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\__STUDLY__\Http\Controllers\Admin;
+
+use App\DTOs\Admin\DatatableQueryData;
+use App\Http\Controllers\Controller;
+use App\Models\Market;
+use App\Services\Admin\DatatableQueryService;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
+use Modules\__STUDLY__\Models\__STUDLY__;
+
+final class __STUDLY__GetController extends Controller
+{
+    public function __invoke(Request $request, DatatableQueryService $tables): View
+    {
+        $items = $tables->paginate(
+            __STUDLY__::with(['translations', 'markets']),
+            DatatableQueryData::fromInput($request->query()),
+            ['translations.title', 'translations.slug'],
+            [
+                'is_active' => 'is_active',
+                'market_id' => 'markets.id',
+            ],
+            'created_at',
+            'desc'
+        );
+
+        return view('__IDENTIFIER__::admin.index', [
+            'items' => $items,
+            'markets' => Market::where('is_active', true)->orderBy('name')->get(),
+        ]);
+    }
+}

@@ -1,0 +1,24 @@
+{
+  "availability_setting": "is_enabled",
+  "name": "Servidor MCP (Model Context Protocol)",
+  "identifier": "mcp",
+  "version": "1.0.0",
+  "author": "dbCMS Core Team",
+  "description": "Servidor MCP estándar con transporte Streamable HTTP / JSON-RPC 2.0 y autenticación mediante Laravel Passport para agentes externos.",
+  "provider": "Modules\\Mcp\\McpModuleServiceProvider",
+  "is_pageable": false,
+  "settings": {
+    "is_enabled": {
+      "type": "boolean",
+      "label": "Activar Servidor MCP",
+      "description": "Habilita o deshabilita el endpoint MCP estándar /mcp/cms para agentes externos.",
+      "default": true
+    },
+    "rate_limit_per_minute": {
+      "type": "number",
+      "label": "Límite de peticiones por minuto",
+      "description": "Máximo de peticiones autenticadas por minuto para cada usuario o cuenta de servicio. Las llamadas a herramientas mantienen siempre su registro de auditoría.",
+      "default": 60
+    }
+  }
+}

@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/deploy-local-common.sh"
+deployment_validate_local
+deployment_build_runtime rsync
+printf -v remote 'mkdir -p %q/releases; test ! -e %q/releases/%q; mkdir %q/releases/%q' "$VPS_DIR" "$VPS_DIR" "$RELEASE_NAME" "$VPS_DIR" "$RELEASE_NAME"
+"${DEPLOY_SSH[@]}" "$DEPLOY_DESTINATION" "$remote"
+rsync -rlptz --delete --chmod=Du=rwx,Dgo=rx,Fu=rwX,Fgo=rX -e "$DEPLOY_RSYNC_SSH" "$DEPLOY_TEMP/runtime/" "$DEPLOY_DESTINATION:$VPS_DIR/releases/$RELEASE_NAME/"
+deployment_remote_bootstrap "$VPS_DIR/releases/$RELEASE_NAME/bin/vps-bootstrap.sh"
+printf -v remote 'env VPS_DIR=%q RELEASE_NAME=%q VPS_DEPLOYMENT_PROFILE=rsync VPS_PHP_BINARY=%q VPS_HEALTH_URL=%q VPS_FPM_SERVICE=%q bash %q %q' \
+    "$VPS_DIR" "$RELEASE_NAME" "${VPS_PHP_BINARY:-/usr/bin/php}" "${VPS_HEALTH_URL:-}" "${VPS_FPM_SERVICE:-}" \
+    "$VPS_DIR/releases/$RELEASE_NAME/bin/deploy-vps-release.sh" "$VPS_DIR/releases/$RELEASE_NAME"
+"${DEPLOY_SSH[@]}" "$DEPLOY_DESTINATION" "$remote"

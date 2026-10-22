@@ -1,0 +1,1 @@
+{"identifier":"lifecycle-probe","name":"Lifecycle Probe","version":"1.0.0","provider":"Modules\\LifecycleProbe\\LifecycleProbeModuleServiceProvider","requires":{"core":">=1.0.0"}}

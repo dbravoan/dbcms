@@ -1,0 +1,14 @@
+---
+# Preserve the release and its recovery evidence if the role enters rescue.
+- name: Keep deployment evidence on preparation failures
+  ansible.builtin.set_fact:
+    ansistrano_release_activated: true
+- name: Check native PHP, link shared data and migrate only an installed application
+  ansible.builtin.command:
+    argv:
+      - bash
+      - "{{ ansistrano_release_path }}/bin/deploy-vps-release.sh"
+      - "{{ ansistrano_release_path }}"
+      - prepare
+  environment: "{{ deployment_environment }}"
+  changed_when: true

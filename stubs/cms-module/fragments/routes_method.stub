@@ -1,0 +1,26 @@
+
+    public function registerPageableRoutes(): void
+    {
+        Route::middleware(['web', 'module.enabled:__IDENTIFIER__', ResolveMarketAndLocaleMiddleware::class])->group(function (): void {
+            $prefix = '__IDENTIFIER__';
+            $admin = preg_quote((string) config('cms.admin_path', 'admin'), '/');
+            $reserved = '(?!(?:admin|'.$admin.'|api|install|media|up)(?:/|$))';
+
+            // Localized routes: /{market}/{locale}/__IDENTIFIER__
+            Route::prefix('{market}/{locale}')
+                ->where(['market' => $reserved.'[a-zA-Z0-9_\-]+', 'locale' => $reserved.FrontRoutePatterns::locale()])
+                ->group(function () use ($prefix): void {
+                    Route::get("/{$prefix}", [__STUDLY__FrontController::class, 'index'])->name("__IDENTIFIER__.index");
+                });
+
+            // Localized routes: /{locale}/__IDENTIFIER__
+            Route::prefix('{locale}')
+                ->where(['locale' => $reserved.FrontRoutePatterns::locale()])
+                ->group(function () use ($prefix): void {
+                    Route::get("/{$prefix}", [__STUDLY__FrontController::class, 'index']);
+                });
+
+            // Fallback default route
+            Route::get("/{$prefix}", [__STUDLY__FrontController::class, 'index']);
+        });
+    }

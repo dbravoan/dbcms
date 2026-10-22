@@ -1,0 +1,28 @@
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities) source(none);
+@source "./";
+@import '../../../../css/admin-utility-sources.css';
+
+html.theme-termocms {
+    --admin-color-scheme: light;
+    --admin-accent: #0090a8;
+    --admin-accent-hover: #007b90;
+    --admin-on-accent: #ffffff;
+    --admin-surface-raised: #f8fafc;
+    --admin-danger-bg: #fff1f2;
+    --admin-warning-bg: #fffbeb;
+    --admin-control-bg: #ffffff;
+    --admin-control-border: #cbd5e1;
+    --admin-control-text: #0f172a;
+    --admin-control-placeholder: #64748b;
+    --admin-control-focus: #007b90;
+    --admin-control-ring: rgba(0, 144, 168, 0.16);
+    --admin-surface: #ffffff;
+    --admin-text: #0f172a;
+    --admin-muted: #475569;
+    --admin-border: #e2e8f0;
+    --admin-danger: #b91c1c;
+    --admin-warning: #92400e;
+    --admin-message-bg: #f8fafc;
+}
+html.theme-termocms [data-admin-shell] :where(select, input, textarea) { color-scheme: light; }

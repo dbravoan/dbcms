@@ -1,0 +1,13 @@
+{
+  "identifier": "charts",
+  "name": "Charts",
+  "version": "1.0.0",
+  "blocks": [
+    "BlockPackages\\Charts\\Blocks\\ChartsBlock",
+    "BlockPackages\\Charts\\Blocks\\KpiBlock",
+    "BlockPackages\\Charts\\Blocks\\RoiBlock"
+  ],
+  "requires": {
+    "core": "^3.0"
+  }
+}

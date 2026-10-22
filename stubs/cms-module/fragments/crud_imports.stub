@@ -1,0 +1,6 @@
+
+use Modules\__STUDLY__\Http\Controllers\Admin\__STUDLY__CreateGetController;
+use Modules\__STUDLY__\Http\Controllers\Admin\__STUDLY__DeleteController;
+use Modules\__STUDLY__\Http\Controllers\Admin\__STUDLY__EditGetController;
+use Modules\__STUDLY__\Http\Controllers\Admin\__STUDLY__PostController;
+use Modules\__STUDLY__\Http\Controllers\Admin\__STUDLY__PutController;

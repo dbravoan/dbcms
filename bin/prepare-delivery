@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+# Mandatory local quality and a single immutable production build per delivery.
+set -euo pipefail
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+kind=""; sha=""; upload=0; dispatch=0
+for argument in "$@"; do
+    case "$argument" in
+        --kind=*) kind="${argument#*=}" ;;
+        --sha=*) sha="${argument#*=}" ;;
+        --upload) upload=1 ;;
+        --dispatch) upload=1; dispatch=1 ;;
+        --help|-h)
+            cat <<'HELP'
+Usage: bin/prepare-delivery --kind=release|deploy --sha=<full commit SHA> [--upload] [--dispatch]
+Runs mandatory isolated local quality, builds and smokes a runtime, then signs dist/delivery-<sha>.
+DBCMS_UPDATE_SIGNING_KEY_FILE must point to the existing trusted private key.
+--upload stages a draft delivery-<sha> using gh. --dispatch also launches release.yml or deploy.yml.
+No skip-quality option exists. An existing output is never silently overwritten.
+HELP
+            exit 0 ;;
+        *) echo "Unknown delivery argument: $argument" >&2; exit 64 ;;
+    esac
+done
+[[ "$kind" == release || "$kind" == deploy ]] && [[ "$sha" =~ ^[a-f0-9]{40}$ ]] || {
+    echo 'Specify --kind=release|deploy and --sha=<full 40-character commit SHA>.' >&2; exit 64;
+}
+[[ "$(git -C "$root" cat-file -t "$sha")" == commit ]] || exit 64
+: "${DBCMS_UPDATE_SIGNING_KEY_FILE:?Set the existing trusted private key file}"
+key="$(realpath "$DBCMS_UPDATE_SIGNING_KEY_FILE")"
+test -r "$key"
+command -v docker >/dev/null
+command -v python3 >/dev/null
+if [ "$upload" = 1 ]; then command -v gh >/dev/null; fi
+output="$root/dist/delivery-$sha"
+if [ -e "$output" ]; then
+    echo "Delivery directory exists: $output. Verify/reuse the bundle or remove the failed candidate explicitly." >&2
+    exit 64
+fi
+temporary="$(mktemp -d "${TMPDIR:-/tmp}/dbcms-delivery.XXXXXXXX")"
+snapshot="$temporary/source"
+project="dbcms-delivery-${sha:0:12}-$$"
+started=$SECONDS
+cleanup() {
+    if [ -f "$snapshot/docker/ci/compose.yml" ]; then
+        docker compose -p "$project" -f "$snapshot/docker/ci/compose.yml" down --volumes --remove-orphans >/dev/null 2>&1 || true
+    fi
+    rm -rf "$temporary"
+}
+trap cleanup EXIT
+git clone --quiet --no-checkout --no-hardlinks "$root" "$snapshot"
+git -C "$snapshot" -c advice.detachedHead=false checkout --quiet --detach "$sha"
+test "$(git -C "$snapshot" rev-parse HEAD)" = "$sha"
+python3 -m unittest discover -s "$snapshot/tests/Delivery" -p 'test_*.py'
+version="$(python3 "$snapshot/bin/delivery.py" quick-check --root "$snapshot" | sed -n 's/Source checks passed for //p')"
+[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+if [ -f "$snapshot/cms-project.json" ] && [ "$kind" == release ]; then
+    echo 'Derived projects prepare deploy bundles; canonical releases are product-only.' >&2; exit 64
+fi
+# Without a signed last-deployed base, a one-commit diff cannot prove an ordinary
+# deployment safe. Conservatively require release until such a base is available.
+lane=release
+mkdir -p "$output"
+echo "Preparing $kind $version from $sha; required local lane: $lane"
+docker compose -p "$project" -f "$snapshot/docker/ci/compose.yml" run --build --rm \
+    --volume "$snapshot:/var/www/html:rw" \
+    --volume "$output:/delivery:rw" \
+    --volume "$key:/run/secrets/delivery-signing.pem:ro" \
+    --env DBCMS_DELIVERY_UID="$(id -u)" --env DBCMS_DELIVERY_GID="$(id -g)" \
+    --env DBCMS_DELIVERY_KIND="$kind" --env DBCMS_DELIVERY_SHA="$sha" \
+    --env DBCMS_DELIVERY_LANE="$lane" --env DBCMS_DELIVERY_VERSION="$version" \
+    app bash -euo pipefail -c '
+        trap '"'"'chown -R "$DBCMS_DELIVERY_UID:$DBCMS_DELIVERY_GID" /var/www/html /delivery'"'"' EXIT
+        started=$SECONDS
+        bash bin/ci-check "$DBCMS_DELIVERY_LANE"
+        git diff --exit-code HEAD -- .
+        quality_seconds=$((SECONDS-started))
+        echo "Local quality: ${quality_seconds}s"
+        export DBCMS_PREPARED_ASSETS=/var/www/html/public/build
+        if [ "$DBCMS_DELIVERY_KIND" = release ]; then
+            export DBCMS_UPDATE_SIGNING_KEY_FILE=/run/secrets/delivery-signing.pem
+            export DBCMS_UPDATE_SIGNING_KEY_ID=releases-2026
+        else
+            export DBCMS_DELIVERY_RUNTIME_ONLY=1
+        fi
+        bash bin/build-release-zip.sh --source-ref="$DBCMS_DELIVERY_SHA" --version="$DBCMS_DELIVERY_VERSION" \
+            --output=/delivery --runtime-output=/delivery/runtime.tar.gz
+        echo "Production build and smoke: $((SECONDS-started-quality_seconds))s"
+    '
+python3 "$snapshot/bin/delivery.py" extract-runtime --directory "$output" --output "$temporary/runtime-check"
+# The container can only return here after quality and packaging smoke succeed.
+# There is deliberately no public sign-only command or caller-supplied success flag.
+python3 - "$snapshot" "$output" "$sha" "$kind" "$version" "$lane" "$key" <<'PY'
+import importlib.util
+from pathlib import Path
+import sys
+root, directory, sha, kind, version, lane, key = sys.argv[1:]
+spec = importlib.util.spec_from_file_location("delivery", Path(root) / "bin/delivery.py")
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+module.write_receipt(directory, sha, kind, version, lane, key, module.trusted_key(root))
+PY
+echo "Verified bundle: $output; total local preparation: $((SECONDS-started))s"
+if [ "$upload" = 1 ]; then
+    repository="$(git -C "$root" remote get-url origin | sed -E 's#.*github.com[:/]##; s#\.git$##')"
+    [[ "$repository" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]
+    stage="delivery-$sha"
+    if gh release view "$stage" --repo "$repository" >/dev/null 2>&1; then
+        echo 'Staging release already exists; refusing to replace uploaded bytes.' >&2; exit 1
+    fi
+    gh release create "$stage" "$output"/* --repo "$repository" --draft --target "$sha" \
+        --title "$stage" --notes "Verified local $kind preparation for $sha ($lane)."
+    if [ "$dispatch" = 1 ]; then
+        workflow=deploy.yml
+        if [ "$kind" = release ]; then workflow=release.yml; fi
+        dispatch_arguments=(-f "sha=$sha")
+        if [ "$kind" = release ]; then dispatch_arguments+=(-f "version=$version"); fi
+        gh workflow run "$workflow" --repo "$repository" --ref main "${dispatch_arguments[@]}"
+    fi
+fi

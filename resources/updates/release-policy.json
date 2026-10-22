@@ -1,0 +1,17 @@
+{
+    "version": "3.0.1",
+    "min_php": "8.3.0",
+    "extensions": [
+        "openssl",
+        "pdo_mysql",
+        "mbstring",
+        "zip",
+        "fileinfo",
+        "dom"
+    ],
+    "supported_from": [
+        "3.0.1"
+    ],
+    "rollback_compatible": false,
+    "review": "3.0.1 is the fresh-installation baseline. Pages is core; optional modules and visual packages have explicit lifecycles. Editorial snapshots accept schema 3 only. Historical installations, migrations and payloads are not converted. New projects start from the signed 3.0.1 release; existing installations require a separate reviewed migration and verified backups."
+}

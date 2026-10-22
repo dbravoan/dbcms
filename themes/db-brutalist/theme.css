@@ -1,0 +1,61 @@
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities) source(none);
+@source "./";
+
+.front-db-brutalist .brutalist-card {
+    background: #ffffff;
+    border: 3px solid #000000;
+    box-shadow: 5px 5px 0 0 #000000;
+    border-radius: 0.5rem;
+}
+
+.front-db-brutalist .brutalist-card:hover {
+    box-shadow: 7px 7px 0 0 #000000;
+    transform: translate(-2px, -2px);
+    transition: all 0.15s ease-out;
+}
+
+.front-db-brutalist .btn-brutalist {
+    background: #ffe600;
+    color: #000000;
+    font-weight: 900;
+    text-transform: uppercase;
+    border: 2px solid #000000;
+    box-shadow: 3px 3px 0 0 #000000;
+    border-radius: 0.375rem;
+    transition: all 0.1s;
+}
+
+.front-db-brutalist .btn-brutalist:hover {
+    background: #00f0ff;
+    box-shadow: 4px 4px 0 0 #000000;
+    transform: translate(-1px, -1px);
+}
+
+.front-db-brutalist .btn-brutalist:active {
+    box-shadow: 1px 1px 0 0 #000000;
+    transform: translate(2px, 2px);
+}
+
+.front-db-brutalist {
+    --cms-accent: #ff0055;
+    --cms-accent-contrast: #ffffff;
+    --cms-fg: #111111;
+    --cms-fg-muted: #444444;
+    --cms-surface: #ffffff;
+    --cms-surface-2: #f5f5f5;
+    --cms-border: #000000;
+    --cms-border-strong: #000000;
+    --cms-accent-soft: rgba(255, 0, 85, 0.08);
+    --cms-accent-border: rgba(255, 0, 85, 0.65);
+    --cms-glow: 4px 4px 0 0 #000000;
+    --cms-radius: 6px;
+    --cms-card-blur: none;
+}
+
+.front-db-brutalist .cyber-card {
+    background: var(--cms-surface);
+    border: 1px solid var(--cms-border);
+    border-radius: var(--cms-radius);
+    box-shadow: var(--cms-glow, none);
+}

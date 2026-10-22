@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [ ! -f /.dockerenv ]; then
+    echo 'Run tests in Sail or the disposable Docker quality runtime.' >&2
+    exit 1
+fi
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+suite="${1:-fast}"
+if [ "$#" -gt 0 ]; then shift; fi
+
+if [ -f cms-project.json ]; then
+    bash bin/ci-derived-tests "$suite" "$@"
+    node bin/test-frontend.mjs
+    if [ "$suite" = release ]; then
+        RUN_DERIVED_CLONE_SMOKE=1 php -d memory_limit=2G vendor/bin/pest tests/Projects/DerivedInstallationSmokeTest.php
+    fi
+    exit
+fi
+
+case "$suite" in
+    fast)
+        php -d memory_limit=1G vendor/bin/pest --configuration=phpunit.fast.xml "$@"
+        node bin/test-frontend.mjs
+        ;;
+    integration|release)
+        if [ "${DBCMS_TEST_ISOLATED:-}" != 1 ]; then
+            echo 'Integration/release tests require DBCMS_TEST_ISOLATED=1 in a disposable filesystem and database.' >&2
+            exit 1
+        fi
+        if [ "$suite" = integration ]; then
+            php -d memory_limit=2G vendor/bin/pest --testsuite=Projects,Architecture,Unit,Smoke,Feature,Regression "$@"
+        else
+            RUN_DERIVED_CLONE_SMOKE=1 php -d memory_limit=2G vendor/bin/pest "$@"
+            node bin/test-frontend.mjs
+            bash bin/test-core-distribution.sh
+            if [ ! -f cms-project.json ]; then bash bin/test-update-apache.sh; fi
+        fi
+        ;;
+    *)
+        echo 'Usage: bin/test-suite [fast|integration|release] [Pest options]' >&2
+        exit 2
+        ;;
+esac

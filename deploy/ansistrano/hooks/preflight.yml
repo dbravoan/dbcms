@@ -1,0 +1,11 @@
+---
+- name: Refuse an unresolved recovery or a non-symlink current directory
+  ansible.builtin.shell: |
+    test ! -e "$VPS_DIR/shared/deployment-recovery-required"
+    if [ -e "$VPS_DIR/current" ]; then test -L "$VPS_DIR/current"; fi
+    if [ -e "$VPS_DIR/.ansistrano-next" ]; then test -L "$VPS_DIR/.ansistrano-next"; fi
+    test ! -e "$VPS_DIR/releases/$RELEASE_NAME"
+  args:
+    executable: /bin/bash
+  environment: "{{ deployment_environment }}"
+  changed_when: false

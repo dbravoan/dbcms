@@ -1,0 +1,23 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\__STUDLY__\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Contracts\View\View;
+use Modules\__STUDLY__\Contracts\Services\__STUDLY__ServiceInterface;
+
+class __STUDLY__FrontController extends Controller
+{
+    public function __construct(
+        protected __STUDLY__ServiceInterface $service
+    ) {}
+
+    public function index(): View
+    {
+        $items = $this->service->paginatePublic(app('current.market'), app()->getLocale(), 12);
+
+        return view('__IDENTIFIER__::index', compact('items'));
+    }
+}

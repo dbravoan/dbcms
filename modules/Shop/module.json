@@ -1,0 +1,77 @@
+{
+  "name": "Product Catalog & E-Commerce",
+  "identifier": "shop",
+  "version": "1.0.0",
+  "author": "dbCMS Core Team",
+  "description": "Flexible Product Catalog and E-Commerce module with multi-market pricing, modular product builder, configurable catalog/shop mode, shopping cart, and checkout flow.",
+  "provider": "Modules\\Shop\\ShopModuleServiceProvider",
+  "is_pageable": true,
+  "settings": {
+    "shop_mode": {
+      "type": "select",
+      "label": "Modo de funcionamiento de la tienda",
+      "description": "Selecciona si el módulo opera con pasarela y carrito completo o como catálogo informativo sin venta directa.",
+      "options": {
+        "full_shop": "Tienda completa (Carrito, Checkout y Pedidos)",
+        "catalog_only": "Solo catálogo (Consultas de disponibilidad y presupuestos)"
+      },
+      "default": "full_shop"
+    },
+    "catalog_show_prices": {
+      "type": "boolean",
+      "label": "Mostrar precios en modo catálogo",
+      "description": "Si está activo, los precios se muestran en modo catálogo; si se desactiva, se ocultan para incentivar la solicitud de presupuesto.",
+      "default": true
+    },
+    "currency": {
+      "type": "text",
+      "label": "Moneda base por defecto",
+      "description": "Código ISO de tres letras de la divisa principal (ej. EUR, USD).",
+      "default": "EUR",
+      "placeholder": "EUR"
+    },
+    "tax_rate": {
+      "type": "number",
+      "label": "Tasa impositiva / IVA (%)",
+      "description": "Porcentaje de IVA aplicado a los cálculos de precios e importes.",
+      "default": 21.0,
+      "placeholder": "21.0"
+    },
+    "enable_stock": {
+      "type": "boolean",
+      "label": "Control de existencias e inventario",
+      "description": "Supervisa existencias e impide compras de productos agotados.",
+      "default": true
+    },
+    "enable_inquiry": {
+      "type": "boolean",
+      "label": "Habilitar consultas de presupuesto",
+      "description": "Muestra el botón de consulta o presupuesto en fichas de producto.",
+      "default": true
+    },
+    "notification_email": {
+      "type": "email",
+      "label": "Email de notificaciones comerciales",
+      "description": "Bandeja donde se envían alertas de nuevos pedidos y presupuestos recibidos.",
+      "default": "sales@db-cms.io",
+      "placeholder": "sales@db-cms.io"
+    },
+    "slug_default": {
+      "type": "text",
+      "label": "Slug base de la Tienda / Catálogo",
+      "description": "Ruta raíz por defecto para acceder al catálogo (por ejemplo: tienda o shop)",
+      "default": "shop",
+      "placeholder": "shop"
+    },
+    "slug_{locale}": {
+      "label": "Slug de la Tienda en {language} ({locale})",
+      "description": "Ruta personalizada para el idioma {language}. Si se deja vacío, se usa el slug base.",
+      "default": "shop",
+      "placeholder": "shop",
+      "defaults": {"es": "tienda", "en": "shop", "ca": "botiga", "fr": "boutique", "de": "shop"}
+    }
+  },
+  "requires": {
+    "core": "^3.0"
+  }
+}

@@ -1,0 +1,3 @@
+
+        createRoute="{{ route('admin.__IDENTIFIER__.create') }}"
+        createLabel="+ {{ __('admin.actions.create_record') }}"

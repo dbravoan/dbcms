@@ -1,0 +1,32 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\__STUDLY__\Contracts\Services;
+
+use App\Models\Market;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Modules\__STUDLY__\Models\__STUDLY__;
+
+interface __STUDLY__ServiceInterface
+{
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function create(array $data): __STUDLY__;
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function update(__STUDLY__ $item, array $data): __STUDLY__;
+
+    public function delete(__STUDLY__ $item): bool;
+
+    /**
+     * @return LengthAwarePaginator<int, __STUDLY__>
+     */
+    public function paginate(int $perPage = 15): LengthAwarePaginator;
+
+    /** @return LengthAwarePaginator<int, __STUDLY__> */
+    public function paginatePublic(Market $market, string $locale, int $perPage = 12): LengthAwarePaginator;
+}

@@ -1,0 +1,42 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\__STUDLY__\Models;
+
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Passport\Contracts\OAuthenticatable;
+use Laravel\Passport\HasApiTokens;
+
+/**
+ * @property bool $is_active
+ */
+class __STUDLY__User extends Authenticatable implements OAuthenticatable
+{
+    use HasApiTokens, Notifiable;
+
+    protected $table = '__IDENTIFIER___users';
+
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'is_active',
+        'metadata',
+    ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'password' => 'hashed',
+            'is_active' => 'boolean',
+            'metadata' => 'array',
+        ];
+    }
+}

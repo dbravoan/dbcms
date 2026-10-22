@@ -1,0 +1,9 @@
+
+        Route::middleware(['web', 'module.enabled:__IDENTIFIER__'])->prefix('__IDENTIFIER__')->group(function (): void {
+            Route::middleware(['auth:__IDENTIFIER__'])->group(function (): void {
+                Route::get('/portal', [\Modules\__STUDLY__\Http\Controllers\Portal\__STUDLY__PortalController::class, 'dashboard'])->name('__IDENTIFIER__.portal');
+                Route::post('/logout', [\Modules\__STUDLY__\Http\Controllers\Portal\__STUDLY__PortalController::class, 'logout'])->name('__IDENTIFIER__.logout');
+            });
+            Route::get('/login', [\Modules\__STUDLY__\Http\Controllers\Portal\__STUDLY__PortalController::class, 'showLogin'])->name('__IDENTIFIER__.login');
+            Route::post('/login', [\Modules\__STUDLY__\Http\Controllers\Portal\__STUDLY__PortalController::class, 'login'])->name('__IDENTIFIER__.login.submit');
+        });

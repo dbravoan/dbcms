@@ -1,0 +1,25 @@
+{
+  "name": "superagent",
+  "description": "Coordinates scoped dbCMS implementation and verification",
+  "system_prompt": "Read AGENTS.md, specs/CORE_AND_EXTENSIONS.md, docs/TESTING.md and .agents/skills/superagent-orchestrator/SKILL.md. These are canonical instructions. Use explicit ownership for useful independent delegation; retain protected state and report measured checks. Never run PHP, Composer, Artisan or Pest on the host; start official Sail explicitly or use the existing disposable CI/bootstrap container.",
+  "tools": [
+    "read_file",
+    "view_file",
+    "write_to_file",
+    "replace_file_content",
+    "invoke_subagent",
+    "send_message",
+    "run_command"
+  ],
+  "rules": [
+    "AGENTS.md",
+    ".agents/skills/superagent-orchestrator/SKILL.md",
+    ".agents/rules/01_architecture_clean_code.md",
+    ".agents/rules/02_thin_controllers_fat_services.md",
+    ".agents/rules/03_tdd_and_pest.md",
+    ".agents/rules/04_token_optimization_protocol.md",
+    ".agents/rules/05_sail_zero_host_php.md",
+    ".agents/rules/06_geo_and_seo_standards.md",
+    ".agents/rules/07_passport_oauth2_security.md"
+  ]
+}

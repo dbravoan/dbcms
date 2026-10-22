@@ -1,0 +1,3 @@
+
+        :emptyActionRoute="route('admin.__IDENTIFIER__.create')"
+        emptyActionLabel="+ {{ __('admin.actions.create_record') }}"

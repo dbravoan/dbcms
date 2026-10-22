@@ -1,0 +1,12 @@
+---
+- name: Bootstrap persistent environment without replacing an existing key
+  ansible.builtin.command:
+    argv:
+      - bash
+      - "{{ ansistrano_release_path }}/bin/vps-bootstrap.sh"
+    stdin: "{{ lookup('ansible.builtin.file', '/secrets/bootstrap.env') }}"
+    stdin_add_newline: false
+  environment: "{{ deployment_environment }}"
+  when: lookup('ansible.builtin.env', 'BOOTSTRAP_CONFIGURATION') == 'true'
+  no_log: true
+  changed_when: true
