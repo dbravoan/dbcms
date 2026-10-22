@@ -37,7 +37,7 @@ jobs:
       VPS_PHP_BINARY: ${{ vars.VPS_PHP_BINARY || '/usr/bin/php' }}
       VPS_ENV_FILE: ${{ secrets.VPS_ENV_FILE }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
