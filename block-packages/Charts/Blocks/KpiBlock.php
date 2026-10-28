@@ -55,7 +55,13 @@ class KpiBlock extends AbstractBlockType
     public function getEditorSchema(): array
     {
         $schema = parent::getEditorSchema();
-        $schema['items']['fields']['description'] = ['type' => 'textarea', 'label' => 'Descripción'];
+        $schema['title']['description'] = 'Título opcional de la cuadrícula de métricas.';
+        $schema['items']['label'] = 'Indicadores';
+        $schema['items']['description'] = 'Cada fila es un contador o KPI.';
+        $schema['items']['fields']['description'] = ['type' => 'textarea', 'label' => 'Descripción', 'description' => 'Texto opcional bajo el indicador.', 'rules' => ['nullable', 'string', 'max:1000']];
+        $schema['items']['fields']['value']['label'] = 'Valor visible';
+        $schema['items']['fields']['value']['description'] = 'Puede incluir símbolos, por ejemplo 99,9 % o < 50 ms.';
+        $schema['items']['fields']['label']['label'] = 'Etiqueta del indicador';
 
         return $schema;
     }

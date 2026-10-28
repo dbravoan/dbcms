@@ -57,6 +57,64 @@ class RoiBlock extends AbstractBlockType
         ];
     }
 
+    public function getEditorSchema(): array
+    {
+        $schema = parent::getEditorSchema();
+        $schema['title']['description'] = 'Título visible de la calculadora.';
+        $schema['description']['description'] = 'Explica qué calcula el bloque antes de mostrar los resultados.';
+        $schema['initial_investment'] = [
+            'type' => 'number',
+            'label' => 'Inversión inicial',
+            'default' => 12000,
+            'min' => 0,
+            'step' => 100,
+            'description' => 'Coste inicial que se recupera con el ahorro estimado.',
+        ];
+        $schema['annual_savings'] = [
+            'type' => 'number',
+            'label' => 'Ahorro anual',
+            'default' => 38000,
+            'min' => 0,
+            'step' => 100,
+            'description' => 'Ahorro estimado cada año.',
+        ];
+        $schema['project_years'] = [
+            'type' => 'integer',
+            'label' => 'Años del proyecto',
+            'default' => 3,
+            'min' => 1,
+            'max' => 20,
+            'description' => 'Periodo usado para calcular el retorno total.',
+        ];
+        $schema['current_solution_cost'] = [
+            'type' => 'number',
+            'label' => 'Coste actual',
+            'default' => 50000,
+            'min' => 0,
+            'step' => 100,
+            'description' => 'Coste anual de la solución actual.',
+        ];
+        $schema['optimized_solution_cost'] = [
+            'type' => 'number',
+            'label' => 'Coste optimizado',
+            'default' => 12000,
+            'min' => 0,
+            'step' => 100,
+            'description' => 'Coste anual estimado con la nueva arquitectura.',
+        ];
+        $schema['payback_months'] = [
+            'type' => 'integer',
+            'label' => 'Meses de amortización',
+            'default' => 4,
+            'min' => 1,
+            'max' => 120,
+            'description' => 'Meses estimados para recuperar la inversión inicial.',
+        ];
+        $schema['currency_symbol'] = ['type' => 'text', 'label' => 'Símbolo de moneda', 'default' => '€', 'description' => 'Símbolo que acompaña a los importes.'];
+
+        return $schema;
+    }
+
     public function render(array $payload, ?Market $market = null, ?string $locale = null): string
     {
         $title = htmlspecialchars((string) ($payload['title'] ?? 'Calculadora de Retorno de Inversión (ROI)'));

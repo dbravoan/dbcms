@@ -26,7 +26,7 @@ Una caída de GitHub conserva la última información e indica el error y la fec
 
 ## Instalaciones independientes
 
-El panel presenta preparación, revisión de cambios y requisitos, respaldo, aprobación y progreso. La aplicación web de archivos solo se ofrece para un destino posterior compatible que declare `rollback_compatible: true`, en la misma versión mayor y con inventario runtime verificado; en otro caso produce una propuesta gestionada. La política base 3.0.1 declara false, por lo que no habilita por sí sola ese recorrido. Antes de aplicar exige alojamiento individual controlable, carpetas escribibles, espacio, drenaje de actividad y control del código cacheado. No necesita SSH, Composer, Node ni un worker para recorrer las fases HTTP.
+El panel presenta preparación, revisión de cambios y requisitos, respaldo, aprobación y progreso. La aplicación web de archivos solo se ofrece para un destino posterior compatible que declare `rollback_compatible: true`, en la misma versión mayor y con inventario runtime verificado; en otro caso produce una propuesta gestionada. La política base 3.1.0 declara false, por lo que no habilita por sí sola ese recorrido. Antes de aplicar exige alojamiento individual controlable, carpetas escribibles, espacio, drenaje de actividad y control del código cacheado. No necesita SSH, Composer, Node ni un worker para recorrer las fases HTTP.
 
 Una instalación independiente creada con `composer create-project` también puede utilizar este recorrido: debe existir un inventario runtime firmado de **su misma versión original**, y sus manifiestos de dependencias, `vendor/` y `public/build/` deben coincidir exactamente con él. No puede haber archivos adicionales ni enlaces en esas carpetas. El CMS conserva la identidad fuente hasta completar la actualización verificada. Si faltan esos inventarios, hay dependencias de desarrollo, personalizaciones o recursos compilados distintos, se prepara una propuesta de fuentes para revisión; no se sustituye un `vendor/` desconocido.
 
@@ -114,6 +114,6 @@ Antes de publicar: pruebas de firma/manipulación, conflictos, adopción, backup
 
 ## Compatibilidad de la línea 3
 
-La política de 3.0.1 reconoce 3.0.1 como origen y declara rollback_compatible: false. Esta línea está dirigida a instalaciones nuevas; no existe un recorrido automático desde líneas anteriores. Una actualización futura requiere una release estable realmente publicada, posterior a la base y con su política de orígenes, requisitos y recuperación. No generar inventarios históricos ni descargar antiguas distribuciones durante el empaquetado.
+La política de 3.1.0 reconoce 3.0.1 como origen publicado y declara rollback_compatible: false. 3.0.1 sigue siendo la base de instalación inicial; 3.1.0 añade el recorrido revisado desde esa base. Una actualización futura requiere una release estable realmente publicada, posterior a la base y con su política de orígenes, requisitos y recuperación. No generar inventarios históricos ni descargar antiguas distribuciones durante el empaquetado.
 
 No asumir que restaurar código basta después de migrar. Ante DDL parcial o estado incierto, mantener el cierre y recuperar código, base y claves de forma coordinada con el respaldo verificado.

@@ -69,6 +69,21 @@ class TestimonialsBlock extends AbstractBlockType
         ];
     }
 
+    public function getEditorSchema(): array
+    {
+        $schema = parent::getEditorSchema();
+        $schema['title']['description'] = 'Título opcional sobre los testimonios.';
+        $schema['items']['label'] = 'Testimonios';
+        $schema['items']['description'] = 'Cada fila es una cita con su autor.';
+        $schema['items']['fields']['author']['label'] = 'Nombre';
+        $schema['items']['fields']['role']['label'] = 'Cargo o empresa';
+        $schema['items']['fields']['quote']['label'] = 'Testimonio';
+        $schema['items']['fields']['quote']['description'] = 'Texto de la cita. Se muestra como texto plano.';
+        $schema['items']['fields']['avatar']['label'] = 'Avatar';
+
+        return $schema;
+    }
+
     public function render(array $payload, ?Market $market = null, ?string $locale = null): string
     {
         $title = htmlspecialchars((string) ($payload['title'] ?? ''));

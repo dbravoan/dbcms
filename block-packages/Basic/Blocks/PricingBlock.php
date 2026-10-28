@@ -74,6 +74,23 @@ class PricingBlock extends AbstractBlockType
         ];
     }
 
+    public function getEditorSchema(): array
+    {
+        $schema = parent::getEditorSchema();
+        $schema['title']['description'] = 'Título opcional de la comparativa.';
+        $schema['items']['label'] = 'Planes';
+        $schema['items']['description'] = 'Cada fila es una tarjeta de precio.';
+        $schema['items']['fields']['name']['label'] = 'Nombre del plan';
+        $schema['items']['fields']['price']['description'] = 'Precio visible, por ejemplo 29 €/mes.';
+        $schema['items']['fields']['period']['label'] = 'Descripción del plan';
+        $schema['items']['fields']['features']['label'] = 'Características incluidas';
+        $schema['items']['fields']['features']['description'] = 'Un elemento por línea.';
+        $schema['items']['fields']['cta_text']['label'] = 'Texto del botón';
+        $schema['items']['fields']['cta_url']['label'] = 'Destino del botón';
+
+        return $schema;
+    }
+
     public function render(array $payload, ?Market $market = null, ?string $locale = null): string
     {
         $title = htmlspecialchars((string) ($payload['title'] ?? ''));

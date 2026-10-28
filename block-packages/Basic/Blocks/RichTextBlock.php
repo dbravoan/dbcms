@@ -54,7 +54,13 @@ class RichTextBlock extends AbstractBlockType
     public function getEditorSchema(): array
     {
         $fields = parent::getEditorSchema();
-        $fields['format'] = ['type' => 'select', 'options' => ['markdown', 'html']];
+        $fields['format'] = [
+            'type' => 'select',
+            'label' => 'Formato del contenido',
+            'options' => ['markdown' => 'Markdown', 'html' => 'HTML saneado'],
+            'default' => 'markdown',
+            'description' => 'El editor muestra las mismas opciones en su barra de herramientas.',
+        ];
 
         return $fields;
     }

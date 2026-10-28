@@ -38,7 +38,7 @@ No prebootstrap response exposes filesystem paths, secrets, stack traces or envi
 - **Existing unsealed environment**: given no installation lock and a valid persisted key, the key is preserved byte-for-byte.
 - **Sealed recovery**: given `storage/installed` and an absent, empty or malformed key in `.env`, prebootstrap never writes `.env` or generates a key; it returns `recover_key`.
 - **Package integrity**: given a release build, the installer archive contains production dependencies, compiled assets, both Apache entry configurations, runtime directories, `.env.installation.example` and `EMPEZAR.html`, but contains no `.env`, installation lock, private key or development dependency.
-- **Version immutability**: v3 starts with `3.0.1`; published stable tags and artifacts cannot be replaced.
+- **Version immutability**: v3 starts with `3.0.1`; the current release is `3.1.0`; published stable tags and artifacts cannot be replaced.
 
 ## 4. Installation Configuration Contract
 
@@ -59,8 +59,8 @@ persisted runtime environment; the ZIP bootstrap itself validates the `.env` key
 
 ## 5. Distribution Contract
 
-- Primary release asset: `dbcms-installer-v3.0.1.zip`.
-- Administrative archive: `dbcms-v3.0.1.tar.gz`.
+- Primary release asset: `dbcms-installer-v3.1.0.zip`.
+- Administrative archive: `dbcms-v3.1.0.tar.gz`.
 - SHA-256 checksums cover both named assets.
 - `EMPEZAR.html` identifies the installer ZIP as the end-user download, explains Plesk/cPanel upload/extract/visit steps and distinguishes GitHub's automatic source archives as developer-only.
 - The build fails if required runtime files are absent or forbidden secrets/locks are present.

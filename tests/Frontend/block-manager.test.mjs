@@ -92,6 +92,58 @@ test('reducing four columns to two preserves the visual order of removed columns
     assert.deepEqual(section.columns.flatMap(column => column.blocks.map(block => block.title)), ['Block 1', 'Block 2', 'Block 3', 'Block 4']);
 });
 
+test('field visibility follows show_when rules', () => {
+    const editor = createBlockManager();
+    const field = { show_when: { field: 'mode', equals: 'advanced' } };
+    assert.equal(editor.fieldVisible({ mode: 'advanced' }, field), true);
+    assert.equal(editor.fieldVisible({ mode: 'simple' }, field), false);
+    assert.equal(editor.fieldVisible({ post_id: '' }, { show_when: { field: 'post_id', falsy: true } }), true);
+    assert.equal(editor.fieldVisible({ post_id: '9' }, { show_when: { field: 'post_id', falsy: true } }), false);
+    assert.equal(editor.fieldVisible({ chart_type: 'donut' }, { show_when: { field: 'chart_type', in: ['bar', 'line'] } }), false);
+});
+
+test('media selection applies the URL and alt text and ignores stale or cancelled requests', () => {
+    const editor = createBlockManager({ es: [] }, 'es', types);
+    editor.blocks = editor.sectionsByLocale.es;
+    const target = { image_url: '', image_alt: '' };
+    editor.pendingMediaRequest = {
+        mode: 'url', targetObj: target, fieldName: 'image_url', altKey: 'image_alt', targetId: 'media-target',
+    };
+    editor.handleFileSelected({ target: 'other-target', file: { url: '/wrong.jpg' } });
+    assert.equal(target.image_url, '');
+    editor.handleFileSelected({ target: 'media-target', file: { url: '/image.jpg', alt_text: 'Descripción' } });
+    assert.equal(target.image_url, '/image.jpg');
+    assert.equal(target.image_alt, 'Descripción');
+    assert.equal(editor.pendingMediaRequest, null);
+
+    editor.pendingMediaRequest = { mode: 'url', targetObj: target, fieldName: 'image_url', targetId: 'cancel-target' };
+    editor.handleFileManagerClosed({ target: 'cancel-target' });
+    assert.equal(editor.pendingMediaRequest, null);
+    target.image_url = '';
+    editor.pendingMediaRequest = { mode: 'url', targetObj: target, fieldName: 'image_url', targetId: 'keep-target' };
+    editor.handleFileManagerClosed({ target: 'different-target' });
+    assert.notEqual(editor.pendingMediaRequest, null);
+    editor.clearBlockMedia(target, 'image_url');
+    assert.equal(target.image_url, '');
+});
+
+test('media schema fields initialize empty instead of inheriting demo paths', () => {
+    const definition = {
+        type: 'media_block',
+        schema: { image_url: { type: 'media' }, poster_url: { type: 'media' } },
+        defaultPayload: { image_url: '/demo.jpg', poster_url: '/poster.jpg' },
+    };
+    const editor = createBlockManager({ es: [] }, 'es', [definition]);
+    editor.blocks = editor.sectionsByLocale.es;
+    editor.addBlock('media_block', 'empty');
+    const block = editor.blocks.at(-1);
+    assert.equal(block.image_url, '');
+    assert.equal(block.poster_url, '');
+    editor.addBlock('media_block', 'demo');
+    assert.equal(editor.blocks.at(-1).image_url, '/demo.jpg');
+    assert.equal(editor.blocks.at(-1).poster_url, '/poster.jpg');
+});
+
 for (const placement of ['section', 'column']) {
     test(`empty ${placement} insertion initializes the schema without demo content`, () => {
         const definition = {

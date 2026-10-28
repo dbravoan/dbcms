@@ -50,6 +50,17 @@ class CtaBlock extends AbstractBlockType
         ];
     }
 
+    public function getEditorSchema(): array
+    {
+        $schema = parent::getEditorSchema();
+        $schema['title']['description'] = 'Titular principal del banner.';
+        $schema['content'] = ['type' => 'textarea', 'label' => 'Descripción', 'description' => 'Texto breve que acompaña al titular.', 'rules' => ['nullable', 'string', 'max:1000']];
+        $schema['cta_text']['description'] = 'Texto visible del botón.';
+        $schema['cta_url']['description'] = 'Ruta interna o URL externa segura.';
+
+        return $schema;
+    }
+
     public function render(array $payload, ?Market $market = null, ?string $locale = null): string
     {
         $title = htmlspecialchars((string) ($payload['title'] ?? ('¿Listo para escalar con '.config('cms.name').'?')));

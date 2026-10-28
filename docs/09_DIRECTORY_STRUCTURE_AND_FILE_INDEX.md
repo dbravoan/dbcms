@@ -74,6 +74,7 @@ does not require a separate business module.
 - [Registro y ciclo de extensiones](CORE_EXTENSION_REGISTRATION.md)
 - [Crear módulos funcionales y bloques de módulo](11_CREATING_ADVANCED_CMS_MODULES_GUIDE.md)
 - [Crear bloques y paquetes visuales](26_CREATING_BLOCKS_AND_VISUAL_PACKAGES_GUIDE.md)
+- [Referencia de campos del editor de bloques](27_BLOCK_EDITOR_FIELD_REFERENCE.md)
 - [Kit e inventario administrativos](13_ADMIN_UI_FRAMEWORK.md), [superficies](BACKOFFICE_UI_INVENTORY.md)
 - [Temas de backoffice](16_BACKOFFICE_THEME_GUIDE.md), [frontoffice](17_FRONTOFFICE_THEME_GUIDE.md) y [manifiestos](18_THEME_MANIFEST_AND_BRAND_REFERENCE.md)
 - [Filtros y URLs](20_FRONT_FILTERING_AND_SEO_URLS.md), [búsqueda general](22_GENERAL_SEARCH.md)

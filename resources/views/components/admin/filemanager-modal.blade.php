@@ -3,6 +3,7 @@
     files: [],
     loading: false,
     activeTab: 'all',
+    kind: 'all',
     targetField: null,
     uploading: false,
     uploadError: '',
@@ -15,9 +16,32 @@
     init() {
         window.addEventListener('open-filemanager', (e) => {
             this.targetField = e.detail?.target || null;
+            const requested = e.detail?.kind;
+            this.kind = ['image', 'video', 'doc'].includes(requested) ? requested : 'all';
+            this.activeTab = this.kind === 'image' ? 'images' : (this.kind === 'video' ? 'videos' : (this.kind === 'doc' ? 'docs' : 'all'));
+            this.selectedFile = null;
+            this.uploadError = '';
+            this.searchQuery = '';
             this.open = true;
             this.fetchFiles();
         });
+    },
+
+    close(notify = true) {
+        const target = this.targetField;
+        this.open = false;
+        if (notify) {
+            window.dispatchEvent(new CustomEvent('filemanager-closed', { detail: { target } }));
+        }
+    },
+
+    allowsKind(file) {
+        if (!file || this.kind === 'all') return true;
+        if (this.kind === 'image') return !!file.is_image;
+        if (this.kind === 'video') return !!file.is_video;
+        if (this.kind === 'doc') return !!file.is_doc;
+
+        return true;
     },
 
     fetchFiles() {
@@ -56,6 +80,9 @@
                 this.fetchFiles();
                 if (data.file) {
                     this.selectedFile = data.file;
+                    if (!this.allowsKind(data.file)) {
+                        this.uploadError = 'El archivo subido no coincide con el tipo solicitado.';
+                    }
                 }
             } else {
                 this.uploadError = data.message || 'Error al subir archivo';
@@ -75,6 +102,10 @@
     selectFile(file) {
         const chosen = file || this.selectedFile;
         if (!chosen) return;
+        if (!this.allowsKind(chosen)) {
+            this.uploadError = 'Selecciona un archivo compatible con este campo.';
+            return;
+        }
 
         if (this.targetField) {
             window.dispatchEvent(new CustomEvent('file-selected', {
@@ -153,6 +184,7 @@
 
     filteredFiles() {
         let list = this.files;
+        if (this.kind !== 'all') list = list.filter(f => this.allowsKind(f));
         if (this.activeTab === 'images') list = list.filter(f => f.is_image);
         if (this.activeTab === 'videos') list = list.filter(f => f.is_video);
         if (this.activeTab === 'docs') list = list.filter(f => f.is_doc);
@@ -179,12 +211,12 @@
      x-transition:leave-end="opacity-0"
      class="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6 bg-[color:var(--admin-surface)]/40 backdrop-blur-md"
      style="display: none;"
-     @click.self="open = false"
-     @keydown.escape.window="open = false">
+     @click.self="close()"
+     @keydown.escape.window="close()">
 
     <div class="bg-[color:var(--admin-surface)] border border-[color:var(--admin-accent)]/30 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.9)] flex flex-col overflow-hidden transition-all duration-200"
          :class="isMaximized ? 'w-[98vw] h-[96vh] max-w-none' : 'w-full max-w-6xl h-[90vh]'"
-         @click.outside="open = false">
+         @click.outside="close()">
 
         <!-- Modal Header -->
         <div class="px-6 py-4 border-b border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] flex items-center justify-between shrink-0">
@@ -199,23 +231,23 @@
                 <button type="button" @click="isMaximized = !isMaximized" class="p-1.5 text-[color:var(--admin-muted)] hover:text-[color:var(--admin-accent)] hover:bg-white/5 rounded-lg transition-colors" :title="isMaximized ? 'Restaurar tamaño' : 'Maximizar'">
                     <i class="fa-solid text-sm" :class="isMaximized ? 'fa-compress' : 'fa-expand'"></i>
                 </button>
-                <button type="button" @click="open = false" class="text-[color:var(--admin-muted)] hover:text-[color:var(--admin-text)] text-2xl font-mono leading-none">&times;</button>
+                <button type="button" @click="close()" class="text-[color:var(--admin-muted)] hover:text-[color:var(--admin-text)] text-2xl font-mono leading-none">&times;</button>
             </div>
         </div>
 
         <!-- Toolbar & Tabs -->
         <div class="px-6 py-3 border-b border-[color:var(--admin-border)] bg-[color:var(--admin-surface)] font-mono text-xs flex flex-wrap items-center justify-between gap-3 shrink-0">
             <div class="flex items-center gap-1.5">
-                <button @click="activeTab = 'all'" :class="activeTab === 'all' ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-on-accent)] font-bold' : 'text-[color:var(--admin-muted)] hover:text-[color:var(--admin-text)]'" class="px-3 py-1.5 rounded-lg transition-all">{{ __('admin.filemanager.tab_all') }}</button>
-                <button @click="activeTab = 'images'" :class="activeTab === 'images' ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-on-accent)] font-bold' : 'text-[color:var(--admin-muted)] hover:text-[color:var(--admin-text)]'" class="px-3 py-1.5 rounded-lg transition-all">{{ __('admin.filemanager.tab_images') }}</button>
-                <button @click="activeTab = 'videos'" :class="activeTab === 'videos' ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-on-accent)] font-bold' : 'text-[color:var(--admin-muted)] hover:text-[color:var(--admin-text)]'" class="px-3 py-1.5 rounded-lg transition-all">{{ __('admin.filemanager.tab_videos') }}</button>
-                <button @click="activeTab = 'docs'" :class="activeTab === 'docs' ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-on-accent)] font-bold' : 'text-[color:var(--admin-muted)] hover:text-[color:var(--admin-text)]'" class="px-3 py-1.5 rounded-lg transition-all">{{ __('admin.filemanager.tab_docs') }}</button>
+                <button x-show="kind === 'all'" @click="activeTab = 'all'" :class="activeTab === 'all' ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-on-accent)] font-bold' : 'text-[color:var(--admin-muted)] hover:text-[color:var(--admin-text)]'" class="px-3 py-1.5 rounded-lg transition-all">{{ __('admin.filemanager.tab_all') }}</button>
+                <button x-show="kind === 'all' || kind === 'image'" @click="activeTab = 'images'" :class="activeTab === 'images' ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-on-accent)] font-bold' : 'text-[color:var(--admin-muted)] hover:text-[color:var(--admin-text)]'" class="px-3 py-1.5 rounded-lg transition-all">{{ __('admin.filemanager.tab_images') }}</button>
+                <button x-show="kind === 'all' || kind === 'video'" @click="activeTab = 'videos'" :class="activeTab === 'videos' ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-on-accent)] font-bold' : 'text-[color:var(--admin-muted)] hover:text-[color:var(--admin-text)]'" class="px-3 py-1.5 rounded-lg transition-all">{{ __('admin.filemanager.tab_videos') }}</button>
+                <button x-show="kind === 'all' || kind === 'doc'" @click="activeTab = 'docs'" :class="activeTab === 'docs' ? 'bg-[color:var(--admin-accent)] text-[color:var(--admin-on-accent)] font-bold' : 'text-[color:var(--admin-muted)] hover:text-[color:var(--admin-text)]'" class="px-3 py-1.5 rounded-lg transition-all">{{ __('admin.filemanager.tab_docs') }}</button>
             </div>
 
             <div class="flex items-center gap-3">
                 <button type="button" x-data="{ aiAvailable: typeof window.CmsAssistant !== 'undefined' }"
                         @cms-assistant-ready.window="aiAvailable = true" x-show="aiAvailable && targetField"
-                        @click="open = false; window.CmsAssistant.open({ mode: 'image', mediaTarget: targetField })"
+                        @click="window.CmsAssistant.open({ mode: 'image', mediaTarget: targetField }); close(false)"
                         class="px-3 py-1.5 rounded-lg border border-[color:var(--admin-accent)]/40 text-[color:var(--admin-accent)] hover:text-[color:var(--admin-text)] text-xs font-bold">
                     <i class="fa-solid fa-wand-magic-sparkles"></i> {{ __('admin.ai.media_generate') }}
                 </button>
@@ -229,7 +261,7 @@
                 <label class="cursor-pointer px-3.5 py-1.5 border border-[color:var(--admin-accent)] text-[color:var(--admin-accent)] hover:bg-[color:var(--admin-accent)] hover:text-[color:var(--admin-on-accent)] font-bold rounded transition-all flex items-center gap-1.5 text-xs">
                     <i x-show="uploading" class="fa-solid fa-spinner fa-spin"></i>
                     <span x-text="uploading ? 'Subiendo...' : '+ Subir Archivo'"></span>
-                    <input type="file" @change="uploadFile($event)" class="hidden">
+                    <input type="file" :accept="kind === 'image' ? 'image/*' : (kind === 'video' ? 'video/*' : null)" @change="uploadFile($event)" class="hidden">
                 </label>
                 <button @click="fetchFiles()" class="text-[color:var(--admin-muted)] hover:text-[color:var(--admin-accent)] px-2 py-1" title="{{ __('admin.filemanager.reload') }}"><i class="fa-solid fa-rotate-right"></i></button>
             </div>

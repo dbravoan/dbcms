@@ -56,9 +56,9 @@ class CustomFormBlock extends AbstractBlockType implements TranslatableBlockInte
     public function getEditorSchema(): array
     {
         return [
-            'title' => ['type' => 'text', 'label' => 'Título'],
-            'form_slug' => ['type' => 'select', 'label' => 'Formulario', 'options' => ['' => 'Selecciona un formulario'], 'options_source' => 'forms', 'option_label' => 'name', 'option_value' => 'slug', 'rules' => ['nullable', 'string', 'max:255']],
-            'button_text' => ['type' => 'text', 'label' => 'Texto del botón'],
+            'title' => ['type' => 'text', 'label' => 'Título', 'description' => 'Título opcional sobre el formulario.'],
+            'form_slug' => ['type' => 'select', 'label' => 'Formulario', 'options' => ['' => 'Selecciona un formulario'], 'options_source' => 'forms', 'option_label' => 'name', 'option_value' => 'slug', 'rules' => ['nullable', 'string', 'max:255'], 'description' => 'Formulario que se insertará en la página.'],
+            'button_text' => ['type' => 'text', 'label' => 'Texto del botón', 'description' => 'Texto del botón de envío.'],
         ];
     }
 

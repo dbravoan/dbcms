@@ -1,7 +1,7 @@
 # dbCMS
 
 CMS modular para publicar páginas, blog, catálogo y formularios en varios mercados
-e idiomas. La versión **3.0.1** parte de instalaciones nuevas. Cada proyecto
+e idiomas. La versión **3.1.0** actualiza la base publicada 3.0.1. Cada proyecto
 selecciona sus módulos, bloques, temas y forma de despliegue.
 
 El núcleo incluye instalación, usuarios y permisos, medios, páginas, menús,
@@ -40,7 +40,7 @@ En días posteriores arranca con `./vendor/bin/sail up -d` y detén con
 
 ### Instalar en hosting sin consola
 
-Descarga `dbcms-installer-v3.0.1.zip` de la
+Descarga `dbcms-installer-v3.1.0.zip` de la
 [release oficial](https://github.com/dbravoan/dbcms/releases), verifica su SHA256,
 súbelo y extráelo en el alojamiento. Incluye dependencias y assets compilados.
 Configura el dominio sobre `public/` cuando el panel lo permita y abre el sitio
@@ -75,6 +75,7 @@ y las [convenciones](docs/DEVELOPER_CONVENTIONS_AND_STANDARDS.md).
 
 - [Crear un módulo funcional y añadirle bloques](docs/11_CREATING_ADVANCED_CMS_MODULES_GUIDE.md)
 - [Crear bloques y paquetes visuales](docs/26_CREATING_BLOCKS_AND_VISUAL_PACKAGES_GUIDE.md)
+- [Referencia de campos del editor de bloques](docs/27_BLOCK_EDITOR_FIELD_REFERENCE.md)
 - [Componentes administrativos](docs/13_ADMIN_UI_FRAMEWORK.md)
 - [Crear y sustituir vistas desde temas](docs/17_FRONTOFFICE_THEME_GUIDE.md)
 - [Índice técnico completo](docs/09_DIRECTORY_STRUCTURE_AND_FILE_INDEX.md)

@@ -1,5 +1,5 @@
 {
-    "version": "3.0.1",
+    "version": "3.1.0",
     "min_php": "8.3.0",
     "extensions": [
         "openssl",
@@ -13,5 +13,5 @@
         "3.0.1"
     ],
     "rollback_compatible": false,
-    "review": "3.0.1 is the fresh-installation baseline. Pages is core; optional modules and visual packages have explicit lifecycles. Editorial snapshots accept schema 3 only. Historical installations, migrations and payloads are not converted. New projects start from the signed 3.0.1 release; existing installations require a separate reviewed migration and verified backups."
+    "review": "3.1.0 is a compatible update from the published 3.0.1 baseline. It fixes the ContentAudit changelog index and column projection, adds block editor media pickers, schema hints, conditional fields and full repeater controls, and preserves stored block payloads. ContentAudit now projects metadata columns for lists and loads snapshots only for review detail. Existing block keys and stored payloads are not converted; projects keep their selected modules, themes and custom blocks. Review the source proposal and resolve local customisations before deployment."
 }

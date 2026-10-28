@@ -252,8 +252,8 @@ para admitir HTML arbitrario.
 no basta con que un formulario se vea correcto. `required: true` añade la regla
 `required`. `rules` **sustituye** las reglas inferidas para ese campo, por lo que
 hay que incluir `array`, `string`, límites o valores permitidos cuando proceda.
-Los campos de tipo `url` añaden siempre la política compartida de protocolos
-seguros, también cuando declaran reglas propias.
+Los campos de tipo `url` y `media` añaden siempre la política compartida de
+protocolos seguros, también cuando declaran reglas propias.
 En un `select` sin `rules`, las claves de un mapa de opciones —o los valores de
 una lista— son los valores aceptados. Un `options_source` alimenta las opciones
 del editor desde `getEditorData()`; no convierte esa lista dinámica en validación
@@ -271,17 +271,50 @@ de pertenencia del servidor. Declara las reglas necesarias en la definición.
 | `json`, `array` | Editor de objeto o lista JSON | Array opcional; no un string JSON almacenado sin decodificar |
 | `list` | Un elemento de texto por línea | Array opcional; añade reglas de elementos si son necesarias |
 | `repeater` | Añadir/eliminar elementos con `fields` | Array opcional, cada elemento array y reglas de sus campos |
+| `media` | Vista previa, URL editable y selector de medios | Cadena opcional y URL segura restringida a imagen o vídeo |
 
-El repetidor genérico ofrece campos hijos de texto, número, textarea y lista;
-no es un editor recursivo de repetidores anidados ni ofrece todos los controles
-de nivel superior dentro de cada fila. En nuestro ejemplo los hijos son texto.
-La cota `max:6` se comprueba en el servidor; no presupone que el botón de añadir
-se oculte al llegar al sexto elemento.
+El repetidor genérico usa el mismo renderizador que el nivel raíz: sus hijos
+pueden ser texto, textarea, número, booleano, select, JSON, lista o medio. La
+cota `max:6` se comprueba en el servidor; no presupone que el botón de añadir se
+oculte al llegar al sexto elemento.
 
-Sin esquema explícito, `AbstractBlockType` lo infiere de `getDefaultPayload()`.
-Las claves `url` y las terminadas en `_url` se infieren como campos `url`.
-Una lista vacía no permite inferir la estructura de sus elementos; usa un esquema
-explícito como aquí para los repetidores y las restricciones de negocio.
+Un campo de medios se declara así:
+
+```php
+'image_url' => [
+    'type' => 'media',
+    'media_kind' => 'image',
+    'label' => 'Imagen',
+    'description' => 'Imagen principal del bloque.',
+    'alt_key' => 'image_alt',
+],
+```
+
+`media_kind` debe ser `image` o `video`; el selector filtra la biblioteca y no
+permite elegir un archivo de otro tipo. `alt_key` es opcional: si existe un campo
+hermano con ese nombre, el selector copia el texto alternativo del archivo cuando
+el campo está vacío. Los campos `media` se validan con la misma política de URLs
+seguras que `url`, pero solo aceptan `http`, `https` o rutas locales.
+
+Los campos pueden declarar `show_when` para ocultarse cuando no aplican:
+
+```php
+'interval' => [
+    'type' => 'integer',
+    'label' => 'Intervalo',
+    'show_when' => ['field' => 'autoplay', 'equals' => true],
+],
+```
+
+`show_when` admite `equals`, `not_equals`, `in`, `not_in`, `truthy` y `falsy`.
+El valor guardado no se elimina al ocultar el campo.
+
+Sin esquema explícito, `AbstractBlockType` infiere el tipo de `getDefaultPayload()`.
+Las claves de medios conocidas (`image_url`, `after_image_url`, `avatar`,
+`logo_url`, `poster_url`, `video_url`, etc.) se infieren como `media`; el resto
+de claves `url` y terminadas en `_url` se infieren como `url`. Una lista vacía no
+permite inferir la estructura de sus elementos; usa un esquema explícito como
+aquí para los repetidores y las restricciones de negocio.
 
 **Vacío y demostración son opciones distintas de inserción.** En modo vacío,
 `resources/js/block-manager.js` inicializa `default` de cada campo del esquema;

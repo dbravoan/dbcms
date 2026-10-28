@@ -176,7 +176,11 @@ test('the directory index lists every document on disk', function (): void {
 });
 
 test('agent instruction recipes resolve their canonical rule files', function (): void {
-    foreach (glob(base_path('.opencode/agents/*.json')) ?: [] as $path) {
+    $recipes = glob(base_path('.opencode/agents/*.json')) ?: [];
+    if ($recipes === []) {
+        $this->markTestSkipped('No agent instruction recipes are present in this artifact.');
+    }
+    foreach ($recipes as $path) {
         $recipe = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
         foreach ($recipe['rules'] ?? [] as $reference) {
             expect(base_path($reference))->toBeFile('Unresolved instruction in '.$path.': '.$reference);

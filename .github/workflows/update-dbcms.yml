@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Stable dbCMS version to review (for example 3.0.1)"
+        description: "Stable dbCMS version to review (for example 3.1.0)"
         required: true
 permissions:
   contents: write

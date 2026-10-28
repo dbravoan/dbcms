@@ -36,8 +36,13 @@ final class EditorialReviewTransport
         $liveSnapshot = $this->snapshots->capture($entity);
         $entity = $review['entity'];
         $audit = $this->revisions->auditFor($entity);
-        $revisions = ContentAuditRevision::where('auditable_type', $entity->getMorphClass())->where('auditable_id', $entity->getKey())->with('user')->orderByDesc('version')->get();
-        $previous = $revisions->count() > 1 ? $revisions->get(1) : $revisions->first();
+        $revisionQuery = ContentAuditRevision::query()
+            ->where('auditable_type', $entity->getMorphClass())
+            ->where('auditable_id', $entity->getKey())
+            ->orderByDesc('version');
+        $revisions = (clone $revisionQuery)->with('user')->get(ContentAuditRevision::LIST_COLUMNS);
+        // Only the diff needs the previous snapshot; fetch that one row in full.
+        $previous = (clone $revisionQuery)->skip(1)->first() ?? (clone $revisionQuery)->first();
         $diffResult = $this->diffs->computeDiff($audit?->pending_revision_id !== null ? $liveSnapshot : ($previous ? (array) $previous->snapshot : []), $review['snapshot']);
         $description = $this->presentation->describe($entity);
         $rollbackTokens = [];

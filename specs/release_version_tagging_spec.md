@@ -6,7 +6,7 @@
 
 ## 1. Domain Objective & Context
 
-Automatic tagging from `app:version` can tag the commit preceding the version change. Preserve the existing inspection, `--bump` and `--set` commands, but reject deprecated `--tag` before any mutation. The v3 baseline is `3.0.1`; its annotated `v3.0.1` tag is created explicitly only after committing and validating the final source.
+Automatic tagging from `app:version` can tag the commit preceding the version change. Preserve the existing inspection, `--bump` and `--set` commands, but reject deprecated `--tag` before any mutation. The v3 line started at `3.0.1`; the current release is `3.1.0`; its annotated `v3.0.1` tag is created explicitly only after committing and validating the final source.
 
 ## 2. Algebraic Data Types & DTO Contracts
 

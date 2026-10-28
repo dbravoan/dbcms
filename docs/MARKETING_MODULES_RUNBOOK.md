@@ -139,7 +139,7 @@ CreativeStudio, SocialPublishing y Analytics requieren el módulo Marketing.
 Subir un ZIP no instala ni activa el módulo. La instalación explícita instala y
 activa el módulo cuando se satisfacen sus dependencias; desactivarlo después
 conserva sus datos. La base
-3.0.1 es para instalaciones nuevas; no convierte instalaciones anteriores.
+3.1.0 parte de la base publicada 3.0.1; no convierte instalaciones anteriores a la línea 3.
 La política de actualización declara `rollback_compatible: false`. Un rollback
 de código no revierte la base de datos; seguir la recuperación guiada del
 [actualizador](CORE_UPDATES_RUNBOOK.md), con respaldo comprobado de DB, archivos y claves.

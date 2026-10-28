@@ -92,6 +92,7 @@ test('the registered block catalogue renders its defaults and every schema contr
         'number' => "['number', 'integer'].includes(field.type)",
         'boolean' => "field.type === 'boolean'",
         'select' => "field.type === 'select'",
+        'media' => "field.type === 'media'",
         'json' => "['json', 'array'].includes(field.type)",
         'array' => "['json', 'array'].includes(field.type)",
         'list' => "field.type === 'list'",

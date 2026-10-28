@@ -73,13 +73,13 @@ class BlogPostsBlock extends AbstractBlockType implements PublicWidgetSemanticCo
     public function getEditorSchema(): array
     {
         return [
-            'title' => ['type' => 'text', 'label' => 'Título'],
+            'title' => ['type' => 'text', 'label' => 'Título', 'description' => 'Título opcional sobre la lista de artículos.'],
 
-            'selection' => ['type' => 'select', 'label' => 'Selección', 'options' => ['latest' => 'Recientes', 'featured' => 'Destacados'], 'default' => 'latest'],
-            'category' => ['type' => 'select', 'label' => 'Categoría', 'options' => ['' => 'Todas'], 'options_source' => 'blog_categories', 'option_label' => 'name', 'option_value' => 'id', 'rules' => ['nullable', 'integer', 'min:1']],
-            'post_id' => ['type' => 'select', 'label' => 'Artículo', 'options' => ['' => 'Selección automática'], 'options_source' => 'blog_posts', 'option_label' => 'title', 'option_value' => 'id', 'rules' => ['nullable', 'integer', 'min:1']],
-            'limit' => ['type' => 'integer', 'label' => 'Límite', 'default' => 3, 'rules' => ['nullable', 'integer', 'between:1,50']],
-            'grid_columns' => ['type' => 'select', 'label' => 'Columnas', 'options' => ['2', '3', '4'], 'default' => '3'],
+            'selection' => ['type' => 'select', 'label' => 'Selección', 'options' => ['latest' => 'Recientes', 'featured' => 'Destacados'], 'default' => 'latest', 'description' => 'Orden o filtro de los artículos cuando no eliges uno concreto.', 'show_when' => ['field' => 'post_id', 'falsy' => true]],
+            'category' => ['type' => 'select', 'label' => 'Categoría', 'options' => ['' => 'Todas'], 'options_source' => 'blog_categories', 'option_label' => 'name', 'option_value' => 'id', 'rules' => ['nullable', 'integer', 'min:1'], 'description' => 'Limita la lista a una categoría.', 'show_when' => ['field' => 'post_id', 'falsy' => true]],
+            'post_id' => ['type' => 'select', 'label' => 'Artículo', 'options' => ['' => 'Selección automática'], 'options_source' => 'blog_posts', 'option_label' => 'title', 'option_value' => 'id', 'rules' => ['nullable', 'integer', 'min:1'], 'description' => 'Si eliges un artículo concreto se ignoran selección, categoría y límite.'],
+            'limit' => ['type' => 'integer', 'label' => 'Límite', 'default' => 3, 'rules' => ['nullable', 'integer', 'between:1,50'], 'description' => 'Número máximo de artículos.', 'show_when' => ['field' => 'post_id', 'falsy' => true]],
+            'grid_columns' => ['type' => 'select', 'label' => 'Columnas', 'options' => ['2', '3', '4'], 'default' => '3', 'description' => 'Columnas de la rejilla en pantallas grandes.'],
         ];
     }
 

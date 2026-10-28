@@ -31,6 +31,7 @@ export const createBlockManager = (initialLocaleMap = {}, defaultLocale = 'es', 
             appearanceTarget: null,
             appearanceScope: 'section',
             appearanceTab: 'container',
+            pendingMediaRequest: null,
 
             // Un único modal para añadir bloques en cualquier contexto: una
             // sección nueva (index null), arriba/abajo de una sección (index) o
@@ -96,6 +97,23 @@ export const createBlockManager = (initialLocaleMap = {}, defaultLocale = 'es', 
                 return Object.entries(this.typeDef(block.type).schema || {}).map(([key, field]) => ({ key, ...field }));
             },
 
+            fieldVisible(block, field) {
+                const rules = Array.isArray(field?.show_when) ? field.show_when : (field?.show_when ? [field.show_when] : []);
+                if (rules.length === 0) return true;
+
+                return rules.every((rule) => {
+                    if (!rule || typeof rule !== 'object') return true;
+                    const value = block?.[rule.field];
+                    if (Object.hasOwn(rule, 'equals')) return value === rule.equals;
+                    if (Object.hasOwn(rule, 'not_equals')) return value !== rule.not_equals;
+                    if (Array.isArray(rule.in)) return rule.in.includes(value);
+                    if (Array.isArray(rule.not_in)) return !rule.not_in.includes(value);
+                    if (rule.truthy === true) return !!value;
+                    if (rule.falsy === true) return !value;
+                    return true;
+                });
+            },
+
             addSchemaItem(block, field) {
                 if (!this.isBlockAvailable(block)) return;
                 if (!Array.isArray(block[field.key])) block[field.key] = [];
@@ -104,10 +122,14 @@ export const createBlockManager = (initialLocaleMap = {}, defaultLocale = 'es', 
             },
 
             updateJsonField(block, key, input) {
+                this.updateJsonValue(block, key, input);
+            },
+
+            updateJsonValue(targetObj, key, input) {
                 try {
                     const value = JSON.parse(input.value);
                     if (!Array.isArray(value) && (typeof value !== 'object' || value === null)) throw new Error();
-                    block[key] = value;
+                    targetObj[key] = value;
                     input.setCustomValidity('');
                     this.syncBlocksToLocale();
                 } catch {
@@ -224,6 +246,9 @@ export const createBlockManager = (initialLocaleMap = {}, defaultLocale = 'es', 
                         }
                     }
                 });
+
+                window.addEventListener('file-selected', (e) => this.handleFileSelected(e.detail));
+                window.addEventListener('filemanager-closed', (e) => this.handleFileManagerClosed(e.detail));
             },
 
             activeLocales: [],
@@ -516,10 +541,13 @@ export const createBlockManager = (initialLocaleMap = {}, defaultLocale = 'es', 
                 // Ámbito columna: se edita el estilo propio de la columna.
                 if (this.appearanceTarget.subIndex === undefined) {
                     if (!col.style || typeof col.style !== 'object') {
-                        col.style = { bg_type: 'none', bg_color: '', bg_behavior: 'normal', bg_image_url: '', bg_image_overlay: 'rgba(0,0,0,0.5)' };
+                        col.style = { bg_type: 'none', bg_color: '', bg_behavior: 'normal', bg_image_url: '', bg_image_overlay: 'rgba(0,0,0,0.5)', bg_video_url: '', bg_video_poster: '', bg_video_overlay: 'rgba(0,0,0,0.5)' };
                     }
                     if (col.style.bg_type === undefined) col.style.bg_type = 'none';
                     if (col.style.bg_behavior === undefined) col.style.bg_behavior = 'normal';
+                    if (col.style.bg_video_url === undefined) col.style.bg_video_url = '';
+                    if (col.style.bg_video_poster === undefined) col.style.bg_video_poster = '';
+                    if (col.style.bg_video_overlay === undefined) col.style.bg_video_overlay = 'rgba(0,0,0,0.5)';
 
                     return col.style;
                 }
@@ -693,36 +721,71 @@ export const createBlockManager = (initialLocaleMap = {}, defaultLocale = 'es', 
                 this.syncBlocksToLocale();
             },
 
-            openMediaPickerForObject(targetObj, fieldName) {
-                const targetId = 'obj_media_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
-                window.addEventListener('file-selected', (e) => {
-                    if (e.detail?.target === targetId && e.detail?.file) {
-                        targetObj[fieldName] = e.detail.file.url;
-                        this.syncBlocksToLocale();
-                    }
-                }, { once: true });
+            openBlockMedia(targetObj, fieldName, field = {}) {
+                const altKey = field.alt_key || (fieldName === 'image_url' && Object.hasOwn(targetObj, 'image_alt') ? 'image_alt' : null);
+                this.openMediaPickerForObject(targetObj, fieldName, field.media_kind || 'image', altKey);
+            },
 
-                window.dispatchEvent(new CustomEvent('open-filemanager', {
-                    detail: { target: targetId }
-                }));
+            openMediaPickerForObject(targetObj, fieldName, kind = 'all', altKey = null) {
+                this.beginMediaRequest({
+                    mode: 'url',
+                    targetObj,
+                    fieldName,
+                    kind,
+                    altKey,
+                });
             },
 
             openMediaPickerForMarkdown(targetObj) {
-                const targetId = 'md_media_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
-                window.addEventListener('file-selected', (e) => {
-                    if (e.detail?.target === targetId && e.detail?.file) {
-                        const file = e.detail.file;
-                        const snippet = file.is_image
-                            ? `\n![${file.name || 'imagen'}](${file.url})\n`
-                            : `\n[${file.name || 'archivo'}](${file.url})\n`;
-                        targetObj.content = (targetObj.content || '') + snippet;
-                        this.syncBlocksToLocale();
-                    }
-                }, { once: true });
+                this.beginMediaRequest({
+                    mode: 'markdown',
+                    targetObj,
+                    fieldName: 'content',
+                    kind: 'all',
+                    altKey: null,
+                });
+            },
+
+            beginMediaRequest(request) {
+                const targetId = 'media_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+                this.pendingMediaRequest = Object.assign({}, request, { targetId });
 
                 window.dispatchEvent(new CustomEvent('open-filemanager', {
-                    detail: { target: targetId }
+                    detail: { target: targetId, kind: request.kind || 'all' }
                 }));
+            },
+
+            handleFileSelected(detail) {
+                const request = this.pendingMediaRequest;
+                if (!request || !detail || detail.target !== request.targetId || !detail.file) return;
+
+                const file = detail.file;
+                if (request.mode === 'markdown') {
+                    const snippet = file.is_image
+                        ? `\n![${file.name || 'imagen'}](${file.url})\n`
+                        : `\n[${file.name || 'archivo'}](${file.url})\n`;
+                    request.targetObj.content = (request.targetObj.content || '') + snippet;
+                } else {
+                    request.targetObj[request.fieldName] = file.url;
+                    if (request.altKey && !request.targetObj[request.altKey]) {
+                        request.targetObj[request.altKey] = file.alt_text || file.title || '';
+                    }
+                }
+
+                this.pendingMediaRequest = null;
+                this.syncBlocksToLocale();
+            },
+
+            handleFileManagerClosed(detail) {
+                if (!this.pendingMediaRequest) return;
+                if (!detail?.target || detail.target === this.pendingMediaRequest.targetId) {
+                    this.pendingMediaRequest = null;
+                }
+            },
+
+            clearBlockMedia(targetObj, fieldName) {
+                targetObj[fieldName] = '';
+                this.syncBlocksToLocale();
             },
 
             appendSnippet(targetObj, prefix, suffix = '') {

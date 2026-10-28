@@ -1,6 +1,6 @@
 # Versionado y entrega de dbCMS 3
 
-dbCMS utiliza SemVer. La línea 3 comienza en `3.0.1` y está dirigida a instalaciones nuevas. El repositorio canónico es `dbravoan/dbcms`. Las versiones publicadas son inmutables.
+dbCMS utiliza SemVer. La línea 3 comenzó en `3.0.1`; la versión actual es `3.1.0`, que actualiza esa base publicada. El repositorio canónico es `dbravoan/dbcms`. Las versiones publicadas son inmutables.
 
 ## Preparar una entrega
 
@@ -8,7 +8,7 @@ Confirmar primero todo el código que deba entregarse. La preparación usa un SH
 
 ```bash
 ./vendor/bin/sail up -d
-./vendor/bin/sail artisan app:version --set=3.0.1
+./vendor/bin/sail artisan app:version --set=3.1.0
 # Alinear también package.json, package-lock.json y resources/updates.
 # Revisar y confirmar los archivos antes de capturar el SHA.
 export DBCMS_UPDATE_SIGNING_KEY_FILE=/ruta/privada/releases-2026.private.pem
@@ -39,7 +39,7 @@ conjunto preparado o descargado, desde el repositorio de confianza:
 ```bash
 sha="$(git rev-parse HEAD)"
 python3 bin/delivery.py verify --directory="dist/delivery-$sha" \
-  --sha="$sha" --kind=release --version=3.0.1
+  --sha="$sha" --kind=release --version=3.1.0
 ```
 
 Después de firmar no se añaden archivos al directorio ni se reconstruyen sus

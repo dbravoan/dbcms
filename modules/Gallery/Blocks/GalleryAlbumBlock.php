@@ -74,10 +74,10 @@ class GalleryAlbumBlock extends AbstractBlockType implements PublicWidgetSemanti
     public function getEditorSchema(): array
     {
         return [
-            'title' => ['type' => 'text', 'label' => 'Título'],
-            'album_slug' => ['type' => 'select', 'label' => 'Galería', 'options' => ['' => 'Todas'], 'options_source' => 'gallery_albums', 'option_label' => 'title', 'option_value' => 'slug', 'rules' => ['nullable', 'string', 'max:255']],
-            'grid_columns' => ['type' => 'select', 'label' => 'Columnas', 'options' => ['2', '3', '4'], 'default' => '3'],
-            'limit' => ['type' => 'integer', 'label' => 'Límite', 'default' => 6, 'rules' => ['nullable', 'integer', 'between:1,50']],
+            'title' => ['type' => 'text', 'label' => 'Título', 'description' => 'Título opcional sobre la galería.'],
+            'album_slug' => ['type' => 'select', 'label' => 'Galería', 'options' => ['' => 'Todas'], 'options_source' => 'gallery_albums', 'option_label' => 'title', 'option_value' => 'slug', 'rules' => ['nullable', 'string', 'max:255'], 'description' => 'Álbum que se muestra. Déjalo vacío para incluir todos.'],
+            'grid_columns' => ['type' => 'select', 'label' => 'Columnas', 'options' => ['2', '3', '4'], 'default' => '3', 'description' => 'Columnas de la rejilla en pantallas grandes.'],
+            'limit' => ['type' => 'integer', 'label' => 'Límite', 'default' => 6, 'rules' => ['nullable', 'integer', 'between:1,50'], 'description' => 'Número máximo de imágenes.'],
         ];
     }
 

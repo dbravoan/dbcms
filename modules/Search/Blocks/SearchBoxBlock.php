@@ -65,6 +65,18 @@ class SearchBoxBlock extends AbstractBlockType
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function getEditorSchema(): array
+    {
+        return [
+            'title' => ['type' => 'text', 'label' => 'Título', 'description' => 'Título opcional sobre la caja de búsqueda.', 'rules' => ['nullable', 'string', 'max:255']],
+            'size' => ['type' => 'select', 'label' => 'Tamaño', 'options' => ['md' => 'Normal', 'lg' => 'Grande'], 'default' => 'lg', 'description' => 'Tamaño visual de la caja de búsqueda.'],
+            'placeholder' => ['type' => 'text', 'label' => 'Texto de ayuda', 'description' => 'Texto que aparece dentro del campo vacío.', 'rules' => ['nullable', 'string', 'max:255']],
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $payload
      */
     public function render(array $payload, ?Market $market = null, ?string $locale = null): string

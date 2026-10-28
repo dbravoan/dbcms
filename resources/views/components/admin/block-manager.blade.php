@@ -716,7 +716,7 @@
                                     <label class="block text-[color:var(--admin-muted)] text-[10px] uppercase font-bold mb-1">{{ __('admin.block_manager.bg_image_url') }}</label>
                                     <div class="flex gap-2">
                                         <input type="text" x-model="appearanceModel().bg_image_url" @input="syncBlocksToLocale()" placeholder="https://... o ruta multimedia" class="admin-control flex-1 bg-[color:var(--admin-surface)] border border-[color:var(--admin-border)] rounded-lg px-3 py-2 text-[color:var(--admin-text)] text-xs font-mono">
-                                        <button type="button" @click="openMediaPickerForObject(blocks[editingAppearanceIndex], 'bg_image_url')" class="px-3 py-2 bg-[color:var(--admin-surface-raised)] text-[color:var(--admin-accent)] rounded-lg font-bold"><i class="fa-solid fa-image"></i></button>
+                                        <button type="button" @click="openMediaPickerForObject(appearanceModel(), 'bg_image_url', 'image')" class="px-3 py-2 bg-[color:var(--admin-surface-raised)] text-[color:var(--admin-accent)] rounded-lg font-bold"><i class="fa-solid fa-image"></i></button>
                                     </div>
                                 </div>
                                 <div>
@@ -742,12 +742,15 @@
                                     <label class="block text-[color:var(--admin-muted)] text-[10px] uppercase font-bold mb-1">{{ __('admin.block_manager.bg_video_url') }}</label>
                                     <div class="flex gap-2">
                                         <input type="text" x-model="appearanceModel().bg_video_url" @input="syncBlocksToLocale()" placeholder="https://... o archivo multimedia" class="admin-control flex-1 bg-[color:var(--admin-surface)] border border-[color:var(--admin-border)] rounded-lg px-3 py-2 text-[color:var(--admin-text)] text-xs font-mono">
-                                        <button type="button" @click="openMediaPickerForObject(blocks[editingAppearanceIndex], 'bg_video_url')" class="px-3 py-2 bg-[color:var(--admin-surface-raised)] text-[color:var(--admin-accent)] rounded-lg font-bold"><i class="fa-solid fa-film"></i></button>
+                                        <button type="button" @click="openMediaPickerForObject(appearanceModel(), 'bg_video_url', 'video')" class="px-3 py-2 bg-[color:var(--admin-surface-raised)] text-[color:var(--admin-accent)] rounded-lg font-bold"><i class="fa-solid fa-film"></i></button>
                                     </div>
                                 </div>
                                 <div>
                                     <label class="block text-[color:var(--admin-muted)] text-[10px] uppercase font-bold mb-1">{{ __('admin.block_manager.video_poster') }}</label>
-                                    <input type="text" x-model="appearanceModel().bg_video_poster" @input="syncBlocksToLocale()" placeholder="https://..." class="admin-control w-full bg-[color:var(--admin-surface)] border border-[color:var(--admin-border)] rounded-lg px-3 py-2 text-[color:var(--admin-text)] text-xs font-mono">
+                                    <div class="flex gap-2">
+                                        <input type="text" x-model="appearanceModel().bg_video_poster" @input="syncBlocksToLocale()" placeholder="https://..." class="admin-control flex-1 bg-[color:var(--admin-surface)] border border-[color:var(--admin-border)] rounded-lg px-3 py-2 text-[color:var(--admin-text)] text-xs font-mono">
+                                        <button type="button" @click="openMediaPickerForObject(appearanceModel(), 'bg_video_poster', 'image')" class="px-3 py-2 bg-[color:var(--admin-surface-raised)] text-[color:var(--admin-accent)] rounded-lg font-bold"><i class="fa-solid fa-image"></i></button>
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="block text-[color:var(--admin-muted)] text-[10px] uppercase font-bold mb-1">{{ __('admin.block_manager.overlay') }}</label>

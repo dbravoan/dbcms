@@ -80,9 +80,49 @@ class CarouselBlock extends AbstractBlockType
         ];
     }
 
-    public function render(array $payload, ?Market $market = null, ?string $locale = null): string
+    public function getEditorSchema(): array
     {
-        /** @var array<int, array<string, mixed>> $slides */
+        $schema = parent::getEditorSchema();
+        $schema['title']['description'] = 'Título opcional que se muestra sobre las diapositivas.';
+        $schema['height'] = [
+            'type' => 'integer',
+            'label' => 'Altura',
+            'default' => 520,
+            'min' => 240,
+            'max' => 900,
+            'description' => 'Altura del carrusel en píxeles.',
+        ];
+        $schema['autoplay']['description'] = 'Avanza automáticamente entre las diapositivas.';
+        $schema['interval'] = [
+            'type' => 'integer',
+            'label' => 'Intervalo entre diapositivas',
+            'default' => 6000,
+            'min' => 2000,
+            'max' => 20000,
+            'description' => 'Milisegundos entre diapositivas cuando la reproducción automática está activa.',
+            'show_when' => ['field' => 'autoplay', 'equals' => true],
+        ];
+        $schema['show_arrows']['description'] = 'Muestra flechas para navegar manualmente.';
+        $schema['show_dots']['description'] = 'Muestra los indicadores de posición.';
+        $schema['slides'] = [
+            'type' => 'repeater',
+            'label' => 'Diapositivas',
+            'description' => 'Cada diapositiva puede tener su propia imagen, texto y llamada a la acción.',
+            'rules' => ['nullable', 'array'],
+            'fields' => [
+                'image_url' => ['type' => 'media', 'media_kind' => 'image', 'label' => 'Imagen', 'rules' => ['nullable', 'string', 'max:2048']],
+                'title' => ['type' => 'text', 'label' => 'Título de la diapositiva', 'rules' => ['nullable', 'string', 'max:255']],
+                'subtitle' => ['type' => 'textarea', 'label' => 'Texto de apoyo', 'rules' => ['nullable', 'string', 'max:1000']],
+                'cta_text' => ['type' => 'text', 'label' => 'Texto del botón', 'rules' => ['nullable', 'string', 'max:120']],
+                'cta_url' => ['type' => 'url', 'label' => 'Destino del botón', 'description' => 'Ruta interna o URL externa segura.', 'rules' => ['nullable', 'string', 'max:2048']],
+            ],
+        ];
+
+        return $schema;
+    }
+
+    public function render(array $payload, ?Market $market = null, ?string $locale = null): string
+    {        /** @var array<int, array<string, mixed>> $slides */
         $slides = array_values(array_filter((array) ($payload['slides'] ?? []), static fn ($slide): bool => is_array($slide)));
 
         if ($slides === []) {

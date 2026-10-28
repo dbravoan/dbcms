@@ -210,7 +210,7 @@ La release publica **`dbcms-installer-v<VERSIÓN>.zip`** como archivo principal.
 
 Instalación sin consola en Plesk/cPanel:
 
-1. Descargue `dbcms-installer-v3.0.1.zip`, compruebe su SHA256 con `checksums.txt` y súbalo desde el administrador de archivos.
+1. Descargue `dbcms-installer-v3.1.0.zip`, compruebe su SHA256 con `checksums.txt` y súbalo desde el administrador de archivos.
 2. Extráigalo en el directorio del dominio. Cuando el panel lo permita, configure la raíz pública del dominio en `public/`; el `.htaccess` de la raíz ofrece compatibilidad para Apache cuando no pueda cambiarla.
 3. Compruebe que el usuario PHP puede escribir en `storage/`, `bootstrap/cache/` y en el directorio raíz para crear `.env`. Use los permisos del panel y evite `777`.
 4. Abra el dominio por HTTPS. La primera petición crea la clave cifrada y abre el asistente web.

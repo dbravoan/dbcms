@@ -62,6 +62,27 @@ class FeaturesBlock extends AbstractBlockType
         ];
     }
 
+    public function getEditorSchema(): array
+    {
+        $schema = parent::getEditorSchema();
+        $schema['title']['description'] = 'Título opcional de la cuadrícula.';
+        $schema['grid_columns'] = [
+            'type' => 'select',
+            'label' => 'Columnas',
+            'options' => ['1' => '1 columna', '2' => '2 columnas', '3' => '3 columnas', '4' => '4 columnas'],
+            'default' => '3',
+            'description' => 'Número de tarjetas por fila en pantallas grandes.',
+        ];
+        $schema['items']['label'] = 'Tarjetas';
+        $schema['items']['description'] = 'Cada tarjeta destaca una capacidad o ventaja.';
+        $schema['items']['fields']['icon']['description'] = 'Emoji, símbolo o clase de icono.';
+        $schema['items']['fields']['title']['label'] = 'Título de la tarjeta';
+        $schema['items']['fields']['description']['label'] = 'Descripción de la tarjeta';
+        $schema['items']['fields']['description']['description'] = 'Texto breve que explica la capacidad.';
+
+        return $schema;
+    }
+
     public function render(array $payload, ?Market $market = null, ?string $locale = null): string
     {
         $title = htmlspecialchars((string) ($payload['title'] ?? ''));

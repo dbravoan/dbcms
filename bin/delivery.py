@@ -211,8 +211,14 @@ def quick_check(root):
         policy = json.loads((root / "resources/updates/release-policy.json").read_text())
         if core.get("version") != version or policy.get("version") != version:
             raise DeliveryError("Update metadata differs from VERSION")
-        if policy.get("supported_from") != [version] or policy.get("rollback_compatible") is not False:
-            raise DeliveryError("Release policy must identify the fresh-installation baseline")
+        origins = policy.get("supported_from")
+        if (not isinstance(origins, list) or not origins
+                or any(not isinstance(origin, str) or not re.fullmatch(r"\d+\.\d+\.\d+", origin) for origin in origins)
+                or len(set(origins)) != len(origins)
+                or any(tuple(map(int, origin.split("."))) > tuple(map(int, version.split("."))) for origin in origins)
+                or (version not in origins and not any(tuple(map(int, origin.split("."))) < tuple(map(int, version.split("."))) for origin in origins))
+                or policy.get("rollback_compatible") is not False):
+            raise DeliveryError("Release policy must declare valid published source versions")
     return version
 
 

@@ -136,6 +136,30 @@ class DeliveryTest(unittest.TestCase):
         with self.assertRaises(delivery.DeliveryError):
             delivery.extract_runtime(self.bundle, output)
 
+
+    def quick_root(self, version, origins, rollback=False):
+        root = Path(self.temporary.name) / "quick"
+        root.mkdir(parents=True, exist_ok=True)
+        (root / "VERSION").write_text(version + "\n")
+        (root / "package.json").write_text(json.dumps({"version": version}))
+        (root / "package-lock.json").write_text(json.dumps({"version": version, "packages": {"": {"version": version}}}))
+        (root / "resources").mkdir(exist_ok=True)
+        (root / "resources/updates").mkdir(exist_ok=True)
+        (root / "resources/updates/core-version.json").write_text(json.dumps({"version": version, "repository": "dbravoan/dbcms"}))
+        (root / "resources/updates/release-policy.json").write_text(json.dumps({
+            "version": version, "supported_from": origins, "rollback_compatible": rollback,
+        }))
+        return root
+
+    def test_quick_check_accepts_a_published_previous_origin(self):
+        self.assertEqual(delivery.quick_check(self.quick_root("3.0.1", ["3.0.1"])), "3.0.1")
+        self.assertEqual(delivery.quick_check(self.quick_root("3.1.0", ["3.0.1"])), "3.1.0")
+
+    def test_quick_check_rejects_ambiguous_or_future_origins(self):
+        for origins, rollback in [([], False), (["3.0.1", "3.0.1"], False), (["3.2.0"], False), (["3.0.1"], True)]:
+            with self.subTest(origins=origins, rollback=rollback), self.assertRaises(delivery.DeliveryError):
+                delivery.quick_check(self.quick_root("3.1.0", origins, rollback))
+
     def test_signing_key_must_match_pin(self):
         for name in ("delivery.json", "delivery.sig"):
             (self.bundle / name).unlink()

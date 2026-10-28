@@ -50,6 +50,19 @@ class FaqBlock extends AbstractBlockType
         ];
     }
 
+    public function getEditorSchema(): array
+    {
+        $schema = parent::getEditorSchema();
+        $schema['title']['description'] = 'Título opcional del acordeón.';
+        $schema['items']['label'] = 'Preguntas';
+        $schema['items']['description'] = 'Cada fila es una pregunta con su respuesta desplegable.';
+        $schema['items']['fields']['question']['label'] = 'Pregunta';
+        $schema['items']['fields']['answer']['label'] = 'Respuesta';
+        $schema['items']['fields']['answer']['description'] = 'Admite texto plano y enlaces markdown según el tema.';
+
+        return $schema;
+    }
+
     public function render(array $payload, ?Market $market = null, ?string $locale = null): string
     {
         $title = htmlspecialchars((string) ($payload['title'] ?? 'Preguntas Frecuentes'));

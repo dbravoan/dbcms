@@ -124,12 +124,14 @@ final class BlockRegistry implements BlockRegistryInterface
                 'select' => ['nullable', Rule::in(array_is_list((array) ($field['options'] ?? [])) ? (array) ($field['options'] ?? []) : array_keys((array) ($field['options'] ?? [])))],
                 'boolean' => ['nullable', 'boolean'],
                 'json', 'array', 'list', 'repeater' => ['nullable', 'array'],
+                'media' => ['nullable', 'string'],
                 default => ['nullable', 'string'],
             };
-            if (($field['type'] ?? null) === 'url') {
+            if (in_array($field['type'] ?? null, ['url', 'media'], true)) {
+                $isMedia = ($field['type'] ?? null) === 'media';
                 $fieldRules = is_string($rules[$path]) ? explode('|', $rules[$path]) : (array) $rules[$path];
-                $rules[$path] = [...$fieldRules, static function (string $attribute, mixed $value, Closure $fail): void {
-                    if (! is_string($value) || ! (new SafeContentRenderer)->isSafeUrl($value)) {
+                $rules[$path] = [...$fieldRules, static function (string $attribute, mixed $value, Closure $fail) use ($isMedia): void {
+                    if (! is_string($value) || ! (new SafeContentRenderer)->isSafeUrl($value, $isMedia)) {
                         $fail('This field requires a safe local or external URL.');
                     }
                 }];
@@ -157,8 +159,8 @@ final class BlockRegistry implements BlockRegistryInterface
     private function safeUrlPayload(array $payload, array $schema): array
     {
         foreach ($schema as $key => $field) {
-            if (($field['type'] ?? null) === 'url' && array_key_exists($key, $payload)) {
-                if (! is_string($payload[$key]) || ! (new SafeContentRenderer)->isSafeUrl($payload[$key])) {
+            if (in_array($field['type'] ?? null, ['url', 'media'], true) && array_key_exists($key, $payload)) {
+                if (! is_string($payload[$key]) || ! (new SafeContentRenderer)->isSafeUrl($payload[$key], ($field['type'] ?? null) === 'media')) {
                     $payload[$key] = '';
                 }
             }

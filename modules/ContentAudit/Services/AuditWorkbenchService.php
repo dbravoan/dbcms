@@ -58,7 +58,8 @@ final class AuditWorkbenchService implements AuditWorkbenchServiceInterface
             return $audit;
         });
 
-        $revisionsQuery = ContentAuditRevision::with(['auditable', 'user'])
+        $revisionsQuery = ContentAuditRevision::query()
+            ->with('user')
             ->orderByDesc('created_at');
         $this->visibility->constrain($revisionsQuery, $user);
 
@@ -70,7 +71,7 @@ final class AuditWorkbenchService implements AuditWorkbenchServiceInterface
             $revisionsQuery->where('user_id', $filters['rev_user']);
         }
 
-        $revisions = $revisionsQuery->paginate(20, ['*'], 'revisions_page');
+        $revisions = $revisionsQuery->paginate(20, ContentAuditRevision::LIST_COLUMNS, 'revisions_page');
 
         $settings = $this->settingsService->getAll('content_audit');
         $schema = $this->settingsService->getSchema('content_audit');

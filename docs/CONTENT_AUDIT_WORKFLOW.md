@@ -53,6 +53,10 @@ Si el módulo no está registrado, `NoEditorialWorkflow` permite que los servici
 
 La finalización editorial ocurre después de sincronizar traducciones, secciones y relaciones dentro de la transacción común. Los observadores cubren guardados directos compatibles; no sustituyen ese punto de finalización. Los controladores presentan resultados y el módulo conserva la propiedad de sus consultas, decisiones y notificaciones.
 
+## Rendimiento del changelog
+
+El changelog global pagina solo las columnas de metadatos de la revisión: identificador, entidad, usuario, versión, acción, título, notas y fecha. No carga `snapshot` ni `diff` en el listado, porque esos JSON pueden ser grandes y MySQL agota `sort_buffer_size` al ordenarlos. El detalle de una revisión y el comparador cargan la instantánea bajo demanda; el diff de la revisión usa la instantánea anterior completa. La migración `2026_10_28_000001_add_created_at_index_to_content_audit_revisions_table.php` añade el índice de `created_at` que sostiene el orden del feed.
+
 ## Verificación del contrato
 
 `ContentAuditReliabilityTest` cubre desactivación física, autoridad con flujo apagado, historial completo, restauración, conflicto en rechazo/restauración, publicación diferida, autor de job, fechas públicas, borrado y avisos obsoletos. Se complementa con pruebas del módulo, botones de borrador, enforcement, paridad editorial, galerías, formularios y propiedad de capacidades.

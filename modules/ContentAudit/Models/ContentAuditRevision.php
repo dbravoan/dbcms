@@ -37,6 +37,25 @@ class ContentAuditRevision extends Model
 {
     public const UPDATED_AT = null;
 
+    /**
+     * Metadata needed by revision lists. The snapshot/diff JSON columns are
+     * intentionally excluded: loading and sorting megabytes per row overflows
+     * MySQL's sort buffer on the global changelog.
+     *
+     * @var list<string>
+     */
+    public const LIST_COLUMNS = [
+        'id',
+        'auditable_type',
+        'auditable_id',
+        'user_id',
+        'version',
+        'action',
+        'title',
+        'notes',
+        'created_at',
+    ];
+
     protected $table = 'content_audit_revisions';
 
     protected $fillable = [

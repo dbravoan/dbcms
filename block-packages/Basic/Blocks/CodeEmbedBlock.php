@@ -47,6 +47,14 @@ class CodeEmbedBlock extends AbstractBlockType
         ];
     }
 
+    public function getEditorSchema(): array
+    {
+        return [
+            'title' => ['type' => 'text', 'label' => 'Título opcional', 'description' => 'Etiqueta pequeña sobre el contenido incrustado.', 'rules' => ['nullable', 'string', 'max:255']],
+            'content' => ['type' => 'textarea', 'label' => 'HTML incrustado', 'description' => 'Se renderiza dentro de un iframe con sandbox. Revisa el código antes de publicar.', 'rules' => ['nullable', 'string']],
+        ];
+    }
+
     public function render(array $payload, ?Market $market = null, ?string $locale = null): string
     {
         $title = ! empty($payload['title']) ? htmlspecialchars((string) $payload['title']) : '';

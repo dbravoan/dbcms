@@ -74,13 +74,13 @@ class ShopProductsBlock extends AbstractBlockType implements PublicWidgetSemanti
     public function getEditorSchema(): array
     {
         return [
-            'title' => ['type' => 'text', 'label' => 'Título'],
-            'subtitle' => ['type' => 'textarea', 'label' => 'Subtítulo'],
-            'selection' => ['type' => 'select', 'label' => 'Selección', 'options' => ['all' => 'Catálogo', 'featured' => 'Destacados'], 'default' => 'all'],
-            'category' => ['type' => 'select', 'label' => 'Categoría', 'options' => ['' => 'Todas'], 'options_source' => 'shop_categories', 'option_label' => 'name', 'option_value' => 'id', 'rules' => ['nullable', 'integer', 'min:1']],
-            'product_id' => ['type' => 'select', 'label' => 'Producto', 'options' => ['' => 'Selección automática'], 'options_source' => 'shop_products', 'option_label' => 'name', 'option_value' => 'id', 'rules' => ['nullable', 'integer', 'min:1']],
-            'limit' => ['type' => 'integer', 'label' => 'Límite', 'default' => 4, 'rules' => ['nullable', 'integer', 'between:1,50']],
-            'grid_columns' => ['type' => 'select', 'label' => 'Columnas', 'options' => ['2', '3', '4'], 'default' => '4'],
+            'title' => ['type' => 'text', 'label' => 'Título', 'description' => 'Título opcional sobre la lista de productos.'],
+            'subtitle' => ['type' => 'textarea', 'label' => 'Subtítulo', 'description' => 'Texto introductorio opcional.'],
+            'selection' => ['type' => 'select', 'label' => 'Selección', 'options' => ['all' => 'Catálogo', 'featured' => 'Destacados'], 'default' => 'all', 'description' => 'Filtro aplicado cuando no eliges un producto concreto.', 'show_when' => ['field' => 'product_id', 'falsy' => true]],
+            'category' => ['type' => 'select', 'label' => 'Categoría', 'options' => ['' => 'Todas'], 'options_source' => 'shop_categories', 'option_label' => 'name', 'option_value' => 'id', 'rules' => ['nullable', 'integer', 'min:1'], 'description' => 'Limita la lista a una categoría.', 'show_when' => ['field' => 'product_id', 'falsy' => true]],
+            'product_id' => ['type' => 'select', 'label' => 'Producto', 'options' => ['' => 'Selección automática'], 'options_source' => 'shop_products', 'option_label' => 'name', 'option_value' => 'id', 'rules' => ['nullable', 'integer', 'min:1'], 'description' => 'Si eliges un producto concreto se ignoran selección, categoría y límite.'],
+            'limit' => ['type' => 'integer', 'label' => 'Límite', 'default' => 4, 'rules' => ['nullable', 'integer', 'between:1,50'], 'description' => 'Número máximo de productos.', 'show_when' => ['field' => 'product_id', 'falsy' => true]],
+            'grid_columns' => ['type' => 'select', 'label' => 'Columnas', 'options' => ['2', '3', '4'], 'default' => '4', 'description' => 'Columnas de la rejilla en pantallas grandes.'],
         ];
     }
 
