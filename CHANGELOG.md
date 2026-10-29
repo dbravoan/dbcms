@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.1.1] - 2026-10-29
+
+Security patch for the published 3.0.1 and 3.1.0 lines.
+
+- Updates `symfony/mime` and its polyfills to address CVE-2026-45070.
+- Keeps the 3.1.0 ContentAudit changelog fix and block editor media/schema work unchanged.
+- Declares 3.0.1 and 3.1.0 as published update origins.
+
+[3.1.1]: https://github.com/dbravoan/dbcms/releases/tag/v3.1.1
+
 ## [3.1.0] - 2026-10-28
 
 Compatible update from the published 3.0.1 baseline.

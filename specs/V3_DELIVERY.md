@@ -5,9 +5,9 @@ Owner: core distribution and deployment
 
 ## Baseline and scope
 
-The canonical repository is `dbravoan/dbcms`. Version **3.1.0** is the current release and updates the published 3.0.1
-baseline. Product metadata and the release policy use 3.1.0, `supported_from:
-[3.0.1]` and `rollback_compatible: false`. There is no automatic
+The canonical repository is `dbravoan/dbcms`. Version **3.1.1** is the current security patch and updates the published 3.0.1
+and 3.1.0 lines. Product metadata and the release policy use 3.1.1,
+`supported_from: [3.0.1, 3.1.0]` and `rollback_compatible: false`. There is no automatic
 conversion of an existing installation, historical payloads or database schemas.
 [Core and extensions](CORE_AND_EXTENSIONS.md) governs application behavior.
 
@@ -63,7 +63,7 @@ credentials and installed state remain on the destination.
 
 CI performs basic source and delivery-contract checks. Full local gates remain
 mandatory. Native AMD64/ARM64 image builds run independently with separate caches
-and smoke checks before promoting `3.1.0` and `latest`; archive publication does
+and smoke checks before promoting `3.1.1` and `latest`; archive publication does
 not wait for them. Images have their own build and verification evidence.
 
 ## Acceptance and measurements

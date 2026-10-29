@@ -37,7 +37,7 @@ creation or local Sail. Containers use PHP/Composer directly, never nested Sail.
 ## DTO and manifest contract
 `readonly App\DTOs\ProjectProfile` carries name, brand, themes (list of IDs), defaultTheme, coreVersion, coreSha deployment (github-actions|ansistrano|rsync|docker|none) and optional sourceSelection. `cms-project.json` is versioned, contains no secrets, and has this required shape:
 ```json
-{"schema":1,"name":"mi-web","brand":"dbcms","deployment":"github-actions","themes":["db-minimal"],"default_theme":"db-minimal","core":{"repository":"dbravoan/dbcms","version":"3.1.0","sha":"0000000000000000000000000000000000000000"}}
+{"schema":1,"name":"mi-web","brand":"dbcms","deployment":"github-actions","themes":["db-minimal"],"default_theme":"db-minimal","core":{"repository":"dbravoan/dbcms","version":"3.1.1","sha":"0000000000000000000000000000000000000000"}}
 ```
 The example version and hash illustrate the shape; initialization requires a real published stable release. Production initialization resolves the official release tag through GitHub Git, never a template-generated commit. Explicit noninteractive brands: dbcms|termocms. Explicit noninteractive themes: a valid CSV or all. Required `--deploy`: github-actions|ansistrano|rsync|docker|none, stored as scalar `deployment` in schema 1; existing profiles without this field require a reviewed manual manifest migration; reinitialization does not adopt or infer a deployment choice. CSV is deduplicated preserving order; all resolves the installed catalogue and defaults to db-cyber.
 

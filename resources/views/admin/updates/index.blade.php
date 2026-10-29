@@ -18,7 +18,7 @@
     <form x-show="!catalog.installed?.verified" x-cloak class="admin-card p-6 space-y-4" x-on:submit.prevent="adopt($event.target)">
         <h2 class="text-lg font-semibold">{{ __('updates.adopt') }}</h2>
         <p>{{ __('updates.adopt_help') }}</p>
-        <x-admin.input name="version" :label="__('updates.version')" placeholder="3.1.0" required pattern="[0-9]+\.[0-9]+\.[0-9]+" />
+        <x-admin.input name="version" :label="__('updates.version')" placeholder="3.1.1" required pattern="[0-9]+\.[0-9]+\.[0-9]+" />
         <x-admin.select name="distribution" :label="__('updates.distribution')"><option value="source">{{ __('updates.source') }}</option><option value="runtime">{{ __('updates.runtime') }}</option></x-admin.select>
         <x-admin.button type="submit" x-bind:disabled="busy">{{ __('updates.adopt') }}</x-admin.button>
     </form>

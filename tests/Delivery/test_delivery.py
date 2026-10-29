@@ -154,6 +154,7 @@ class DeliveryTest(unittest.TestCase):
     def test_quick_check_accepts_a_published_previous_origin(self):
         self.assertEqual(delivery.quick_check(self.quick_root("3.0.1", ["3.0.1"])), "3.0.1")
         self.assertEqual(delivery.quick_check(self.quick_root("3.1.0", ["3.0.1"])), "3.1.0")
+        self.assertEqual(delivery.quick_check(self.quick_root("3.1.1", ["3.0.1", "3.1.0"])), "3.1.1")
 
     def test_quick_check_rejects_ambiguous_or_future_origins(self):
         for origins, rollback in [([], False), (["3.0.1", "3.0.1"], False), (["3.2.0"], False), (["3.0.1"], True)]:

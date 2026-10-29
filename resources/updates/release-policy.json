@@ -1,5 +1,5 @@
 {
-    "version": "3.1.0",
+    "version": "3.1.1",
     "min_php": "8.3.0",
     "extensions": [
         "openssl",
@@ -10,8 +10,9 @@
         "dom"
     ],
     "supported_from": [
-        "3.0.1"
+        "3.0.1",
+        "3.1.0"
     ],
     "rollback_compatible": false,
-    "review": "3.1.0 is a compatible update from the published 3.0.1 baseline. It fixes the ContentAudit changelog index and column projection, adds block editor media pickers, schema hints, conditional fields and full repeater controls, and preserves stored block payloads. ContentAudit now projects metadata columns for lists and loads snapshots only for review detail. Existing block keys and stored payloads are not converted; projects keep their selected modules, themes and custom blocks. Review the source proposal and resolve local customisations before deployment."
+    "review": "3.1.1 is a security patch for the published 3.0.1 and 3.1.0 lines. It updates symfony/mime and its polyfills to address CVE-2026-45070, and carries the 3.1.0 ContentAudit and block editor changes without converting stored block payloads. Existing projects keep their selected modules, themes, custom blocks and local dependency customisations. Review the source proposal and resolve local customisations before deployment."
 }

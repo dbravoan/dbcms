@@ -11,7 +11,7 @@ El módulo opcional Orchestration aporta planificación y ejecución de instrucc
 5. Revisar permisos y clientes M2M existentes. Una clave de API guardada no verifica una conexión. Comprobar catálogo y modalidad seleccionada antes de habilitar el modelo.
 6. Comprobar borrador completo, revisión de publicado, aprobación humana, pedido offline, aislamiento entre visitantes y desinstalación/reinstalación en staging. Instalar y activar `orchestration` con su dependencia `ai_assistant` sólo tras superar esas verificaciones, reiniciar workers y reconstruir configuración mediante `bin/vps-artisan.sh` en VPS/Plesk o la CLI de la imagen en alojamiento Docker.
 
-La base 3.1.0 parte de la instalación publicada 3.0.1: esta preparación no convierte una
+La base 3.1.1 parte de la instalación publicada 3.1.0: esta preparación no convierte una
 base anterior a v3. Para entregas posteriores, verificar compatibilidad y el gate
 local documentado en [TESTING](TESTING.md) antes de publicar artefactos.
 

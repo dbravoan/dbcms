@@ -1,7 +1,7 @@
 # Referencia de campos del editor de bloques
 
 Esta guía describe los campos que ve el editor para cada bloque del núcleo en
-dbCMS 3.1.0. Los formularios se generan desde el esquema del bloque y el editor
+dbCMS 3.1.1. Los formularios se generan desde el esquema del bloque y el editor
 común. Los campos de medios se marcan expresamente; el resto son textos, números,
 booleanos, listas o repetidores.
 
@@ -134,7 +134,7 @@ booleanos, listas o repetidores.
 | `items.*.avatar` | Medio | URL demo | Avatar de la persona | Imagen |
 
 `rating` existe en el render como valor opcional de payload, pero no se expone
-como input en 3.1.0; si está ausente se muestran cinco estrellas.
+como input en 3.1.1; si está ausente se muestran cinco estrellas.
 
 ### Vídeo (`video`)
 
@@ -284,7 +284,7 @@ bordes pertenecen al contenedor; en una columna se guardan en `col.style`.
 | Animación | `animation_delay` | Texto | Retardo de la animación |
 
 `border_top.style` y `animation_duration` existen en el payload y en el render,
-pero el panel no los expone en 3.1.0; conservan sus valores por defecto.
+pero el panel no los expone en 3.1.1; conservan sus valores por defecto.
 
 ## Relación de medios y selector
 
