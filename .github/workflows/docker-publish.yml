@@ -179,7 +179,7 @@ jobs:
             type=raw,value=latest
 
       - name: Download architecture digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digests-*
